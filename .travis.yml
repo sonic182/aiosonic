@@ -1,0 +1,10 @@
+language: python
+dist: trusty
+python:
+  - "3.5"
+  - "3.6"
+install: "pip install -e .[test]"
+script:
+  - coverage run --source=aiosonic setup.py test
+after_success:
+  coveralls
