@@ -38,6 +38,10 @@ class HTTPResponse:
         """Set header to response."""
         self.headers[key] = val
 
+    @property
+    def status_code(self):
+        return int(self.response_initial['code'])
+
 
 def get_header_data(url: ParseResult, headers=None):
     """Prepare get data."""

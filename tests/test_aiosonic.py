@@ -10,5 +10,6 @@ async def test_do_load_test_sample_server(app, aiohttp_server):
     url = 'http://localhost:{}'.format(server.port)
 
     res = await aiosonic.get(url)
+    assert res.status_code == 200
     assert res.body == b'Hello, world'
     await server.close()
