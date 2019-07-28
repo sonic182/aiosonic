@@ -1,10 +1,10 @@
 language: python
-dist: trusty
+dist: xenial
 python:
-  - "3.5"
   - "3.6"
+  - "3.7"
 install: "pip install -e .[test]"
 script:
-  - coverage run --source=aiosonic setup.py test
+  - pytest --cov=aiosonic 
 after_success:
   coveralls
