@@ -1,17 +1,19 @@
 """Main module."""
 
-import asyncio
-
 import re
+
+from functools import lru_cache
 from urllib.parse import urlparse
 from urllib.parse import ParseResult
 
 from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
+from aiosonic.connectors import TCPConnector
 
 
 HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
                              r'(?P<reason>[\w]*)')
+CACHE = {}
 
 
 class HTTPHeaders(CaseInsensitiveDict):
@@ -60,7 +62,12 @@ def get_header_data(url: ParseResult, headers=None):
     return get_base + '\n'
 
 
-async def get(url: str):
+@lru_cache(512)
+def get_url_parsed(url: str):
+    return urlparse(url)
+
+
+async def get(url: str, connector=None):
     """Do get http request.
 
     Steps:
@@ -69,32 +76,39 @@ async def get(url: str):
     * Send request data
     * Wait for response data
     """
-    urlparsed = urlparse(url)
+    if not connector:
+        key = 'connector_base'
+        connector = CACHE[key] = CACHE.get(key) or TCPConnector()
+    urlparsed = get_url_parsed(url)
 
     headers_data = get_header_data(urlparsed)
 
-    reader, writer = await asyncio.open_connection(
-        urlparsed.hostname, urlparsed.port)
+    async with (await connector.acquire()) as connection:
+        await connection.connect(urlparsed)
 
-    writer.write(headers_data.encode())
-    await writer.drain()
+        connection.writer.write(headers_data.encode())
+        # await writer.drain()
 
-    response = HTTPResponse()
+        response = HTTPResponse()
 
-    # get response code and version
-    response.set_response_initial(await reader.readline())
+        # get response code and version
+        response.set_response_initial(await connection.reader.readline())
 
-    data = None
-    # reading headers
-    while True:
-        data = await reader.readline()
-        if b': ' not in data:
-            break
-        response.set_header(*HTTPHeaders.clear_line(data))
-    size = response.headers.get(b'content-length')
-    if size:
-        response.body = await reader.read(int(size))
+        data = None
+        # reading headers
+        while True:
+            data = await connection.reader.readline()
+            if b': ' not in data:
+                break
+            response.set_header(*HTTPHeaders.clear_line(data))
 
-    writer.close()
-    await writer.wait_closed()
-    return response
+        size = response.headers.get(b'content-length')
+
+        if size:
+            response.body = await connection.reader.read(int(size))
+
+        keepalive = b'keep-alive' in response.headers.get(b'connection', b'')
+
+        if keepalive:
+            connection.keep_alive()
+        return response

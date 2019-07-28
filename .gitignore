@@ -18,5 +18,4 @@ htmlcov/
 logs/*.log*
 .idea/
 .vscode/
-*.txt
 *.csv
