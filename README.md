@@ -5,6 +5,14 @@
 
 Async http client
 
+This project is in alpha state.
+
+# Features:
+
+* Keepalive and pool of connections
+
+TODO: https://2.python-requests.org/en/v2.9.1/#feature-support
+
 # Development
 
 Install packages with pip-tools:
