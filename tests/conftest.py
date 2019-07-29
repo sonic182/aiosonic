@@ -11,9 +11,19 @@ async def hello(request):
     return web.Response(text='Hello, world')
 
 
-async def hello_post(_request):
+async def hello_post(request):
     """Sample router."""
-    print(_request.POST)
+    post = await request.post()
+    if post and 'foo' in post:
+        return web.Response(text=post['foo'])
+    return web.Response(text='Hello, world')
+
+
+async def hello_post_json(request):
+    """Sample router."""
+    data = await request.json()
+    if data and 'foo' in data:
+        return web.Response(text=data['foo'])
     return web.Response(text='Hello, world')
 
 
@@ -22,5 +32,6 @@ def app():
     """Sample aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
-    application.router.add_get('/post', hello_post)
+    application.router.add_post('/post', hello_post)
+    application.router.add_post('/post_json', hello_post_json)
     return application

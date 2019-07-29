@@ -1,5 +1,6 @@
 """Main module."""
 
+import json
 import re
 
 from functools import lru_cache
@@ -16,22 +17,28 @@ from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
 
 
+# VARIABLES
 HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
                              r'(?P<reason>[\w]*)')
 _CACHE = {}
 _LRU_CACHE_SIZE = 512
 
 
+# TYPES
 STRING_OR_BYTES = Union[str, bytes]
+HEADERS_TYPE = Dict[STRING_OR_BYTES, STRING_OR_BYTES]
 PARAMS_TYPE = Union[
     Dict[STRING_OR_BYTES, STRING_OR_BYTES],
     Tuple[STRING_OR_BYTES, STRING_OR_BYTES],
 ]
+DATA_TYPE = Union[
+    STRING_OR_BYTES,
+    dict,
+    tuple,
+]
 
 
 # Functions with cache
-
-
 @lru_cache(_LRU_CACHE_SIZE)
 def get_url_parsed(url: str):
     return urlparse(url)
@@ -69,8 +76,8 @@ class HTTPResponse:
         return int(self.response_initial['code'])
 
 
-def _get_header_data(url: ParseResult, method: str, params: dict = None,
-                     headers: dict = None):
+def _get_header_data(url: ParseResult, method: str,
+                     headers: HEADERS_TYPE = None, params: dict = None):
     """Prepare get data."""
     path = url.path or '/'
     if params:
@@ -90,22 +97,41 @@ def _get_header_data(url: ParseResult, method: str, params: dict = None,
     return get_base + '\n'
 
 
+def _get_body(data: DATA_TYPE, headers: HEADERS_TYPE):
+    """Get body to be sent."""
+    body = data
+    if 'content-type' not in headers:
+        body = urlencode(data)
+        headers['Content-Type'] = 'application/x-www-form-urlencoded'
+    body = body.encode()
+    headers['Content-Length'] = len(body)
+    return body
+
+
 # Module methods
-
-
-async def get(url: str, params: PARAMS_TYPE = None,
-              connector: TCPConnector = None):
+async def get(url: str, headers: HEADERS_TYPE = None,
+              params: PARAMS_TYPE = None, connector: TCPConnector = None):
     """Do get http request. """
-    return await request(url, 'GET', params)
+    return await request(url, 'GET', headers, params, connector=connector)
 
 
-async def post(url: str, params: PARAMS_TYPE = None,
-               connector: TCPConnector = None):
-    """Do get http request. """
-    return await request(url, 'POST', params)
+async def post(url: str, data: DATA_TYPE = None, headers: HEADERS_TYPE = None,
+               json: dict = None, params: PARAMS_TYPE = None,
+               connector: TCPConnector = None, json_serialize=json.dumps):
+    """Do post http request. """
+    if not data and not json:
+        TypeError('missing argument, either "json" or "data"')
+    if json:
+        data = json_serialize(json)
+        headers = headers or HTTPHeaders()
+        headers.update({
+            'Content-Type': 'application/json'
+        })
+    return await request(url, 'POST', headers, params, data, connector)
 
 
-async def request(url: str, method: str = 'GET', params: PARAMS_TYPE = None,
+async def request(url: str, method: str = 'GET', headers: HEADERS_TYPE = None,
+                  params: PARAMS_TYPE = None, data: DATA_TYPE = None,
                   connector: TCPConnector = None):
     """Requests.
 
@@ -120,12 +146,22 @@ async def request(url: str, method: str = 'GET', params: PARAMS_TYPE = None,
         connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
     urlparsed = get_url_parsed(url)
 
-    headers_data = _get_header_data(urlparsed, method, params)
+    body = None
+    if method != 'GET' and data:
+        headers = headers or {}
+        body = _get_body(data, headers)
+
+    headers_data = _get_header_data(urlparsed, method, headers, params)
 
     async with (await connector.acquire()) as connection:
         await connection.connect(urlparsed)
 
         connection.writer.write(headers_data.encode())
+
+        if body:
+            connection.writer.write(body)
+
+        # print(headers_data.encode() + body)
         # await writer.drain()
 
         response = HTTPResponse()
@@ -133,13 +169,13 @@ async def request(url: str, method: str = 'GET', params: PARAMS_TYPE = None,
         # get response code and version
         response.set_response_initial(await connection.reader.readline())
 
-        data = None
+        res_data = None
         # reading headers
         while True:
-            data = await connection.reader.readline()
-            if b': ' not in data:
+            res_data = await connection.reader.readline()
+            if b': ' not in res_data:
                 break
-            response.set_header(*HTTPHeaders.clear_line(data))
+            response.set_header(*HTTPHeaders.clear_line(res_data))
 
         size = response.headers.get(b'content-length')
 
