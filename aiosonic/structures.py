@@ -1,13 +1,14 @@
 
-import collections
+from collections.abc import MutableMapping
+from collections.abc import Mapping
 
 
 # copied from requests
-class CaseInsensitiveDict(collections.MutableMapping):
+class CaseInsensitiveDict(MutableMapping):
     """
     A case-insensitive ``dict``-like object.
     Implements all methods and operations of
-    ``collections.MutableMapping`` as well as dict's ``copy``. Also
+    ``collections.abc.MutableMapping`` as well as dict's ``copy``. Also
     provides ``lower_items``.
     All keys are expected to be strings. The structure remembers the
     case of the last key to be set, and ``iter(instance)``,
@@ -57,7 +58,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
         )
 
     def __eq__(self, other):
-        if isinstance(other, collections.Mapping):
+        if isinstance(other, Mapping):
             other = CaseInsensitiveDict(other)
         else:
             return NotImplemented

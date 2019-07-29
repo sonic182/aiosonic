@@ -45,20 +45,20 @@ class HTTPResponse:
         return int(self.response_initial['code'])
 
 
-def get_header_data(url: ParseResult, headers=None):
+def get_header_data(url: ParseResult, method: str, headers: dict = None):
     """Prepare get data."""
     path = url.path or '/'
-    get_base = f'GET {path} HTTP/1.1\n'
+    get_base = 'GET %s HTTP/1.1\n' % path
     headers_base = {
         'HOST': url.hostname,
-        'User-Agent': f'aioload/{VERSION}'
+        'User-Agent': 'aioload/%s' % VERSION
     }
 
     if headers:
         headers_base.update(headers)
 
     for key, data in headers_base.items():
-        get_base += f'{key}: {data}\n'
+        get_base += '%s: %s\n' % (key, data)
     return get_base + '\n'
 
 
@@ -67,8 +67,19 @@ def get_url_parsed(url: str):
     return urlparse(url)
 
 
-async def get(url: str, connector=None):
-    """Do get http request.
+async def get(url: str, connector: TCPConnector = None):
+    """Do get http request. """
+    return await request(url, 'get')
+
+
+async def post(url: str, connector: TCPConnector = None):
+    """Do get http request. """
+    return await request(url, 'post')
+
+
+async def request(url: str, method: str = 'get',
+                  connector: TCPConnector = None):
+    """Requests.
 
     Steps:
     * Prepare request data
@@ -81,7 +92,7 @@ async def get(url: str, connector=None):
         connector = CACHE[key] = CACHE.get(key) or TCPConnector()
     urlparsed = get_url_parsed(url)
 
-    headers_data = get_header_data(urlparsed)
+    headers_data = get_header_data(urlparsed, method)
 
     async with (await connector.acquire()) as connection:
         await connection.connect(urlparsed)
