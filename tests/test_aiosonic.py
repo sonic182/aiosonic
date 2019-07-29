@@ -5,7 +5,7 @@ import aiosonic
 
 @pytest.mark.asyncio
 async def test_do_load_test_sample_server(app, aiohttp_server):
-    """Do load test to sample server."""
+    """Test simple get."""
     server = await aiohttp_server(app)
     url = 'http://localhost:{}'.format(server.port)
 
@@ -17,7 +17,7 @@ async def test_do_load_test_sample_server(app, aiohttp_server):
 
 @pytest.mark.asyncio
 async def test_get_with_params(app, aiohttp_server):
-    """Do load test to sample server."""
+    """Test get with params."""
     server = await aiohttp_server(app)
     url = 'http://localhost:{}'.format(server.port)
     params = {'foo': 'bar'}
@@ -26,3 +26,17 @@ async def test_get_with_params(app, aiohttp_server):
     assert res.status_code == 200
     assert res.body == b'bar'
     await server.close()
+
+
+@pytest.mark.asyncio
+async def test_get_with_params_tuple(app, aiohttp_server):
+    """Test get with params as tuple."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:{}'.format(server.port)
+    params = (('foo', 'bar'), )
+
+    res = await aiosonic.get(url, params=params)
+    assert res.status_code == 200
+    assert res.body == b'bar'
+    await server.close()
+
