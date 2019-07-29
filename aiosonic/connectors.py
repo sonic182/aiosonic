@@ -37,7 +37,7 @@ class Connection:
 
     async def connect(self, urlparsed: ParseResult):
         """Get reader and writer."""
-        key = f'{urlparsed.hostname}-{urlparsed.port}'
+        key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
         if not (self.key and key == self.key and not self.writer.is_closing()):
             self.reader, self.writer = await asyncio.open_connection(
                 urlparsed.hostname, urlparsed.port)
