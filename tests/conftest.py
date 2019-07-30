@@ -27,6 +27,26 @@ async def hello_post_json(request):
     return web.Response(text='Hello, world')
 
 
+async def post_file(request):
+    """Sample router."""
+    # post = await request.post()
+    headers = dict(request.headers)
+    print('headers')
+    print(headers)
+    data = await request.post()
+
+    # print('post')
+    # print(post)
+    # field = post['foo']
+    return web.Response(text='asdf')
+
+    filename = field.filename
+    foo_file = post['foo'].file
+    content = foo_file.read()
+
+    return web.Response(text='%s-%s' % (filename, content))
+
+
 @pytest.fixture
 def app():
     """Sample aiohttp app."""
@@ -34,4 +54,5 @@ def app():
     application.router.add_get('/', hello)
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)
+    application.router.add_post('/post_file', post_file)
     return application

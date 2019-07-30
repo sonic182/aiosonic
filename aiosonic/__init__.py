@@ -1,9 +1,13 @@
 """Main module."""
 
+import asyncio
 import json
+import random
 import re
 
 from functools import lru_cache
+from io import IOBase
+from os.path import basename
 from urllib.parse import urlparse
 from urllib.parse import urlencode
 from urllib.parse import ParseResult
@@ -22,17 +26,19 @@ HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
                              r'(?P<reason>[\w]*)')
 _CACHE = {}
 _LRU_CACHE_SIZE = 512
+_CHUNK_SIZE = 1024 * 4
+_NEW_LINE = '\r\n'
 
 
 # TYPES
-STRING_OR_BYTES = Union[str, bytes]
-HEADERS_TYPE = Dict[STRING_OR_BYTES, STRING_OR_BYTES]
-PARAMS_TYPE = Union[
-    Dict[STRING_OR_BYTES, STRING_OR_BYTES],
-    Tuple[STRING_OR_BYTES, STRING_OR_BYTES],
+StringOrBytes = Union[str, bytes]
+HeadersType = Dict[StringOrBytes, StringOrBytes]
+ParamsType = Union[
+    Dict[StringOrBytes, StringOrBytes],
+    Tuple[StringOrBytes, StringOrBytes],
 ]
-DATA_TYPE = Union[
-    STRING_OR_BYTES,
+DataType = Union[
+    StringOrBytes,
     dict,
     tuple,
 ]
@@ -41,6 +47,10 @@ DATA_TYPE = Union[
 # Functions with cache
 @lru_cache(_LRU_CACHE_SIZE)
 def get_url_parsed(url: str):
+    """Get url parsed.
+
+    With lru_cache decorator for the sake of speed.
+    """
     return urlparse(url)
 
 
@@ -57,6 +67,11 @@ class HTTPHeaders(CaseInsensitiveDict):
 
 
 class HTTPResponse:
+    """HTTPResponse.
+
+    Class for handling response.
+    """
+
     def __init__(self):
         self.headers = HTTPHeaders()
         self.body = None
@@ -73,31 +88,37 @@ class HTTPResponse:
 
     @property
     def status_code(self):
+        """Get status code."""
         return int(self.response_initial['code'])
 
 
 def _get_header_data(url: ParseResult, method: str,
-                     headers: HEADERS_TYPE = None, params: dict = None):
+                     headers: HeadersType = None, params: dict = None,
+                     multipart: bool = None, boundary: str = None):
     """Prepare get data."""
     path = url.path or '/'
     if params:
         query = urlencode(params)
         path += '%s' % query if '?' in path else '?%s' % query
-    get_base = '%s %s HTTP/1.1\n' % (method, path)
+    get_base = '%s %s HTTP/1.1%s' % (method, path, _NEW_LINE)
     headers_base = {
         'HOST': url.hostname,
         'User-Agent': 'aioload/%s' % VERSION
     }
 
+    if multipart:
+        headers_base[
+            'Content-Type'] = 'multipart/form-data; boundary="%s"' % boundary
+
     if headers:
         headers_base.update(headers)
 
     for key, data in headers_base.items():
-        get_base += '%s: %s\n' % (key, data)
-    return get_base + '\n'
+        get_base += '%s: %s%s' % (key, data, _NEW_LINE)
+    return get_base + _NEW_LINE
 
 
-def _get_body(data: DATA_TYPE, headers: HEADERS_TYPE):
+def _get_body(data: DataType, headers: HeadersType):
     """Get body to be sent."""
     body = data
     if 'content-type' not in headers:
@@ -108,16 +129,56 @@ def _get_body(data: DATA_TYPE, headers: HEADERS_TYPE):
     return body
 
 
+async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
+                          chunk_size: int = _CHUNK_SIZE):
+    """Send multipart data by streaming."""
+    to_send = b''
+    for key, val in data.items():
+        # write --boundary + field
+        to_send += ('--%s%s' % (boundary, _NEW_LINE)).encode()
+        # write Contet-Disposition
+        if isinstance(val, IOBase):
+            to_write = 'Content-Disposition: form-data; ' + \
+                'name="%s"; filename="%s"%s%s' % (
+                    key, basename(val.name), _NEW_LINE, _NEW_LINE)
+            to_send += to_write.encode()
+            # read and write chunks
+            loop = asyncio.get_event_loop()
+            while True:
+                data = await loop.run_in_executor(
+                    None, val.read, chunk_size)
+                print('data')
+                print(data)
+                if not data:
+                    break
+                to_send += data
+            val.close()
+        else:
+            to_send += b'Content-Disposition: form-data; name="%s"%s%s' % (
+                key.encode(),
+                _NEW_LINE,
+                _NEW_LINE
+            )
+
+            to_send += val.encode() + b'\r\n'
+
+    # write --boundary-- for finish
+    to_send += ('--%s--' % boundary).encode()
+    headers['Content-Length'] = len(to_send)
+    return to_send
+
+
 # Module methods
-async def get(url: str, headers: HEADERS_TYPE = None,
-              params: PARAMS_TYPE = None, connector: TCPConnector = None):
+async def get(url: str, headers: HeadersType = None,
+              params: ParamsType = None, connector: TCPConnector = None):
     """Do get http request. """
     return await request(url, 'GET', headers, params, connector=connector)
 
 
-async def post(url: str, data: DATA_TYPE = None, headers: HEADERS_TYPE = None,
-               json: dict = None, params: PARAMS_TYPE = None,
-               connector: TCPConnector = None, json_serialize=json.dumps):
+async def post(url: str, data: DataType = None, headers: HeadersType = None,
+               json: dict = None, params: ParamsType = None,
+               connector: TCPConnector = None, json_serialize=json.dumps,
+               multipart: bool = False):
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
@@ -127,12 +188,13 @@ async def post(url: str, data: DATA_TYPE = None, headers: HEADERS_TYPE = None,
         headers.update({
             'Content-Type': 'application/json'
         })
-    return await request(url, 'POST', headers, params, data, connector)
+    return await request(url, 'POST', headers, params, data, connector,
+                         multipart)
 
 
-async def request(url: str, method: str = 'GET', headers: HEADERS_TYPE = None,
-                  params: PARAMS_TYPE = None, data: DATA_TYPE = None,
-                  connector: TCPConnector = None):
+async def request(url: str, method: str = 'GET', headers: HeadersType = None,
+                  params: ParamsType = None, data: DataType = None,
+                  connector: TCPConnector = None, multipart: bool = False):
     """Requests.
 
     Steps:
@@ -147,21 +209,31 @@ async def request(url: str, method: str = 'GET', headers: HEADERS_TYPE = None,
     urlparsed = get_url_parsed(url)
 
     body = None
-    if method != 'GET' and data:
-        headers = headers or {}
-        body = _get_body(data, headers)
+    boundary = None
+    headers = headers or {}
 
-    headers_data = _get_header_data(urlparsed, method, headers, params)
+    if method != 'GET' and data and not multipart:
+        body = _get_body(data, headers)
+    elif multipart:
+        boundary = 'boundary-%d' % random.randint(1, 255)
+        body = await _send_multipart(data, boundary, headers)
+
+    headers_data = _get_header_data(
+        urlparsed, method, headers, params, multipart, boundary)
 
     async with (await connector.acquire()) as connection:
         await connection.connect(urlparsed)
 
-        connection.writer.write(headers_data.encode())
+        to_send = headers_data.encode()
+
+        connection.writer.write(to_send)
 
         if body:
             connection.writer.write(body)
 
-        # print(headers_data.encode() + body)
+        # print(headers_data, body)
+        # print(to_send.decode(), end='')
+
         # await writer.drain()
 
         response = HTTPResponse()
