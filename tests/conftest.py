@@ -1,5 +1,7 @@
 """Fixtures and more."""
 
+import ssl
+
 from aiohttp import web
 import pytest
 
@@ -36,3 +38,14 @@ def app():
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)
     return application
+
+
+@pytest.fixture
+def ssl_context():
+    # context = ssl.create_default_context()
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(
+        'tests/files/certs/server.cert',
+        'tests/files/certs/server.key'
+    )
+    return context

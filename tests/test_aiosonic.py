@@ -1,5 +1,6 @@
 
 import asyncio
+import ssl
 
 import pytest
 import aiosonic
@@ -151,3 +152,43 @@ async def test_request_timeout(app, aiohttp_server, mocker):
     with pytest.raises(RequestTimeout):
         await aiosonic.get(
             url, connector=TCPConnector(request_timeout=0.2))
+
+
+@pytest.mark.asyncio
+async def test_simple_get_ssl(app, aiohttp_server, ssl_context):
+    """Test simple get with https."""
+    server = await aiohttp_server(app, ssl=ssl_context)
+    url = 'https://localhost:%d' % server.port
+
+    res = await aiosonic.get(url, verify=False)
+    assert res.status_code == 200
+    assert res.body == b'Hello, world'
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_simple_get_ssl_ctx(app, aiohttp_server, ssl_context):
+    """Test simple get with https and ctx."""
+    server = await aiohttp_server(app, ssl=ssl_context)
+    url = 'https://localhost:%d' % server.port
+
+    ssl_context = ssl.create_default_context(
+        ssl.Purpose.SERVER_AUTH,
+    )
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    res = await aiosonic.get(url, ssl=ssl_context)
+    assert res.status_code == 200
+    assert res.body == b'Hello, world'
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_simple_get_ssl_no_valid(app, aiohttp_server, ssl_context):
+    """Test simple get with https no valid."""
+    server = await aiohttp_server(app, ssl=ssl_context)
+    url = 'https://localhost:%d' % server.port
+
+    with pytest.raises(ssl.SSLCertVerificationError):
+        await aiosonic.get(url)
+    await server.close()

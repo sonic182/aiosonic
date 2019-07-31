@@ -5,6 +5,7 @@ import json
 import random
 import re
 from concurrent import futures
+from ssl import SSLContext
 
 from functools import lru_cache
 from io import IOBase
@@ -22,7 +23,6 @@ from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import ConnectTimeout
-from aiosonic.exceptions import BaseTimeout
 
 
 # VARIABLES
@@ -172,10 +172,11 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
 
 
 async def _do_request(urlparsed: ParseResult, headers_data: str,
-                      connector: TCPConnector, body: bytes) -> HTTPResponse:
+                      connector: TCPConnector, body: bytes, verify: bool,
+                      ssl: SSLContext) -> HTTPResponse:
     """Something."""
     async with (await connector.acquire()) as connection:
-        await connection.connect(urlparsed)
+        await connection.connect(urlparsed, verify, ssl)
 
         to_send = headers_data.encode()
 
@@ -217,15 +218,18 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
 # Module methods
 async def get(url: str, headers: HeadersType = None,
               params: ParamsType = None,
-              connector: TCPConnector = None) -> HTTPResponse:
+              connector: TCPConnector = None, verify: bool = True,
+              ssl: SSLContext = None) -> HTTPResponse:
     """Do get http request. """
-    return await request(url, 'GET', headers, params, connector=connector)
+    return await request(url, 'GET', headers, params, connector=connector,
+                         verify=verify, ssl=ssl)
 
 
 async def post(url: str, data: DataType = None, headers: HeadersType = None,
                json: dict = None, params: ParamsType = None,
                connector: TCPConnector = None, json_serialize=json.dumps,
-               multipart: bool = False) -> HTTPResponse:
+               multipart: bool = False, verify: bool = True,
+               ssl: SSLContext = None) -> HTTPResponse:
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
@@ -236,13 +240,14 @@ async def post(url: str, data: DataType = None, headers: HeadersType = None,
             'Content-Type': 'application/json'
         })
     return await request(url, 'POST', headers, params, data, connector,
-                         multipart)
+                         multipart, verify=verify, ssl=ssl)
 
 
 async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   params: ParamsType = None, data: DataType = None,
-                  connector: TCPConnector = None,
-                  multipart: bool = False) -> HTTPResponse:
+                  connector: TCPConnector = None, multipart: bool = False,
+                  verify: bool = True,
+                  ssl: SSLContext = None) -> HTTPResponse:
     """Requests.
 
     Steps:
@@ -271,7 +276,8 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
     # return await _do_request(urlparsed, headers_data, connector, body)
     try:
         return await asyncio.wait_for(
-            _do_request(urlparsed, headers_data, connector, body),
+            _do_request(
+                urlparsed, headers_data, connector, body, verify, ssl),
             timeout=connector.request_timeout
         )
     except ConnectTimeout:

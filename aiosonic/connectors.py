@@ -1,6 +1,8 @@
 """Connector stuffs."""
 
 import asyncio
+import ssl
+from ssl import SSLContext
 from urllib.parse import ParseResult
 
 from concurrent import futures
@@ -41,17 +43,19 @@ class Connection:
         self.key = None
         self.temp_key = None
 
-    async def connect(self, urlparsed: ParseResult):
+    async def connect(self, urlparsed: ParseResult, verify: bool,
+                      ssl_context: SSLContext):
         """Connet with timeout."""
         try:
             await asyncio.wait_for(
-                self._connect(urlparsed),
+                self._connect(urlparsed, verify, ssl_context),
                 timeout=self.connector.connect_timeout
             )
         except futures._base.TimeoutError:
             raise ConnectTimeout()
 
-    async def _connect(self, urlparsed: ParseResult):
+    async def _connect(self, urlparsed: ParseResult, verify: bool,
+                       ssl_context: SSLContext):
         """Get reader and writer."""
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
 
@@ -62,8 +66,15 @@ class Connection:
             is_closing = lambda: True  # noqa
 
         if not (self.key and key == self.key and not is_closing()):
+            if urlparsed.scheme == 'https':
+                ssl_context = ssl_context or ssl.create_default_context(
+                    ssl.Purpose.SERVER_AUTH,
+                )
+                if not verify:
+                    ssl_context.check_hostname = False
+                    ssl_context.verify_mode = ssl.CERT_NONE
             self.reader, self.writer = await asyncio.open_connection(
-                urlparsed.hostname, urlparsed.port)
+                urlparsed.hostname, urlparsed.port, ssl=ssl_context)
             self.temp_key = key
 
     def keep_alive(self):
