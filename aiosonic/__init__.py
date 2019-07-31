@@ -4,6 +4,7 @@ import asyncio
 import json
 import random
 import re
+from concurrent import futures
 
 from functools import lru_cache
 from io import IOBase
@@ -19,6 +20,9 @@ from typing import Tuple
 from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
+from aiosonic.exceptions import RequestTimeout
+from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import BaseTimeout
 
 
 # VARIABLES
@@ -46,7 +50,7 @@ DataType = Union[
 
 # Functions with cache
 @lru_cache(_LRU_CACHE_SIZE)
-def get_url_parsed(url: str):
+def get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
     With lru_cache decorator for the sake of speed.
@@ -94,7 +98,7 @@ class HTTPResponse:
 
 def _get_header_data(url: ParseResult, method: str,
                      headers: HeadersType = None, params: dict = None,
-                     multipart: bool = None, boundary: str = None):
+                     multipart: bool = None, boundary: str = None) -> bytes:
     """Prepare get data."""
     path = url.path or '/'
     if params:
@@ -103,6 +107,7 @@ def _get_header_data(url: ParseResult, method: str,
     get_base = '%s %s HTTP/1.1%s' % (method, path, _NEW_LINE)
     headers_base = {
         'HOST': url.hostname,
+        'Connection': 'keep-alive',
         'User-Agent': 'aioload/%s' % VERSION
     }
 
@@ -147,8 +152,6 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
             while True:
                 data = await loop.run_in_executor(
                     None, val.read, chunk_size)
-                print('data')
-                print(data)
                 if not data:
                     break
                 to_send += data
@@ -168,59 +171,9 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
     return to_send
 
 
-# Module methods
-async def get(url: str, headers: HeadersType = None,
-              params: ParamsType = None, connector: TCPConnector = None):
-    """Do get http request. """
-    return await request(url, 'GET', headers, params, connector=connector)
-
-
-async def post(url: str, data: DataType = None, headers: HeadersType = None,
-               json: dict = None, params: ParamsType = None,
-               connector: TCPConnector = None, json_serialize=json.dumps,
-               multipart: bool = False):
-    """Do post http request. """
-    if not data and not json:
-        TypeError('missing argument, either "json" or "data"')
-    if json:
-        data = json_serialize(json)
-        headers = headers or HTTPHeaders()
-        headers.update({
-            'Content-Type': 'application/json'
-        })
-    return await request(url, 'POST', headers, params, data, connector,
-                         multipart)
-
-
-async def request(url: str, method: str = 'GET', headers: HeadersType = None,
-                  params: ParamsType = None, data: DataType = None,
-                  connector: TCPConnector = None, multipart: bool = False):
-    """Requests.
-
-    Steps:
-    * Prepare request data
-    * Open connection
-    * Send request data
-    * Wait for response data
-    """
-    if not connector:
-        key = 'connector_base'
-        connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
-    urlparsed = get_url_parsed(url)
-
-    body = None
-    boundary = None
-    headers = headers or {}
-
-    if method != 'GET' and data and not multipart:
-        body = _get_body(data, headers)
-    elif multipart:
-        boundary = 'boundary-%d' % random.randint(1, 255)
-        body = await _send_multipart(data, boundary, headers)
-
-    headers_data = _get_header_data(
-        urlparsed, method, headers, params, multipart, boundary)
-
+async def _do_request(urlparsed: ParseResult, headers_data: str,
+                      connector: TCPConnector, body: bytes) -> HTTPResponse:
+    """Something."""
     async with (await connector.acquire()) as connection:
         await connection.connect(urlparsed)
 
@@ -254,8 +207,74 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
         if size:
             response.body = await connection.reader.read(int(size))
 
-        keepalive = b'keep-alive' in response.headers.get(b'connection', b'')
+        keepalive = b'close' not in response.headers.get(b'keep-alive', b'')
 
         if keepalive:
             connection.keep_alive()
         return response
+
+
+# Module methods
+async def get(url: str, headers: HeadersType = None,
+              params: ParamsType = None,
+              connector: TCPConnector = None) -> HTTPResponse:
+    """Do get http request. """
+    return await request(url, 'GET', headers, params, connector=connector)
+
+
+async def post(url: str, data: DataType = None, headers: HeadersType = None,
+               json: dict = None, params: ParamsType = None,
+               connector: TCPConnector = None, json_serialize=json.dumps,
+               multipart: bool = False) -> HTTPResponse:
+    """Do post http request. """
+    if not data and not json:
+        TypeError('missing argument, either "json" or "data"')
+    if json:
+        data = json_serialize(json)
+        headers = headers or HTTPHeaders()
+        headers.update({
+            'Content-Type': 'application/json'
+        })
+    return await request(url, 'POST', headers, params, data, connector,
+                         multipart)
+
+
+async def request(url: str, method: str = 'GET', headers: HeadersType = None,
+                  params: ParamsType = None, data: DataType = None,
+                  connector: TCPConnector = None,
+                  multipart: bool = False) -> HTTPResponse:
+    """Requests.
+
+    Steps:
+    * Prepare request data
+    * Open connection
+    * Send request data
+    * Wait for response data
+    """
+    if not connector:
+        key = 'connector_base'
+        connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
+    urlparsed = get_url_parsed(url)
+
+    body = None
+    boundary = None
+    headers = headers or {}
+
+    if method != 'GET' and data and not multipart:
+        body = _get_body(data, headers)
+    elif multipart:
+        boundary = 'boundary-%d' % random.randint(1, 255)
+        body = await _send_multipart(data, boundary, headers)
+
+    headers_data = _get_header_data(
+        urlparsed, method, headers, params, multipart, boundary)
+    # return await _do_request(urlparsed, headers_data, connector, body)
+    try:
+        return await asyncio.wait_for(
+            _do_request(urlparsed, headers_data, connector, body),
+            timeout=connector.request_timeout
+        )
+    except ConnectTimeout:
+        raise
+    except futures._base.TimeoutError:
+        raise RequestTimeout()

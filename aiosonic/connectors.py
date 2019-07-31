@@ -1,19 +1,25 @@
+"""Connector stuffs."""
 
 import asyncio
 from urllib.parse import ParseResult
 
-COUNTER = 0
+from concurrent import futures
+from aiosonic.exceptions import ConnectTimeout
 
 
 class TCPConnector:
 
-    def __init__(self, pool_size=25):
+    def __init__(self, pool_size=25, request_timeout=27, connect_timeout=3,
+                 connection_cls=None):
         """Initialize."""
         self.pool_size = pool_size
+        self.request_timeout = request_timeout
+        self.connect_timeout = connect_timeout
         self.pool = asyncio.Queue(pool_size)
+        connection_cls = connection_cls or Connection
 
         for _ in range(pool_size):
-            self.pool.put_nowait(Connection(self))
+            self.pool.put_nowait(connection_cls(self))
 
     async def acquire(self):
         """Acquire connection."""
@@ -36,9 +42,26 @@ class Connection:
         self.temp_key = None
 
     async def connect(self, urlparsed: ParseResult):
+        """Connet with timeout."""
+        try:
+            await asyncio.wait_for(
+                self._connect(urlparsed),
+                timeout=self.connector.connect_timeout
+            )
+        except futures._base.TimeoutError:
+            raise ConnectTimeout()
+
+    async def _connect(self, urlparsed: ParseResult):
         """Get reader and writer."""
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
-        if not (self.key and key == self.key and not self.writer.is_closing()):
+
+        if self.writer:
+            is_closing = getattr(
+                self.writer, 'is_closing', self.writer._transport.is_closing)
+        else:
+            is_closing = lambda: True  # noqa
+
+        if not (self.key and key == self.key and not is_closing()):
             self.reader, self.writer = await asyncio.open_connection(
                 urlparsed.hostname, urlparsed.port)
             self.temp_key = key
@@ -57,5 +80,6 @@ class Connection:
             self.key = self.temp_key
         else:
             self.key = None
-            self.writer.close()
+            if self.writer:
+                self.writer.close()
         self.connector.release(self)
