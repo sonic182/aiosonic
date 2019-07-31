@@ -42,8 +42,9 @@ def app():
 
 @pytest.fixture
 def ssl_context():
-    # context = ssl.create_default_context()
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    # python 3.5 compatibility
+    context = ssl.SSLContext(
+        getattr(ssl, 'PROTOCOL_TLS_SERVER', ssl.PROTOCOL_TLS))
     context.load_cert_chain(
         'tests/files/certs/server.cert',
         'tests/files/certs/server.key'

@@ -189,6 +189,7 @@ async def test_simple_get_ssl_no_valid(app, aiohttp_server, ssl_context):
     server = await aiohttp_server(app, ssl=ssl_context)
     url = 'https://localhost:%d' % server.port
 
-    with pytest.raises(ssl.SSLCertVerificationError):
+    # python 3.5 compatibility
+    with pytest.raises(getattr(ssl, 'SSLCertVerificationError', ssl.SSLError)):
         await aiosonic.get(url)
     await server.close()

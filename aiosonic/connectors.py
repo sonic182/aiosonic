@@ -60,6 +60,7 @@ class Connection:
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
 
         if self.writer:
+            # python 3.5 and 3.6 doesn't have writer.is_closing
             is_closing = getattr(
                 self.writer, 'is_closing', self.writer._transport.is_closing)
         else:
