@@ -10,8 +10,18 @@ This project is in alpha state.
 # Features:
 
 * Keepalive and pool of connections
+* Multipart File Uploads
+* Connection Timeouts
 
-TODO: https://2.python-requests.org/en/v2.9.1/#feature-support
+# TODO
+
+In order
+
+* Automatic Decompression
+* International Domains and URLs (idna + cache)
+* Sessions with Cookie Persistence
+* Basic/Digest Authentication
+* Elegant Key/Value Cookies
 
 # Development
 

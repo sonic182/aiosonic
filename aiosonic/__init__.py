@@ -137,12 +137,14 @@ def _get_body(data: DataType, headers: HeadersType):
 async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
                           chunk_size: int = _CHUNK_SIZE):
     """Send multipart data by streaming."""
+    # TODO: precalculate body size and stream request, precalculate file sizes by os.path.getsize
     to_send = b''
     for key, val in data.items():
         # write --boundary + field
         to_send += ('--%s%s' % (boundary, _NEW_LINE)).encode()
-        # write Contet-Disposition
         if isinstance(val, IOBase):
+            # TODO: Utility to accept files with multipart metadata (Content-Type, custom filename, ...),
+            # write Contet-Disposition
             to_write = 'Content-Disposition: form-data; ' + \
                 'name="%s"; filename="%s"%s%s' % (
                     key, basename(val.name), _NEW_LINE, _NEW_LINE)
