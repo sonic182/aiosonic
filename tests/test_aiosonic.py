@@ -109,6 +109,34 @@ async def test_post_json(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
+async def test_put_patch(app, aiohttp_server):
+    """Test put."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/put_patch' % server.port
+
+    res = await aiosonic.put(url)
+    assert res.status_code == 200
+    assert res.body == b'put_patch'
+
+    res = await aiosonic.patch(url)
+    assert res.status_code == 200
+    assert res.body == b'put_patch'
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_delete(app, aiohttp_server):
+    """Test delete."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/delete' % server.port
+
+    res = await aiosonic.delete(url)
+    assert res.status_code == 200
+    assert res.body == b'deleted'
+    await server.close()
+
+
+@pytest.mark.asyncio
 async def test_post_multipart_to_django(live_server):
     """Test post multipart."""
     url = live_server.url + '/post_file'

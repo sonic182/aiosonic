@@ -1,10 +1,10 @@
 """Main module."""
 
 import asyncio
-import json
 import random
 import re
 from concurrent import futures
+from json import dumps
 from ssl import SSLContext
 
 from functools import lru_cache
@@ -225,22 +225,67 @@ async def get(url: str, headers: HeadersType = None,
                          verify=verify, ssl=ssl)
 
 
-async def post(url: str, data: DataType = None, headers: HeadersType = None,
-               json: dict = None, params: ParamsType = None,
-               connector: TCPConnector = None, json_serialize=json.dumps,
-               multipart: bool = False, verify: bool = True,
-               ssl: SSLContext = None) -> HTTPResponse:
+async def _request_with_body(
+        url: str, method: str, data: DataType = None,
+        headers: HeadersType = None, json: dict = None,
+        params: ParamsType = None, connector: TCPConnector = None,
+        json_serializer=dumps, multipart: bool = False,
+        verify: bool = True, ssl: SSLContext = None) -> HTTPResponse:
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
     if json:
-        data = json_serialize(json)
+        data = json_serializer(json)
         headers = headers or HTTPHeaders()
         headers.update({
             'Content-Type': 'application/json'
         })
-    return await request(url, 'POST', headers, params, data, connector,
+    return await request(url, method, headers, params, data, connector,
                          multipart, verify=verify, ssl=ssl)
+
+
+async def post(url: str, data: DataType = None, headers: HeadersType = None,
+               json: dict = None, params: ParamsType = None,
+               connector: TCPConnector = None, json_serializer=dumps,
+               multipart: bool = False, verify: bool = True,
+               ssl: SSLContext = None) -> HTTPResponse:
+    """Do post http request. """
+    return await _request_with_body(
+        url, 'POST', data, headers, json, params, connector, json_serializer,
+        multipart, verify=verify, ssl=ssl)
+
+
+async def put(url: str, data: DataType = None, headers: HeadersType = None,
+              json: dict = None, params: ParamsType = None,
+              connector: TCPConnector = None, json_serializer=dumps,
+              multipart: bool = False, verify: bool = True,
+              ssl: SSLContext = None) -> HTTPResponse:
+    """Do put http request. """
+    return await _request_with_body(
+        url, 'PUT', data, headers, json, params, connector, json_serializer,
+        multipart, verify=verify, ssl=ssl)
+
+
+async def patch(url: str, data: DataType = None, headers: HeadersType = None,
+                json: dict = None, params: ParamsType = None,
+                connector: TCPConnector = None, json_serializer=dumps,
+                multipart: bool = False, verify: bool = True,
+                ssl: SSLContext = None) -> HTTPResponse:
+    """Do put http request. """
+    return await _request_with_body(
+        url, 'PATCH', data, headers, json, params, connector, json_serializer,
+        multipart, verify=verify, ssl=ssl)
+
+
+async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
+                 json: dict = None, params: ParamsType = None,
+                 connector: TCPConnector = None, json_serializer=dumps,
+                 multipart: bool = False, verify: bool = True,
+                 ssl: SSLContext = None) -> HTTPResponse:
+    """Do put http request. """
+    return await _request_with_body(
+        url, 'DELETE', data, headers, json, params, connector, json_serializer,
+        multipart, verify=verify, ssl=ssl)
 
 
 async def request(url: str, method: str = 'GET', headers: HeadersType = None,

@@ -30,6 +30,16 @@ async def hello_post_json(request):
     return web.Response(text='Hello, world')
 
 
+async def delete_handler(request):
+    """Sample delete method."""
+    return web.Response(text='deleted')
+
+
+async def put_patch_handler(request):
+    """Sample delete method."""
+    return web.Response(text='put_patch')
+
+
 @pytest.fixture
 def app():
     """Sample aiohttp app."""
@@ -37,6 +47,9 @@ def app():
     application.router.add_get('/', hello)
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)
+    application.router.add_put('/put_patch', put_patch_handler)
+    application.router.add_patch('/put_patch', put_patch_handler)
+    application.router.add_delete('/delete', delete_handler)
     return application
 
 
