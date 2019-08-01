@@ -29,8 +29,8 @@ Install packages with pip-tools:
 ```bash
 pip install pip-tools
 pip-compile
-pip-compile dev-requirements.in
-pip-sync requirements.txt dev-requirements.txt
+pip-compile test-requirements.in
+pip-sync requirements.txt test-requirements.txt
 ```
 
 # Contribute

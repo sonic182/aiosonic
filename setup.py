@@ -4,7 +4,7 @@ import re
 from setuptools import setup
 
 
-RGX = re.compile('([\w-]+==[\d.]+)')
+RGX = re.compile('([\w-]+[<>=]{1}=[\d.]+)')
 
 
 def read_file(filename):
@@ -24,6 +24,8 @@ setup(
     description='Async http client',
     author='Johanderson Mogollon',
     author_email='johanderson@mogollon.com.ve',
+    long_description=read_file('README.md'),
+    long_description_content_type='text/markdown',
     license='MIT',
     packages=['aiosonic'],
     setup_requires=['pytest-runner'],
