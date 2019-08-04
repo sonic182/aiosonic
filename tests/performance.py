@@ -110,6 +110,8 @@ def do_tests(url):
         'requests': '%.2f ms' % res3,
         'aiosonic': '%.2f ms' % res2,
     }, indent=True))
+    print('aiosonic is %.2f times faster than aiohttp' % ((res1 / res2) - 1))
+    print('aiosonic is %.2f times faster than requests' % ((res3 / res2) - 1))
 
 
 def start_server(port):
@@ -135,8 +137,10 @@ def main():
             sleep(1)
             if datetime.now() > max_wait:
                 raise
-    do_tests(url)
-    process.terminate()
+    try:
+        do_tests(url)
+    finally:
+        process.terminate()
 
 
 main()

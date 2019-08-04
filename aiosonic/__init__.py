@@ -31,7 +31,7 @@ HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
                              r'(?P<reason>[\w]*)')
 _CACHE = {}
 _LRU_CACHE_SIZE = 512
-_CHUNK_SIZE = 1024 * 4
+_CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
 
 
@@ -192,11 +192,6 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
         if body:
             connection.writer.write(body)
 
-        # print(headers_data, body)
-        # print(to_send.decode(), end='')
-
-        # await writer.drain()
-
         response = HTTPResponse()
 
         # get response code and version
@@ -325,7 +320,6 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
 
     headers_data = _get_header_data(
         urlparsed, method, headers, params, multipart, boundary)
-    # return await _do_request(urlparsed, headers_data, connector, body)
     try:
         return await asyncio.wait_for(
             _do_request(
