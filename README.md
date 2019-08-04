@@ -8,6 +8,20 @@ Async http client
 
 This project is in alpha state.
 
+There is a performance script in tests folder which shows very nice numbers
+
+```
+» python tests/performance.py
+doing tests...
+{
+ "aiohttp": "1000 requests in 576.92 ms",
+ "requests": "1000 requests in 2219.63 ms",
+ "aiosonic": "1000 requests in 289.28 ms"
+}
+aiosonic is 0.99 times faster than aiohttp
+aiosonic is 6.67 times faster than requests
+```
+
 # Requirements:
 
 * Python>=3.6
@@ -17,6 +31,7 @@ This project is in alpha state.
 
 * Keepalive and pool of connections
 * Multipart File Uploads
+* Chunked responses handling
 * Connection Timeouts
 
 # TODO

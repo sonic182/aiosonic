@@ -60,20 +60,17 @@ async def timeit_coro(func, *args, **kwargs):
 async def performance_aiohttp(url, concurrency):
     """Test aiohttp performance."""
     async with ClientSession() as session:
-        print('aiohttp')
         return await timeit_coro(session.get, (url))
 
 
 async def performance_aiosonic(url, concurrency):
     """Test aiohttp performance."""
-    print('aiosonic')
     return await timeit_coro(
         aiosonic.get, url, connector=TCPConnector(pool_size=concurrency))
 
 
 def timeit_requests(url, concurrency, repeat=1000):
     """Timeit requests."""
-    print('requests')
     session = requests.Session()
     adapter = requests.adapters.HTTPAdapter(
         pool_connections=concurrency,
@@ -93,7 +90,7 @@ def timeit_requests(url, concurrency, repeat=1000):
 
 def do_tests(url):
     """Start benchmark."""
-    print('doing testss...')
+    print('doing tests...')
     concurrency = 25
     loop = asyncio.get_event_loop()
 
@@ -106,9 +103,9 @@ def do_tests(url):
     # requests
     res3 = timeit_requests(url, concurrency)
     print(json.dumps({
-        'aiohttp': '%.2f ms' % res1,
-        'requests': '%.2f ms' % res3,
-        'aiosonic': '%.2f ms' % res2,
+        'aiohttp': '1000 requests in %.2f ms' % res1,
+        'requests': '1000 requests in %.2f ms' % res3,
+        'aiosonic': '1000 requests in %.2f ms' % res2,
     }, indent=True))
     print('aiosonic is %.2f times faster than aiohttp' % ((res1 / res2) - 1))
     print('aiosonic is %.2f times faster than requests' % ((res3 / res2) - 1))
@@ -131,7 +128,7 @@ def main():
     while True:
         try:
             with urlopen(url) as response:
-                print(response.read())
+                response.read()
                 break
         except URLError:
             sleep(1)
