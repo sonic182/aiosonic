@@ -19,6 +19,12 @@ from aiosonic.connectors import TCPConnector
 from aiohttp import ClientSession
 import requests
 
+try:
+    import uvloop
+    uvloop.install()
+except ImportError:
+    pass
+
 
 async def app(scope, receive, send):
     assert scope['type'] == 'http'
@@ -121,6 +127,7 @@ def start_server(port):
 
 def main():
     """Start."""
+    uvloop.install()
     port = random.randint(1000, 9000)
     url = 'http://0.0.0.0:%d' % port
     process = Process(target=start_server, args=(port,))
