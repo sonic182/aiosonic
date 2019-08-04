@@ -33,12 +33,12 @@ aiosonic is 617.55% faster than requests
 * Multipart File Uploads
 * Chunked responses handling
 * Connection Timeouts
+* Automatic Decompression
 
 # TODO
 
 In order
 
-* Automatic Decompression
 * International Domains and URLs (idna + cache)
 * Sessions with Cookie Persistence
 * Basic/Digest Authentication
