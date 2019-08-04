@@ -10,14 +10,16 @@ atomicwrites==1.3.0       # via pytest
 attrs==19.1.0             # via aiohttp, pytest
 certifi==2019.6.16        # via requests
 chardet==3.0.4            # via aiohttp, requests
+click==7.0                # via uvicorn
 coverage==4.5.3           # via coveralls, pytest-cov
 coveralls==1.8.1
 django==2.2.3
 docopt==0.6.2             # via coveralls
 entrypoints==0.3          # via flake8
 flake8==3.7.8             # via pytest-flake8
-idna-ssl==1.1.0           # via aiohttp
-idna==2.8                 # via idna-ssl, requests, yarl
+h11==0.8.1                # via uvicorn
+httptools==0.0.13         # via uvicorn
+idna==2.8                 # via requests, yarl
 importlib-metadata==0.18  # via pluggy, pytest
 mccabe==0.6.1             # via flake8
 more-itertools==7.1.0     # via pytest
@@ -40,9 +42,12 @@ pytz==2019.1              # via django
 requests==2.22.0          # via coveralls
 six==1.12.0               # via packaging
 sqlparse==0.3.0           # via django
+starlette==0.12.7
 termcolor==1.1.0          # via pytest-sugar
-typing-extensions==3.7.4  # via aiohttp
 urllib3==1.25.3           # via requests
+uvicorn==0.8.6
+uvloop==0.12.2            # via uvicorn
 wcwidth==0.1.7            # via pytest
+websockets==7.0           # via uvicorn
 yarl==1.3.0               # via aiohttp
 zipp==0.5.2               # via importlib-metadata

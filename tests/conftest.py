@@ -40,9 +40,8 @@ async def put_patch_handler(request):
     return web.Response(text='put_patch')
 
 
-@pytest.fixture
-def app():
-    """Sample aiohttp app."""
+def get_app():
+    """Get aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
     application.router.add_post('/post', hello_post)
@@ -51,6 +50,12 @@ def app():
     application.router.add_patch('/put_patch', put_patch_handler)
     application.router.add_delete('/delete', delete_handler)
     return application
+
+
+@pytest.fixture
+def app():
+    """Sample aiohttp app."""
+    return get_app()
 
 
 @pytest.fixture
