@@ -12,7 +12,7 @@ from aiosonic.exceptions import ConnectTimeout
 class TCPConnector:
 
     def __init__(self, pool_size=25, request_timeout=27, connect_timeout=3,
-                 connection_cls=None):
+                 connection_cls=None, loop=None):
         """Initialize."""
         self.pool_size = pool_size
         self.request_timeout = request_timeout
@@ -75,8 +75,13 @@ class Connection:
                 if not verify:
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
+            port = urlparsed.port or (
+                443 if urlparsed.scheme == 'https' else 80)
             self.reader, self.writer = await asyncio.open_connection(
-                urlparsed.hostname, urlparsed.port, ssl=ssl_context)
+                urlparsed.hostname,
+                port,
+                ssl=ssl_context
+            )
             self.temp_key = key
 
     def keep_alive(self):
