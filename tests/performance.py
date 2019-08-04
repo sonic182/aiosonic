@@ -107,8 +107,10 @@ def do_tests(url):
         'requests': '1000 requests in %.2f ms' % res3,
         'aiosonic': '1000 requests in %.2f ms' % res2,
     }, indent=True))
-    print('aiosonic is %.2f times faster than aiohttp' % ((res1 / res2) - 1))
-    print('aiosonic is %.2f times faster than requests' % ((res3 / res2) - 1))
+    print('aiosonic is %.2f%% faster than aiohttp' % (
+        ((res1 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than requests' % (
+        ((res3 / res2) - 1) * 100))
 
 
 def start_server(port):
