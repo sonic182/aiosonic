@@ -25,7 +25,6 @@ from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
-from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
 
@@ -56,7 +55,7 @@ DataType = Union[
 
 # Functions with cache
 @lru_cache(_LRU_CACHE_SIZE)
-def get_url_parsed(url: str) -> ParseResult:
+def _get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
     With lru_cache decorator for the sake of speed.
@@ -67,11 +66,11 @@ def get_url_parsed(url: str) -> ParseResult:
 # Classes
 
 
-class HTTPHeaders(CaseInsensitiveDict):
+class HttpHeaders(CaseInsensitiveDict):
     """Http headers dict."""
 
     @staticmethod
-    def clear_line(line: bytes):
+    def _clear_line(line: bytes):
         """Clear readed line."""
         return line.rstrip().split(b': ')
 
@@ -83,7 +82,7 @@ class HttpResponse:
     """
 
     def __init__(self):
-        self.headers = HTTPHeaders()
+        self.headers = HttpHeaders()
         self.body = b''
         self.response_initial = None
         self.connection = None
@@ -91,16 +90,16 @@ class HttpResponse:
         self.compressed = b''
         self.chunks_readed = False
 
-    def set_response_initial(self, data: bytes):
+    def _set_response_initial(self, data: bytes):
         """Read first bytes from socket and set it in response."""
         res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
         self.response_initial = res.groupdict()
 
-    def set_header(self, key: StringOrBytes, val: StringOrBytes):
+    def _set_header(self, key: StringOrBytes, val: StringOrBytes):
         """Set header to response."""
         self.headers[key] = val
 
-    def set_connection(self, connection: Connection):
+    def _set_connection(self, connection: Connection):
         """Set header to response."""
         self.connection = connection
 
@@ -109,7 +108,7 @@ class HttpResponse:
         """Get status code."""
         return int(self.response_initial['code'])
 
-    def set_body(self, data):
+    def _set_body(self, data):
         """Set body."""
         if self.compressed == b'gzip':
             self.body += gzip.decompress(data)
@@ -124,7 +123,7 @@ class HttpResponse:
             res = b''
             async for chunk in self.read_chunks():
                 res += chunk
-            self.set_body(res)
+            self._set_body(res)
         return self.body
 
     async def text(self) -> str:
@@ -243,7 +242,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
         response = HttpResponse()
 
         # get response code and version
-        response.set_response_initial(await connection.reader.readline())
+        response._set_response_initial(await connection.reader.readline())
 
         res_data = None
         # reading headers
@@ -251,14 +250,14 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
             res_data = await connection.reader.readline()
             if b': ' not in res_data:
                 break
-            response.set_header(*HTTPHeaders.clear_line(res_data))
+            response._set_header(*HttpHeaders._clear_line(res_data))
 
         size = response.headers.get(b'content-length')
         chunked = b'chunked' == response.headers.get(b'transfer-encoding', '')
         response.compressed = response.headers.get(b'content-encoding', '')
 
         if size:
-            response.set_body(await connection.reader.read(int(size)))
+            response._set_body(await connection.reader.read(int(size)))
 
         if chunked:
             connection.block_until_read_chunks()
@@ -268,7 +267,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
 
         if keepalive:
             connection.keep_alive()
-            response.set_connection(connection)
+            response._set_connection(connection)
         return response
 
 
@@ -293,7 +292,7 @@ async def _request_with_body(
         TypeError('missing argument, either "json" or "data"')
     if json:
         data = json_serializer(json)
-        headers = headers or HTTPHeaders()
+        headers = headers or HttpHeaders()
         headers.update({
             'Content-Type': 'application/json'
         })
@@ -328,7 +327,7 @@ async def patch(url: str, data: DataType = None, headers: HeadersType = None,
                 connector: TCPConnector = None, json_serializer=dumps,
                 multipart: bool = False, verify: bool = True,
                 ssl: SSLContext = None) -> HttpResponse:
-    """Do put http request. """
+    """Do patch http request. """
     return await _request_with_body(
         url, 'PATCH', data, headers, json, params, connector, json_serializer,
         multipart, verify=verify, ssl=ssl)
@@ -339,7 +338,7 @@ async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
                  connector: TCPConnector = None, json_serializer=dumps,
                  multipart: bool = False, verify: bool = True,
                  ssl: SSLContext = None) -> HttpResponse:
-    """Do put http request. """
+    """Do delete http request. """
     return await _request_with_body(
         url, 'DELETE', data, headers, json, params, connector, json_serializer,
         multipart, verify=verify, ssl=ssl)
@@ -350,10 +349,11 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   connector: TCPConnector = None, multipart: bool = False,
                   verify: bool = True,
                   ssl: SSLContext = None) -> HttpResponse:
-    """Requests.
+    """Do http request.
 
     Steps:
-    * Prepare request data
+
+    * Prepare request meta (headers)
     * Open connection
     * Send request data
     * Wait for response data
@@ -361,7 +361,7 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
     if not connector:
         key = 'connector_base'
         connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
-    urlparsed = get_url_parsed(url)
+    urlparsed = _get_url_parsed(url)
 
     body = None
     boundary = None
