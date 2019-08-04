@@ -42,7 +42,6 @@ pytz==2019.1              # via django
 requests==2.22.0          # via coveralls
 six==1.12.0               # via packaging
 sqlparse==0.3.0           # via django
-starlette==0.12.7
 termcolor==1.1.0          # via pytest-sugar
 urllib3==1.25.3           # via requests
 uvicorn==0.8.6

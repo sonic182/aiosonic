@@ -6,8 +6,15 @@ from concurrent import futures
 class BaseTimeout(futures._base.TimeoutError):
     pass
 
+
 class ConnectTimeout(BaseTimeout):
     pass
 
+
 class RequestTimeout(BaseTimeout):
+    pass
+
+
+# parsing
+class HttpParsingError(Exception):
     pass

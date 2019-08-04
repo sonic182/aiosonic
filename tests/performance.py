@@ -9,8 +9,6 @@ from time import sleep
 from urllib.request import urlopen
 from urllib.error import URLError
 
-from starlette.applications import Starlette
-from starlette.responses import HTMLResponse
 from uvicorn.main import Server
 from uvicorn.main import Config
 
@@ -21,19 +19,29 @@ from aiosonic.connectors import TCPConnector
 from aiohttp import ClientSession
 import requests
 
-APP = Starlette(debug=True)
 
-
-@APP.route('/')
-async def homepage(_request):
-    return HTMLResponse('foo')
+async def app(scope, receive, send):
+    assert scope['type'] == 'http'
+    res = b'foo'
+    await send({
+        'type': 'http.response.start',
+        'status': 200,
+        'headers': [
+            [b'content-type', b'text/plain'],
+            [b'content-length', b'%d' % len(res)],
+        ]
+    })
+    await send({
+        'type': 'http.response.body',
+        'body': res,
+    })
 
 
 async def start_dummy_server(loop, port):
     """Start dummy server."""
     host = '0.0.0.0'
 
-    config = Config(APP, host=host, port=port, workers=2, log_level='warning')
+    config = Config(app, host=host, port=port, workers=2, log_level='warning')
     server = Server(config=config)
 
     await server.serve()

@@ -21,8 +21,9 @@ from typing import Tuple
 from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import RequestTimeout
+from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import RequestTimeout
 
 
 # VARIABLES
@@ -83,8 +84,12 @@ class HTTPResponse:
 
     def set_response_initial(self, data: str):
         """Read first bytes from socket and set it in response."""
-        res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
-        self.response_initial = res.groupdict()
+        try:
+            res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
+            self.response_initial = res.groupdict()
+        except AttributeError:
+            raise HttpParsingError(
+                'error parsing response line: (%s)' % data)
 
     def set_header(self, key, val):
         """Set header to response."""
