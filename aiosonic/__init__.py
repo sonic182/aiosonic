@@ -42,11 +42,13 @@ _COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
 
 # TYPES
 StringOrBytes = Union[str, bytes]
+#: Headers
 HeadersType = Dict[StringOrBytes, StringOrBytes]
 ParamsType = Union[
     Dict[StringOrBytes, StringOrBytes],
     Tuple[StringOrBytes, StringOrBytes],
 ]
+#: Data to be sent in requests, allowed types
 DataType = Union[
     StringOrBytes,
     AsyncIterator[bytes],

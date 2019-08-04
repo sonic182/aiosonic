@@ -319,10 +319,11 @@ async def test_post_chunked(app, aiohttp_server):
     def data():
         yield b'foo'
         yield b'bar'
+        yield b'a'*14
 
     res = await aiosonic.post(url, data=data())
     assert res.status_code == 200
-    assert await res.text() == 'foobar'
+    assert await res.text() == 'foobaraaaaaaaaaaaaaa'
     await server.close()
 
 

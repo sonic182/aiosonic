@@ -32,6 +32,7 @@ aiosonic is 617.55% faster than requests
 * Keepalive and pool of connections
 * Multipart File Uploads
 * Chunked responses handling
+* Chunked requests
 * Connection Timeouts
 * Automatic Decompression
 

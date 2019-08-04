@@ -28,6 +28,11 @@ Methods
    :members:
 
 
+Types
+=====
+
+.. autodata:: aiosonic.DataType
+.. autodata:: aiosonic.HeadersType
 
 
 Indices and tables
