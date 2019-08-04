@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] 2019-08-04
+### Added
+- Keepalive and pool of connections
+
+### Removed
+- Python 3.5 compatibility
+
 ## [0.0.1] 2019-08-02
 ### Added
 - Keepalive and pool of connections
@@ -14,5 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.0.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.0.2..HEAD
+[0.0.2]: https://github.com/sonic182/aiosonic/compare/0.0.1..0.0.2
 [0.0.1]: https://github.com/sonic182/aiosonic/compare/4da47a5f131756fd87f63248f130a659bad163de..0.0.1

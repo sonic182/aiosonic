@@ -3,6 +3,8 @@
 import re
 from setuptools import setup
 
+from aiosonic.version import VERSION
+
 
 RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.]+)')
 
@@ -20,7 +22,7 @@ def requirements(filename):
 
 setup(
     name='aiosonic',
-    version='0.0.1',
+    version=VERSION,
     description='Async http client',
     author='Johanderson Mogollon',
     author_email='johanderson@mogollon.com.ve',
