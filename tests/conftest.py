@@ -4,14 +4,37 @@ import ssl
 
 from aiohttp import web
 import pytest
+import gzip
+import zlib
 
 
 async def hello(request):
     """Sample router."""
-    headers = {'Connection': 'keep-alive'}
     if 'foo' in request.query:
-        return web.Response(text=request.query['foo'], headers=headers)
-    return web.Response(text='Hello, world', headers=headers)
+        return web.Response(text=request.query['foo'])
+    return web.Response(text='Hello, world')
+
+
+async def hello_gzip(request):
+    """Sample router."""
+    headers = {
+        'Content-encoding': 'gzip'
+    }
+    return web.Response(
+        body=gzip.compress(b'Hello, world'),
+        headers=headers
+    )
+
+
+async def hello_deflate(request):
+    """Sample router."""
+    headers = {
+        'Content-encoding': 'deflate'
+    }
+    return web.Response(
+        body=zlib.compress(b'Hello, world'),
+        headers=headers
+    )
 
 
 async def hello_post(request):
@@ -61,6 +84,8 @@ def get_app():
     """Get aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
+    application.router.add_get('/gzip', hello_gzip)
+    application.router.add_get('/deflate', hello_deflate)
     application.router.add_get('/chunked', chunked_response)
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)

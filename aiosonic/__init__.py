@@ -6,6 +6,8 @@ import re
 from concurrent import futures
 from json import dumps
 from ssl import SSLContext
+import gzip
+import zlib
 
 from functools import lru_cache
 from io import IOBase
@@ -35,6 +37,7 @@ _CACHE = {}
 _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
+_COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
 
 
 # TYPES
@@ -81,10 +84,11 @@ class HttpResponse:
 
     def __init__(self):
         self.headers = HTTPHeaders()
-        self.body = None
+        self.body = b''
         self.response_initial = None
         self.connection = None
         self.chunked = False
+        self.compressed = b''
         self.chunks_readed = False
 
     def set_response_initial(self, data: bytes):
@@ -109,14 +113,22 @@ class HttpResponse:
         """Get status code."""
         return int(self.response_initial['code'])
 
+    def set_body(self, data):
+        """Set body."""
+        if self.compressed == b'gzip':
+            self.body += gzip.decompress(data)
+        elif self.compressed == b'deflate':
+            self.body += zlib.decompress(data)
+        else:
+            self.body += data
+
     async def content(self) -> bytes:
         """Read response body."""
         if self.chunked and not self.body:
             res = b''
             async for chunk in self.read_chunks():
                 res += chunk
-            self.body = res
-            return res
+            self.set_body(res)
         return self.body
 
     async def text(self) -> str:
@@ -246,9 +258,10 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
 
         size = response.headers.get(b'content-length')
         chunked = b'chunked' == response.headers.get(b'transfer-encoding', '')
+        response.compressed = response.headers.get(b'content-encoding', '')
 
         if size:
-            response.body = await connection.reader.read(int(size))
+            response.set_body(await connection.reader.read(int(size)))
 
         if chunked:
             connection.block_until_read_chunks()

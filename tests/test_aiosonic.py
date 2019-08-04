@@ -269,3 +269,33 @@ async def test_read_chunks_by_text_method(app, aiohttp_server):
     assert await res.text() == 'foobar'
     assert await res.text() == 'foobar'  # cached body in response object
     await server.close()
+
+
+@pytest.mark.asyncio
+async def test_get_body_gzip(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/gzip' % server.port
+
+    res = await aiosonic.get(url, headers={
+        'Accept-Encoding': 'gzip, deflate, br'
+    })
+    content = await res.content()
+    assert res.status_code == 200
+    assert content == b'Hello, world'
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_get_body_deflate(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/deflate' % server.port
+
+    res = await aiosonic.get(url, headers={
+        'Accept-Encoding': 'gzip, deflate, br'
+    })
+    content = await res.content()
+    assert res.status_code == 200
+    assert content == b'Hello, world'
+    await server.close()
