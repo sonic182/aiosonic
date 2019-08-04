@@ -17,10 +17,12 @@ from urllib.parse import ParseResult
 from typing import Union
 from typing import Dict
 from typing import Tuple
+from typing import AsyncIterator
 
 from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
+from aiosonic.connectors import Connection
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
@@ -71,8 +73,8 @@ class HTTPHeaders(CaseInsensitiveDict):
         return line.rstrip().split(b': ')
 
 
-class HTTPResponse:
-    """HTTPResponse.
+class HttpResponse:
+    """HttpResponse.
 
     Class for handling response.
     """
@@ -81,8 +83,11 @@ class HTTPResponse:
         self.headers = HTTPHeaders()
         self.body = None
         self.response_initial = None
+        self.connection = None
+        self.chunked = False
+        self.chunks_readed = False
 
-    def set_response_initial(self, data: str):
+    def set_response_initial(self, data: bytes):
         """Read first bytes from socket and set it in response."""
         try:
             res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
@@ -91,14 +96,49 @@ class HTTPResponse:
             raise HttpParsingError(
                 'error parsing response line: (%s)' % data)
 
-    def set_header(self, key, val):
+    def set_header(self, key: StringOrBytes, val: StringOrBytes):
         """Set header to response."""
         self.headers[key] = val
+
+    def set_connection(self, connection: Connection):
+        """Set header to response."""
+        self.connection = connection
 
     @property
     def status_code(self):
         """Get status code."""
         return int(self.response_initial['code'])
+
+    async def content(self) -> bytes:
+        """Read response body."""
+        if self.chunked and not self.body:
+            res = b''
+            async for chunk in self.read_chunks():
+                res += chunk
+            self.body = res
+            return res
+        return self.body
+
+    async def text(self) -> str:
+        """Read response body."""
+        return (await self.content()).decode()
+
+    async def read_chunks(self) -> AsyncIterator[bytes]:
+        """Read chunks from chunked response."""
+        while True and not self.chunks_readed:
+            chunk_size = (await self.connection.reader.readline()).rstrip()
+            if not chunk_size:
+                continue
+            elif chunk_size == b'0':
+                # read last CRLF
+                await self.connection.reader.readline()
+                # free connection
+                self.connection.release()
+                break
+            chunk = (await self.connection.reader.read(
+                int(chunk_size)))
+            yield chunk
+        self.chunks_readed = True
 
 
 def _get_header_data(url: ParseResult, method: str,
@@ -180,7 +220,7 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
 
 async def _do_request(urlparsed: ParseResult, headers_data: str,
                       connector: TCPConnector, body: bytes, verify: bool,
-                      ssl: SSLContext) -> HTTPResponse:
+                      ssl: SSLContext) -> HttpResponse:
     """Something."""
     async with (await connector.acquire()) as connection:
         await connection.connect(urlparsed, verify, ssl)
@@ -192,7 +232,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
         if body:
             connection.writer.write(body)
 
-        response = HTTPResponse()
+        response = HttpResponse()
 
         # get response code and version
         response.set_response_initial(await connection.reader.readline())
@@ -206,14 +246,20 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
             response.set_header(*HTTPHeaders.clear_line(res_data))
 
         size = response.headers.get(b'content-length')
+        chunked = b'chunked' == response.headers.get(b'transfer-encoding', '')
 
         if size:
             response.body = await connection.reader.read(int(size))
+
+        if chunked:
+            connection.block_until_read_chunks()
+            response.chunked = True
 
         keepalive = b'close' not in response.headers.get(b'keep-alive', b'')
 
         if keepalive:
             connection.keep_alive()
+            response.set_connection(connection)
         return response
 
 
@@ -221,7 +267,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
 async def get(url: str, headers: HeadersType = None,
               params: ParamsType = None,
               connector: TCPConnector = None, verify: bool = True,
-              ssl: SSLContext = None) -> HTTPResponse:
+              ssl: SSLContext = None) -> HttpResponse:
     """Do get http request. """
     return await request(url, 'GET', headers, params, connector=connector,
                          verify=verify, ssl=ssl)
@@ -232,7 +278,7 @@ async def _request_with_body(
         headers: HeadersType = None, json: dict = None,
         params: ParamsType = None, connector: TCPConnector = None,
         json_serializer=dumps, multipart: bool = False,
-        verify: bool = True, ssl: SSLContext = None) -> HTTPResponse:
+        verify: bool = True, ssl: SSLContext = None) -> HttpResponse:
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
@@ -250,7 +296,7 @@ async def post(url: str, data: DataType = None, headers: HeadersType = None,
                json: dict = None, params: ParamsType = None,
                connector: TCPConnector = None, json_serializer=dumps,
                multipart: bool = False, verify: bool = True,
-               ssl: SSLContext = None) -> HTTPResponse:
+               ssl: SSLContext = None) -> HttpResponse:
     """Do post http request. """
     return await _request_with_body(
         url, 'POST', data, headers, json, params, connector, json_serializer,
@@ -261,7 +307,7 @@ async def put(url: str, data: DataType = None, headers: HeadersType = None,
               json: dict = None, params: ParamsType = None,
               connector: TCPConnector = None, json_serializer=dumps,
               multipart: bool = False, verify: bool = True,
-              ssl: SSLContext = None) -> HTTPResponse:
+              ssl: SSLContext = None) -> HttpResponse:
     """Do put http request. """
     return await _request_with_body(
         url, 'PUT', data, headers, json, params, connector, json_serializer,
@@ -272,7 +318,7 @@ async def patch(url: str, data: DataType = None, headers: HeadersType = None,
                 json: dict = None, params: ParamsType = None,
                 connector: TCPConnector = None, json_serializer=dumps,
                 multipart: bool = False, verify: bool = True,
-                ssl: SSLContext = None) -> HTTPResponse:
+                ssl: SSLContext = None) -> HttpResponse:
     """Do put http request. """
     return await _request_with_body(
         url, 'PATCH', data, headers, json, params, connector, json_serializer,
@@ -283,7 +329,7 @@ async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
                  json: dict = None, params: ParamsType = None,
                  connector: TCPConnector = None, json_serializer=dumps,
                  multipart: bool = False, verify: bool = True,
-                 ssl: SSLContext = None) -> HTTPResponse:
+                 ssl: SSLContext = None) -> HttpResponse:
     """Do put http request. """
     return await _request_with_body(
         url, 'DELETE', data, headers, json, params, connector, json_serializer,
@@ -294,7 +340,7 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   params: ParamsType = None, data: DataType = None,
                   connector: TCPConnector = None, multipart: bool = False,
                   verify: bool = True,
-                  ssl: SSLContext = None) -> HTTPResponse:
+                  ssl: SSLContext = None) -> HttpResponse:
     """Requests.
 
     Steps:

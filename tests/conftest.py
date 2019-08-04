@@ -40,10 +40,28 @@ async def put_patch_handler(request):
     return web.Response(text='put_patch')
 
 
+async def chunked_response(request):
+    """Chunked transfer-encoding."""
+    response = web.StreamResponse(
+        status=200,
+        reason='OK',
+        headers={'Content-Type': 'text/plain'},
+
+    )
+    # response.enable_chunked_encoding()
+    await response.prepare(request)
+    await response.write(b'foo')
+    await response.write(b'bar')
+
+    await response.write_eof()
+    return response
+
+
 def get_app():
     """Get aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
+    application.router.add_get('/chunked', chunked_response)
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)
     application.router.add_put('/put_patch', put_patch_handler)

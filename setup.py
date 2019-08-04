@@ -4,7 +4,7 @@ import re
 from setuptools import setup
 
 
-RGX = re.compile('([\w-]+[<>=]{1}=[\d.]+)')
+RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.]+)')
 
 
 def read_file(filename):
@@ -28,6 +28,15 @@ setup(
     long_description_content_type='text/markdown',
     license='MIT',
     packages=['aiosonic'],
+    classifiers=[
+        # 'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development',
+        'License :: OSI Approved :: MIT License',
+
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+    ],
     setup_requires=['pytest-runner'],
     test_requires=['pytest'],
     install_requires=requirements('./requirements.txt'),

@@ -19,3 +19,4 @@ logs/*.log*
 .idea/
 .vscode/
 *.csv
+.mypy_cache/

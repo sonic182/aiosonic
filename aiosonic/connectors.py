@@ -42,6 +42,7 @@ class Connection:
         self.keep = False
         self.key = None
         self.temp_key = None
+        self.blocked = False
 
     async def connect(self, urlparsed: ParseResult, verify: bool,
                       ssl_context: SSLContext):
@@ -60,7 +61,7 @@ class Connection:
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
 
         if self.writer:
-            # python 3.5 and 3.6 doesn't have writer.is_closing
+            # python 3.6 doesn't have writer.is_closing
             is_closing = getattr(
                 self.writer, 'is_closing', self.writer._transport.is_closing)
         else:
@@ -82,6 +83,10 @@ class Connection:
         """Check if keep alive."""
         self.keep = True
 
+    def block_until_read_chunks(self):
+        """Check if keep alive."""
+        self.blocked = True
+
     async def __aenter__(self):
         """Get connection from pool."""
         return self
@@ -94,4 +99,10 @@ class Connection:
             self.key = None
             if self.writer:
                 self.writer.close()
+
+        if not self.blocked:
+            self.release()
+
+    def release(self):
+        """Release connection."""
         self.connector.release(self)

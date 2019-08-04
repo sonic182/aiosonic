@@ -18,7 +18,8 @@ async def test_simple_get(app, aiohttp_server):
 
     res = await aiosonic.get(url)
     assert res.status_code == 200
-    assert res.body == b'Hello, world'
+    assert await res.content() == b'Hello, world'
+    assert await res.text() == 'Hello, world'
     await server.close()
 
 
@@ -47,7 +48,7 @@ async def test_simple_get_keep_alive(app, aiohttp_server):
         res = await aiosonic.get(url, connector=connector)
     connection = await connector.pool.get()
     assert res.status_code == 200
-    assert res.body == b'Hello, world'
+    assert await res.text() == 'Hello, world'
     assert connection.counter == 5
     await server.close()
 
@@ -61,7 +62,7 @@ async def test_get_with_params(app, aiohttp_server):
 
     res = await aiosonic.get(url, params=params)
     assert res.status_code == 200
-    assert res.body == b'bar'
+    assert await res.text() == 'bar'
     await server.close()
 
 
@@ -74,7 +75,7 @@ async def test_get_with_params_tuple(app, aiohttp_server):
 
     res = await aiosonic.get(url, params=params)
     assert res.status_code == 200
-    assert res.body == b'bar'
+    assert await res.text() == 'bar'
     await server.close()
 
 
@@ -89,7 +90,7 @@ async def test_post_form_urlencoded(app, aiohttp_server):
 
     res = await aiosonic.post(url, data=data)
     assert res.status_code == 200
-    assert res.body == b'bar'
+    assert await res.text() == 'bar'
     await server.close()
 
 
@@ -104,7 +105,7 @@ async def test_post_json(app, aiohttp_server):
 
     res = await aiosonic.post(url, json=data)
     assert res.status_code == 200
-    assert res.body == b'bar'
+    assert await res.text() == 'bar'
     await server.close()
 
 
@@ -116,11 +117,11 @@ async def test_put_patch(app, aiohttp_server):
 
     res = await aiosonic.put(url)
     assert res.status_code == 200
-    assert res.body == b'put_patch'
+    assert await res.text() == 'put_patch'
 
     res = await aiosonic.patch(url)
     assert res.status_code == 200
-    assert res.body == b'put_patch'
+    assert await res.text() == 'put_patch'
     await server.close()
 
 
@@ -132,7 +133,7 @@ async def test_delete(app, aiohttp_server):
 
     res = await aiosonic.delete(url)
     assert res.status_code == 200
-    assert res.body == b'deleted'
+    assert await res.text() == 'deleted'
     await server.close()
 
 
@@ -146,7 +147,7 @@ async def test_post_multipart_to_django(live_server):
 
     res = await aiosonic.post(url, data=data, multipart=True)
     assert res.status_code == 200
-    assert res.body == b'bar'
+    assert await res.text() == 'bar'
 
 
 @pytest.mark.asyncio
@@ -190,7 +191,7 @@ async def test_simple_get_ssl(app, aiohttp_server, ssl_context):
 
     res = await aiosonic.get(url, verify=False)
     assert res.status_code == 200
-    assert res.body == b'Hello, world'
+    assert await res.text() == 'Hello, world'
     await server.close()
 
 
@@ -207,7 +208,7 @@ async def test_simple_get_ssl_ctx(app, aiohttp_server, ssl_context):
     ssl_context.verify_mode = ssl.CERT_NONE
     res = await aiosonic.get(url, ssl=ssl_context)
     assert res.status_code == 200
-    assert res.body == b'Hello, world'
+    assert await res.text() == 'Hello, world'
     await server.close()
 
 
@@ -220,4 +221,36 @@ async def test_simple_get_ssl_no_valid(app, aiohttp_server, ssl_context):
     # python 3.5 compatibility
     with pytest.raises(getattr(ssl, 'SSLCertVerificationError', ssl.SSLError)):
         await aiosonic.get(url)
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_get_chunked_response(app, aiohttp_server):
+    """Test get chunked response."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/chunked' % server.port
+
+    res = await aiosonic.get(url)
+    assert res.connection
+    assert res.status_code == 200
+
+    chunks = [b'foo', b'bar']
+
+    async for chunk in res.read_chunks():
+        assert chunk in chunks
+    assert await res.text() == ''  # chunks already readed manually
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_read_chunks_by_text_method(app, aiohttp_server):
+    """Test read chunks by text method."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/chunked' % server.port
+
+    res = await aiosonic.get(url)
+    assert res.connection
+    assert res.status_code == 200
+    assert await res.text() == 'foobar'
+    assert await res.text() == 'foobar'  # cached body in response object
     await server.close()
