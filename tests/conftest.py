@@ -42,6 +42,16 @@ async def hello_post(request):
     post = await request.post()
     if post and 'foo' in post:
         return web.Response(text=post['foo'])
+
+    # read request body, chunked requests too
+    data = await request.text()
+
+    if data and 'close' in data:
+        res = web.Response(text=data)
+        res.force_close()
+        return res
+    elif data:
+        return web.Response(text=data)
     return web.Response(text='Hello, world')
 
 

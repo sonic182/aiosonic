@@ -300,3 +300,38 @@ async def test_get_body_deflate(app, aiohttp_server):
     assert res.status_code == 200
     assert content == b'Hello, world'
     await server.close()
+
+
+@pytest.mark.asyncio
+async def test_post_chunked(app, aiohttp_server):
+    """Test post chunked."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/post' % server.port
+
+    async def data():
+        yield b'foo'
+        yield b'bar'
+
+    res = await aiosonic.post(url, data=data())
+    assert res.status_code == 200
+    assert await res.text() == 'foobar'
+
+    def data():
+        yield b'foo'
+        yield b'bar'
+
+    res = await aiosonic.post(url, data=data())
+    assert res.status_code == 200
+    assert await res.text() == 'foobar'
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_close_connection(app, aiohttp_server):
+    """Test close connection."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/post' % server.port
+
+    res = await aiosonic.post(url, data=b'close')
+    assert res.status_code == 200
+    assert await res.text() == 'close'
