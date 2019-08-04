@@ -6,7 +6,7 @@
 
 Async http client
 
-This project is in alpha state.
+This project is in alpha state. Here is some [documentation](https://sonic182.github.io/aiosonic/html/index.html).
 
 There is a performance script in tests folder which shows very nice numbers
 
