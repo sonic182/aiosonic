@@ -8,6 +8,11 @@ Async http client
 
 This project is in alpha state.
 
+# Requirements:
+
+* Python>=3.6
+
+
 # Features:
 
 * Keepalive and pool of connections
