@@ -157,12 +157,13 @@ async def test_post_multipart_to_django(live_server):
     """Test post multipart."""
     url = live_server.url + '/post_file'
     data = {
-        'foo': open('tests/files/bar.txt', 'rb')
+        'foo': open('tests/files/bar.txt', 'rb'),
+        'field1': 'foo'
     }
 
     res = await aiosonic.post(url, data=data, multipart=True)
     assert res.status_code == 200
-    assert await res.text() == 'bar'
+    assert await res.text() == 'bar-foo'
 
 
 @pytest.mark.asyncio

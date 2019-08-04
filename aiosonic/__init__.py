@@ -93,12 +93,8 @@ class HttpResponse:
 
     def set_response_initial(self, data: bytes):
         """Read first bytes from socket and set it in response."""
-        try:
-            res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
-            self.response_initial = res.groupdict()
-        except AttributeError:
-            raise HttpParsingError(
-                'error parsing response line: (%s)' % data)
+        res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
+        self.response_initial = res.groupdict()
 
     def set_header(self, key: StringOrBytes, val: StringOrBytes):
         """Set header to response."""
@@ -215,13 +211,14 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
                 to_send += data
             val.close()
         else:
-            to_send += b'Content-Disposition: form-data; name="%s"%s%s' % (
-                key.encode(),
-                _NEW_LINE,
-                _NEW_LINE
-            )
-
-            to_send += val.encode() + b'\r\n'
+            to_send += (
+                'Content-Disposition: form-data; name="%s"%s%s' % (
+                    key,
+                    _NEW_LINE,
+                    _NEW_LINE
+                )
+            ).encode()
+            to_send += val.encode() + _NEW_LINE.encode()
 
     # write --boundary-- for finish
     to_send += ('--%s--' % boundary).encode()
