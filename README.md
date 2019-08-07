@@ -14,12 +14,14 @@ There is a performance script in tests folder which shows very nice numbers
 » python tests/performance.py
 doing tests...
 {
- "aiohttp": "1000 requests in 577.93 ms",
- "requests": "1000 requests in 2231.33 ms",
- "aiosonic": "1000 requests in 310.97 ms"
+ "aiohttp": "1000 requests in 471.06 ms",
+ "requests": "1000 requests in 2298.61 ms",
+ "aiosonic": "1000 requests in 206.83 ms",
+ "aiosonic cyclic": "1000 requests in 241.14 ms"
 }
-aiosonic is 85.85% faster than aiohttp
-aiosonic is 617.55% faster than requests
+aiosonic is 127.76% faster than aiohttp
+aiosonic is 1011.37% faster than requests
+aiosonic is 16.59% faster than aiosonic cyclic  # Using non standard pool of connections
 ```
 
 # Requirements:
