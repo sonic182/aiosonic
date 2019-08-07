@@ -7,6 +7,7 @@ from datetime import timedelta
 import json
 import random
 from time import sleep
+import httpx
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -15,7 +16,7 @@ from multiprocessing import Process
 from uvicorn.main import Server
 from uvicorn.main import Config
 
-from aiohttp import ClientSession
+import aiohttp
 import requests
 
 import aiosonic
@@ -61,15 +62,19 @@ async def timeit_coro(func, *args, **kwargs):
     """To time stuffs."""
     repeat = kwargs.pop('repeat', 1000)
     before = datetime.now()
-    for _ in range(repeat):
-        await func(*args, **kwargs)
+    # Concurrent coroutines
+    await asyncio.gather(*[
+        func(*args, **kwargs)
+        for _ in range(repeat)
+    ])
     after = datetime.now()
     return (after - before) / timedelta(milliseconds=1)
 
 
 async def performance_aiohttp(url, concurrency):
     """Test aiohttp performance."""
-    async with ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(
+            limit=concurrency)) as session:
         return await timeit_coro(session.get, (url))
 
 
@@ -78,6 +83,18 @@ async def performance_aiosonic(url, concurrency, pool_cls=None):
     return await timeit_coro(
         aiosonic.get, url, connector=TCPConnector(
             pool_size=concurrency, pool_cls=pool_cls))
+
+
+async def performance_httpx(url, concurrency, pool_cls=None):
+    """Test aiohttp performance."""
+    client = httpx.AsyncClient()
+    # parallel doesn't exists in latest version of httpx
+    # async with client.parallel() as parallel:
+    #     pending_one = parallel.get('https://example.com/1')
+    #     pending_two = parallel.get('https://example.com/2')
+    #     response_one = await pending_one.get_response()
+    #     response_two = await pending_two.get_response()
+    return await timeit_coro(client.get, url)
 
 
 def timeit_requests(url, concurrency, repeat=1000):
@@ -117,11 +134,16 @@ def do_tests(url):
     # aiosonic cyclic
     res4 = loop.run_until_complete(performance_aiosonic(
         url, concurrency, pool_cls=CyclicQueuePool))
+
+    # httpx
+    res5 = loop.run_until_complete(performance_httpx(
+        url, concurrency))
     print(json.dumps({
         'aiohttp': '1000 requests in %.2f ms' % res1,
         'requests': '1000 requests in %.2f ms' % res3,
         'aiosonic': '1000 requests in %.2f ms' % res2,
         'aiosonic cyclic': '1000 requests in %.2f ms' % res4,
+        'httpx': '1000 requests in %.2f ms' % res5,
     }, indent=True))
     print('aiosonic is %.2f%% faster than aiohttp' % (
         ((res1 / res2) - 1) * 100))
@@ -129,6 +151,8 @@ def do_tests(url):
         ((res3 / res2) - 1) * 100))
     print('aiosonic is %.2f%% faster than aiosonic cyclic' % (
         ((res4 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than httpx' % (
+        ((res5 / res2) - 1) * 100))
 
 
 def start_server(port):

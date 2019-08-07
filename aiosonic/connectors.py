@@ -70,6 +70,9 @@ class Connection:
             is_closing = lambda: True  # noqa
 
         if not (self.key and key == self.key and not is_closing()):
+            if self.writer:
+                self.writer.close()
+
             if urlparsed.scheme == 'https':
                 ssl_context = ssl_context or ssl.create_default_context(
                     ssl.Purpose.SERVER_AUTH,
@@ -113,3 +116,11 @@ class Connection:
     async def release(self):
         """Release connection."""
         await self.connector.release(self)
+
+    def __del__(self):
+        """Cleanup."""
+        if self.writer:
+            is_closing = getattr(
+                self.writer, 'is_closing', self.writer._transport.is_closing)
+            if is_closing():
+                self.writer.close()

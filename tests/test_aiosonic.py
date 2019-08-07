@@ -380,3 +380,30 @@ async def test_cache(app, aiohttp_server):
     assert next(iter(_get_url_parsed.cache)) == url.replace(
         '/519', '/8')
     await server.close()
+
+
+@pytest.mark.asyncio
+async def test_close_old_keeped_conn(app, aiohttp_server):
+    """Test close old conn."""
+    server1 = await aiohttp_server(app)
+    server2 = await aiohttp_server(app)
+    url1 = 'http://localhost:%d' % server1.port
+    url2 = 'http://localhost:%d' % server2.port
+    connector = TCPConnector(
+        pool_size=1, connection_cls=MyConnection)
+
+    await aiosonic.get(url1, connector=connector)
+    # get used writer
+    connection = await connector.pool.acquire()
+    writer = connection.writer
+    connection = connector.pool.release(connection)
+
+    await aiosonic.get(url2, connector=connector)
+    # python 3.6 doesn't have writer.is_closing
+    is_closing = getattr(
+        writer, 'is_closing', writer._transport.is_closing)
+
+    # check that old writer is closed
+    assert is_closing()
+    await server1.close()
+    await server2.close()
