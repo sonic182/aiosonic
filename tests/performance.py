@@ -1,3 +1,4 @@
+"""Performance test."""
 
 import asyncio
 from concurrent import futures
@@ -9,20 +10,23 @@ from time import sleep
 from urllib.request import urlopen
 from urllib.error import URLError
 
+from multiprocessing import Process
+
 from uvicorn.main import Server
 from uvicorn.main import Config
 
-from multiprocessing import Process
+from aiohttp import ClientSession
+import requests
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
-from aiohttp import ClientSession
-import requests
+from aiosonic.pools import CyclicQueuePool
+
 
 try:
     import uvloop
     uvloop.install()
-except ImportError:
+except Exception:
     pass
 
 
@@ -69,10 +73,11 @@ async def performance_aiohttp(url, concurrency):
         return await timeit_coro(session.get, (url))
 
 
-async def performance_aiosonic(url, concurrency):
+async def performance_aiosonic(url, concurrency, pool_cls=None):
     """Test aiohttp performance."""
     return await timeit_coro(
-        aiosonic.get, url, connector=TCPConnector(pool_size=concurrency))
+        aiosonic.get, url, connector=TCPConnector(
+            pool_size=concurrency, pool_cls=pool_cls))
 
 
 def timeit_requests(url, concurrency, repeat=1000):
@@ -108,15 +113,22 @@ def do_tests(url):
 
     # requests
     res3 = timeit_requests(url, concurrency)
+
+    # aiosonic cyclic
+    res4 = loop.run_until_complete(performance_aiosonic(
+        url, concurrency, pool_cls=CyclicQueuePool))
     print(json.dumps({
         'aiohttp': '1000 requests in %.2f ms' % res1,
         'requests': '1000 requests in %.2f ms' % res3,
         'aiosonic': '1000 requests in %.2f ms' % res2,
+        'aiosonic cyclic': '1000 requests in %.2f ms' % res4,
     }, indent=True))
     print('aiosonic is %.2f%% faster than aiohttp' % (
         ((res1 / res2) - 1) * 100))
     print('aiosonic is %.2f%% faster than requests' % (
         ((res3 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than aiosonic cyclic' % (
+        ((res4 / res2) - 1) * 100))
 
 
 def start_server(port):
@@ -127,7 +139,6 @@ def start_server(port):
 
 def main():
     """Start."""
-    uvloop.install()
     port = random.randint(1000, 9000)
     url = 'http://0.0.0.0:%d' % port
     process = Process(target=start_server, args=(port,))

@@ -1,6 +1,7 @@
 
 import asyncio
 import ssl
+from urllib.parse import urlparse
 
 import pytest
 import aiosonic
@@ -8,6 +9,8 @@ from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
+from aiosonic.pools import CyclicQueuePool
+from aiosonic import _get_url_parsed
 
 
 @pytest.mark.asyncio
@@ -51,20 +54,39 @@ class MyConnection(Connection):
 
 
 @pytest.mark.asyncio
-async def test_simple_get_keep_alive(app, aiohttp_server):
-    """Test simple get keepalive."""
+async def test_keep_alive_smart_pool(app, aiohttp_server):
+    """Test keepalive smart pool."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d' % server.port
+    urlparsed = urlparse(url)
+
+    connector = TCPConnector(
+        pool_size=2, connection_cls=MyConnection)
+
+    for _ in range(5):
+        res = await aiosonic.get(url, connector=connector)
+    connection = await connector.pool.acquire(urlparsed)
+    assert res.status_code == 200
+    assert await res.text() == 'Hello, world'
+    assert connection.counter == 5
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_keep_alive_cyclic_pool(app, aiohttp_server):
+    """Test keepalive cyclic pool."""
     server = await aiohttp_server(app)
     url = 'http://localhost:%d' % server.port
 
     connector = TCPConnector(
-        pool_size=1, connection_cls=MyConnection)
+        pool_size=2, connection_cls=MyConnection, pool_cls=CyclicQueuePool)
 
     for _ in range(5):
         res = await aiosonic.get(url, connector=connector)
-    connection = await connector.pool.get()
+    connection = await connector.pool.acquire()
     assert res.status_code == 200
     assert await res.text() == 'Hello, world'
-    assert connection.counter == 5
+    assert connection.counter == 2
     await server.close()
 
 
@@ -333,6 +355,28 @@ async def test_close_connection(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = 'http://localhost:%d/post' % server.port
 
-    res = await aiosonic.post(url, data=b'close')
+    connector = TCPConnector(
+        pool_size=1, connection_cls=MyConnection)
+
+    res = await aiosonic.post(url, data=b'close', connector=connector)
+    connection = await connector.pool.acquire()
+
     assert res.status_code == 200
+    assert not connection.keep
     assert await res.text() == 'close'
+
+
+@pytest.mark.asyncio
+async def test_cache(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    for time in range(520):
+        url = 'http://localhost:%d/%d' % (server.port, time)
+
+        await aiosonic.get(url, headers={
+            'Accept-Encoding': 'gzip, deflate, br'
+        })
+    assert len(_get_url_parsed.cache) == 512
+    assert next(iter(_get_url_parsed.cache)) == url.replace(
+        '/519', '/8')
+    await server.close()

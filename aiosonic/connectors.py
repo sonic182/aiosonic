@@ -2,34 +2,36 @@
 
 import asyncio
 import ssl
+from typing import Coroutine
 from ssl import SSLContext
 from urllib.parse import ParseResult
 
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.pools import SmartPool
 
 
 class TCPConnector:
 
     def __init__(self, pool_size=25, request_timeout=27, connect_timeout=3,
-                 connection_cls=None, loop=None):
+                 connection_cls=None, pool_cls=None):
         """Initialize."""
         self.pool_size = pool_size
         self.request_timeout = request_timeout
         self.connect_timeout = connect_timeout
-        self.pool = asyncio.Queue(pool_size)
         connection_cls = connection_cls or Connection
+        pool_cls = pool_cls or SmartPool
+        self.pool = pool_cls(self, pool_size, connection_cls)
 
-        for _ in range(pool_size):
-            self.pool.put_nowait(connection_cls(self))
-
-    async def acquire(self):
+    async def acquire(self, urlparsed: ParseResult):
         """Acquire connection."""
-        return await self.pool.get()
+        return await self.pool.acquire(urlparsed)
 
-    def release(self, conn):
+    async def release(self, conn):
         """Acquire connection."""
-        return self.pool.put_nowait(conn)
+        res = self.pool.release(conn)
+        if isinstance(res, Coroutine):
+            await res
 
 
 class Connection:
@@ -106,8 +108,8 @@ class Connection:
                 self.writer.close()
 
         if not self.blocked:
-            self.release()
+            await self.release()
 
-    def release(self):
+    async def release(self):
         """Release connection."""
-        self.connector.release(self)
+        await self.connector.release(self)

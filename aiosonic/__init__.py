@@ -9,7 +9,6 @@ from ssl import SSLContext
 import gzip
 import zlib
 
-from functools import lru_cache
 from io import IOBase
 from os.path import basename
 from urllib.parse import urlparse
@@ -26,6 +25,7 @@ from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
+from aiosonic.utils import cache_decorator
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
 
@@ -64,11 +64,11 @@ BodyType = Union[
 
 
 # Functions with cache
-@lru_cache(_LRU_CACHE_SIZE)
+@cache_decorator(_LRU_CACHE_SIZE)
 def _get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
-    With lru_cache decorator for the sake of speed.
+    With cache_decorator for the sake of speed.
     """
     return urlparse(url)
 
@@ -149,7 +149,7 @@ class HttpResponse:
                 # read last CRLF
                 await self.connection.reader.readline()
                 # free connection
-                self.connection.release()
+                await self.connection.release()
                 break
             chunk = await self.connection.reader.readexactly(
                 chunk_size + 2)
@@ -265,7 +265,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
                       connector: TCPConnector, body: BodyType, verify: bool,
                       ssl: SSLContext) -> HttpResponse:
     """Something."""
-    async with (await connector.acquire()) as connection:
+    async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl)
 
         to_send = headers_data.encode()
@@ -302,7 +302,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
             connection.block_until_read_chunks()
             response.chunked = True
 
-        keepalive = b'close' not in response.headers.get(b'keep-alive', b'')
+        keepalive = b'close' not in response.headers.get(b'connection', b'')
 
         if keepalive:
             connection.keep_alive()

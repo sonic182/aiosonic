@@ -41,6 +41,7 @@ aiosonic is 617.55% faster than requests
 In order
 
 * International Domains and URLs (idna + cache)
+* Requests using a http proxy
 * Sessions with Cookie Persistence
 * Basic/Digest Authentication
 * Elegant Key/Value Cookies
