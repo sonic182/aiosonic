@@ -29,7 +29,10 @@ setup(
     long_description=read_file('README.md'),
     long_description_content_type='text/markdown',
     license='MIT',
-    packages=['aiosonic'],
+    packages=[
+        'aiosonic',
+        'aiosonic_utils',
+    ],
     classifiers=[
         # 'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',

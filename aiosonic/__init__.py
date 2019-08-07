@@ -21,7 +21,7 @@ from typing import Tuple
 from typing import AsyncIterator
 from typing import Iterator
 
-from aiosonic.structures import CaseInsensitiveDict
+from aiosonic_utils.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
