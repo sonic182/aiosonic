@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] 2019-08-07
+### Added
+- Minimal docs
+- Smart and Cyclic Pool of connections
+- Cache decorator
+- Transmission chunked requests
+- 100% coverage
+
 ## [0.0.4] 2019-08-04
 ### Added
 - Automatic decompress (gzip, deflate)
@@ -30,7 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.0.4..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.1.0..HEAD
+[0.1.0]: https://github.com/sonic182/aiosonic/compare/0.0.4..0.1.0
 [0.0.4]: https://github.com/sonic182/aiosonic/compare/0.0.3..0.0.4
 [0.0.3]: https://github.com/sonic182/aiosonic/compare/0.0.2..0.0.3
 [0.0.2]: https://github.com/sonic182/aiosonic/compare/0.0.1..0.0.2
