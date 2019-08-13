@@ -15,11 +15,14 @@ from urllib.parse import urlparse
 from urllib.parse import urlencode
 from urllib.parse import ParseResult
 
-from typing import Union
-from typing import Dict
-from typing import Tuple
+from typing import Any
 from typing import AsyncIterator
+from typing import Dict
 from typing import Iterator
+from typing import Union
+from typing import Tuple
+from typing import Optional
+from typing import Sequence
 
 from aiosonic_utils.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
@@ -28,12 +31,14 @@ from aiosonic.connectors import Connection
 from aiosonic.utils import cache_decorator
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
+from aiosonic.exceptions import HttpParsingError
+from aiosonic.exceptions import MissingWriterException
 
 
 # VARIABLES
 HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
                              r'(?P<reason>[\w]*)')
-_CACHE = {}
+_CACHE: Dict[str, Any] = {}
 _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
@@ -41,23 +46,22 @@ _COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
 
 
 # TYPES
-StringOrBytes = Union[str, bytes]
-#: Headers
-HeadersType = Dict[StringOrBytes, StringOrBytes]
 ParamsType = Union[
-    Dict[StringOrBytes, StringOrBytes],
-    Tuple[StringOrBytes, StringOrBytes],
+    Dict[str, str],
+    Sequence[Tuple[str, str]],
 ]
 #: Data to be sent in requests, allowed types
 DataType = Union[
-    StringOrBytes,
-    AsyncIterator[bytes],
-    Iterator[bytes],
+    str,
+    bytes,
     dict,
     tuple,
+    AsyncIterator[bytes],
+    Iterator[bytes],
 ]
 BodyType = Union[
     bytes,
+    str,
     AsyncIterator[bytes],
     Iterator[bytes],
 ]
@@ -85,6 +89,10 @@ class HttpHeaders(CaseInsensitiveDict):
         return line.rstrip().split(b': ')
 
 
+#: Headers
+HeadersType = Union[Dict[str, str], HttpHeaders]
+
+
 class HttpResponse:
     """HttpResponse.
 
@@ -101,11 +109,13 @@ class HttpResponse:
         self.chunks_readed = False
 
     def _set_response_initial(self, data: bytes):
-        """Read first bytes from socket and set it in response."""
+        """Parse first bytes from http response."""
         res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
+        if not res:
+            raise HttpParsingError('response line parsing error')
         self.response_initial = res.groupdict()
 
-    def _set_header(self, key: StringOrBytes, val: StringOrBytes):
+    def _set_header(self, key: str, val: str):
         """Set header to response."""
         self.headers[key] = val
 
@@ -158,8 +168,8 @@ class HttpResponse:
 
 
 def _get_header_data(url: ParseResult, method: str,
-                     headers: HeadersType = None, params: dict = None,
-                     multipart: bool = None, boundary: str = None) -> bytes:
+                     headers: HeadersType = None, params: ParamsType = None,
+                     multipart: bool = None, boundary: str = None) -> str:
     """Prepare get data."""
     path = url.path or '/'
     if params:
@@ -184,45 +194,59 @@ def _get_header_data(url: ParseResult, method: str,
     return get_base + _NEW_LINE
 
 
-def _setup_body_request(data: DataType, headers: HeadersType):
+def _setup_body_request(data: DataType, headers: HeadersType) -> BodyType:
     """Get body to be sent."""
     if isinstance(data, (AsyncIterator, Iterator)):
         headers['Transfer-Encoding'] = 'chunked'
         return data
-    body = data
+    body: BodyType = b''
+    content_type = None
+
+    if isinstance(data, (Dict, tuple)):
+        body = urlencode(data)
+        content_type = 'application/x-www-form-urlencoded'
+    else:
+        body = data
+        content_type = 'text/plain'
+
     if 'content-type' not in headers:
-        if isinstance(data, (Dict, Iterator)):
-            body = urlencode(data)
-            headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        else:
-            body = data
-            headers['Content-Type'] = 'text/plain'
+        headers['Content-Type'] = content_type
+
     body = body.encode() if isinstance(body, str) else body
-    headers['Content-Length'] = len(body)
+    headers['Content-Length'] = str(len(body))
     return body
 
 
-def _handle_chunk(chunk: bytes, connection: TCPConnector):
+def _handle_chunk(chunk: bytes, connection: Connection):
     """Handle chunk sending in transfer-encoding chunked."""
     chunk_size = hex(len(chunk)).replace('0x', '') + _NEW_LINE
+
+    if not connection.writer:
+        raise MissingWriterException('missing writer in connection')
+
     connection.writer.write(
         chunk_size.encode() + chunk + _NEW_LINE.encode()
     )
 
 
-async def _send_chunks(connection: TCPConnector, body: BodyType):
+async def _send_chunks(connection: Connection, body: BodyType):
     """Send chunks."""
     if isinstance(body, AsyncIterator):
         async for chunk in body:
             _handle_chunk(chunk, connection)
-    else:
+    elif isinstance(body, Iterator):
         for chunk in body:
             _handle_chunk(chunk, connection)
+    else:
+        raise Exception('wrong body param.')
+
+    if not connection.writer:
+        raise MissingWriterException('missing writer in connection')
     connection.writer.write(('0' + _NEW_LINE * 2).encode())
 
 
-async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
-                          chunk_size: int = _CHUNK_SIZE):
+async def _send_multipart(data: Dict[str, str], boundary: str,
+                          headers: HeadersType, chunk_size: int = _CHUNK_SIZE):
     """Send multipart data by streaming."""
     # TODO: precalculate body size and stream request, precalculate file sizes by os.path.getsize
     to_send = b''
@@ -257,13 +281,13 @@ async def _send_multipart(data: DataType, boundary: str, headers: HeadersType,
 
     # write --boundary-- for finish
     to_send += ('--%s--' % boundary).encode()
-    headers['Content-Length'] = len(to_send)
+    headers['Content-Length'] = str(len(to_send))
     return to_send
 
 
 async def _do_request(urlparsed: ParseResult, headers_data: str,
-                      connector: TCPConnector, body: BodyType, verify: bool,
-                      ssl: SSLContext) -> HttpResponse:
+                      connector: TCPConnector, body: Optional[BodyType],
+                      verify: bool, ssl: Optional[SSLContext]) -> HttpResponse:
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl)
@@ -402,13 +426,15 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
         connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
     urlparsed = _get_url_parsed(url)
 
-    body = None
+    body: Optional[BodyType] = None
     boundary = None
     headers = headers or {}
 
     if method != 'GET' and data and not multipart:
         body = _setup_body_request(data, headers)
     elif multipart:
+        if not isinstance(data, dict):
+            raise ValueError('data should be dict')
         boundary = 'boundary-%d' % random.randint(10**8, 10**9)
         body = await _send_multipart(data, boundary, headers)
 

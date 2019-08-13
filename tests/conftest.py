@@ -3,9 +3,10 @@
 import ssl
 
 from aiohttp import web
-import pytest
 import gzip
 import zlib
+
+import pytest
 
 
 async def hello(request):

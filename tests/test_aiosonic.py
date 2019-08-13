@@ -132,6 +132,19 @@ async def test_post_form_urlencoded(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
+async def test_post_tuple_form_urlencoded(app, aiohttp_server):
+    """Test post form urlencoded tuple."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/post' % server.port
+    data = (('foo', 'bar'),)
+
+    res = await aiosonic.post(url, data=data)
+    assert res.status_code == 200
+    assert await res.text() == 'bar'
+    await server.close()
+
+
+@pytest.mark.asyncio
 async def test_post_json(app, aiohttp_server):
     """Test post json."""
     server = await aiohttp_server(app)

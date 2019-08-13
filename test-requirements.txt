@@ -7,11 +7,11 @@
 aiohttp==3.5.4
 async-timeout==3.0.1      # via aiohttp
 atomicwrites==1.3.0       # via pytest
-attrs==19.1.0             # via aiohttp, pytest
+attrs==19.1.0             # via aiohttp, packaging, pytest
 certifi==2019.6.16        # via httpx, requests
 chardet==3.0.4            # via aiohttp, httpx, requests
 click==7.0                # via uvicorn
-coverage==4.5.3           # via coveralls, pytest-cov
+coverage==4.5.4           # via coveralls, pytest-cov
 coveralls==1.8.2
 django==2.2.4
 docopt==0.6.2             # via coveralls
@@ -23,33 +23,36 @@ hpack==3.0.0              # via h2
 httptools==0.0.13         # via uvicorn
 httpx==0.6.8
 hyperframe==5.2.0         # via h2
-idna-ssl==1.1.0           # via aiohttp
-idna==2.8                 # via httpx, idna-ssl, requests, yarl
-importlib-metadata==0.18  # via pluggy, pytest
+idna==2.8                 # via httpx, requests, yarl
+importlib-metadata==0.19  # via pluggy, pytest
 mccabe==0.6.1             # via flake8
-more-itertools==7.1.0     # via pytest
+more-itertools==7.2.0     # via pytest
 multidict==4.5.2          # via aiohttp, yarl
-packaging==19.0           # via pytest, pytest-sugar
+mypy-extensions==0.4.1    # via mypy
+mypy==0.720               # via pytest-mypy
+packaging==19.1           # via pytest, pytest-sugar
 pluggy==0.12.0            # via pytest
 py==1.8.0                 # via pytest
 pycodestyle==2.5.0        # via flake8
 pyflakes==2.1.1           # via flake8
-pyparsing==2.4.0          # via packaging
+pyparsing==2.4.2          # via packaging
 pytest-aiohttp==0.3.0
 pytest-asyncio==0.10.0
 pytest-cov==2.7.1
 pytest-django==3.5.1
 pytest-flake8==1.0.4
 pytest-mock==1.10.4
+pytest-mypy==0.3.3
 pytest-sugar==0.9.2
 pytest==5.0.1
-pytz==2019.1              # via django
+pytz==2019.2              # via django
 requests==2.22.0          # via coveralls
 rfc3986==1.3.2            # via httpx
 six==1.12.0               # via packaging
 sqlparse==0.3.0           # via django
 termcolor==1.1.0          # via pytest-sugar
-typing-extensions==3.7.4  # via aiohttp
+typed-ast==1.4.0          # via mypy
+typing-extensions==3.7.4  # via mypy
 urllib3==1.25.3           # via requests
 uvicorn==0.8.6
 uvloop==0.12.2            # via uvicorn

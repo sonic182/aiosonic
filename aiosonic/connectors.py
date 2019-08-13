@@ -1,8 +1,11 @@
 """Connector stuffs."""
 
 import asyncio
+from asyncio import StreamReader
+from asyncio import StreamWriter
 import ssl
 from typing import Coroutine
+from typing import Optional
 from ssl import SSLContext
 from urllib.parse import ParseResult
 
@@ -39,8 +42,8 @@ class Connection:
 
     def __init__(self, connector: TCPConnector):
         self.connector = connector
-        self.reader = None
-        self.writer = None
+        self.reader: Optional[StreamReader] = None
+        self.writer: Optional[StreamWriter] = None
         self.keep = False
         self.key = None
         self.temp_key = None
