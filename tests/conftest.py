@@ -1,11 +1,10 @@
 """Fixtures and more."""
 
-import ssl
-
-from aiohttp import web
 import gzip
+import ssl
 import zlib
 
+from aiohttp import web
 import pytest
 
 
