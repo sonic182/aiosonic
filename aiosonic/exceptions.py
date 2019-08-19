@@ -22,3 +22,8 @@ class RequestTimeout(BaseTimeout):
 # parsing
 class HttpParsingError(Exception):
     pass
+
+
+# Redirects
+class MaxRedirects(Exception):
+    pass

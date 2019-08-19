@@ -33,6 +33,7 @@ from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import MaxRedirects
 
 
 # VARIABLES
@@ -60,8 +61,13 @@ DataType = Union[
     Iterator[bytes],
 ]
 BodyType = Union[
-    bytes,
     str,
+    bytes,
+    AsyncIterator[bytes],
+    Iterator[bytes],
+]
+ParsedBodyType = Union[
+    bytes,
     AsyncIterator[bytes],
     Iterator[bytes],
 ]
@@ -108,7 +114,7 @@ class HttpResponse:
         self.compressed = b''
         self.chunks_readed = False
 
-    def _set_response_initial(self, data: bytes):
+    def set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
         res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
         if not res:
@@ -194,7 +200,8 @@ def _get_header_data(url: ParseResult, method: str,
     return get_base + _NEW_LINE
 
 
-def _setup_body_request(data: DataType, headers: HeadersType) -> BodyType:
+def _setup_body_request(
+        data: DataType, headers: HeadersType) -> ParsedBodyType:
     """Get body to be sent."""
     if isinstance(data, (AsyncIterator, Iterator)):
         headers['Transfer-Encoding'] = 'chunked'
@@ -246,7 +253,8 @@ async def _send_chunks(connection: Connection, body: BodyType):
 
 
 async def _send_multipart(data: Dict[str, str], boundary: str,
-                          headers: HeadersType, chunk_size: int = _CHUNK_SIZE):
+                          headers: HeadersType,
+                          chunk_size: int = _CHUNK_SIZE) -> bytes:
     """Send multipart data by streaming."""
     # TODO: precalculate body size and stream request, precalculate file sizes by os.path.getsize
     to_send = b''
@@ -286,51 +294,13 @@ async def _send_multipart(data: Dict[str, str], boundary: str,
 
 
 async def _do_request(urlparsed: ParseResult, headers_data: str,
-                      connector: TCPConnector, body: Optional[BodyType],
-                      verify: bool, ssl: Optional[SSLContext]) -> HttpResponse:
+                      connector: TCPConnector, body: Optional[ParsedBodyType],
+                      verify: bool, ssl: Optional[SSLContext],
+                      follow: bool) -> HttpResponse:
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl)
-
-        to_send = headers_data.encode()
-
-        connection.writer.write(to_send)
-
-        if body:
-            if isinstance(body, (AsyncIterator, Iterator)):
-                await _send_chunks(connection, body)
-            else:
-                connection.writer.write(body)
-
-        response = HttpResponse()
-
-        # get response code and version
-        response._set_response_initial(await connection.reader.readline())
-
-        res_data = None
-        # reading headers
-        while True:
-            res_data = await connection.reader.readline()
-            if b': ' not in res_data:
-                break
-            response._set_header(*HttpHeaders._clear_line(res_data))
-
-        size = response.headers.get(b'content-length')
-        chunked = b'chunked' == response.headers.get(b'transfer-encoding', '')
-        response.compressed = response.headers.get(b'content-encoding', '')
-
-        if size:
-            response._set_body(await connection.reader.read(int(size)))
-
-        if chunked:
-            connection.block_until_read_chunks()
-            response.chunked = True
-
-        keepalive = b'close' not in response.headers.get(b'connection', b'')
-
-        if keepalive:
-            connection.keep_alive()
-            response._set_connection(connection)
+        response = await _write_and_read(headers_data, connection, body)
         return response
 
 
@@ -338,10 +308,11 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
 async def get(url: str, headers: HeadersType = None,
               params: ParamsType = None,
               connector: TCPConnector = None, verify: bool = True,
-              ssl: SSLContext = None) -> HttpResponse:
+              ssl: SSLContext = None,
+              follow: bool = False) -> HttpResponse:
     """Do get http request. """
     return await request(url, 'GET', headers, params, connector=connector,
-                         verify=verify, ssl=ssl)
+                         verify=verify, ssl=ssl, follow=follow)
 
 
 async def _request_with_body(
@@ -349,7 +320,8 @@ async def _request_with_body(
         headers: HeadersType = None, json: dict = None,
         params: ParamsType = None, connector: TCPConnector = None,
         json_serializer=dumps, multipart: bool = False,
-        verify: bool = True, ssl: SSLContext = None) -> HttpResponse:
+        verify: bool = True, ssl: SSLContext = None,
+        follow: bool = False) -> HttpResponse:
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
@@ -360,58 +332,63 @@ async def _request_with_body(
             'Content-Type': 'application/json'
         })
     return await request(url, method, headers, params, data, connector,
-                         multipart, verify=verify, ssl=ssl)
+                         multipart, verify=verify, ssl=ssl, follow=follow)
 
 
 async def post(url: str, data: DataType = None, headers: HeadersType = None,
                json: dict = None, params: ParamsType = None,
                connector: TCPConnector = None, json_serializer=dumps,
                multipart: bool = False, verify: bool = True,
-               ssl: SSLContext = None) -> HttpResponse:
+               ssl: SSLContext = None,
+               follow: bool = False) -> HttpResponse:
     """Do post http request. """
     return await _request_with_body(
         url, 'POST', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl)
+        multipart, verify=verify, ssl=ssl, follow=follow)
 
 
 async def put(url: str, data: DataType = None, headers: HeadersType = None,
               json: dict = None, params: ParamsType = None,
               connector: TCPConnector = None, json_serializer=dumps,
               multipart: bool = False, verify: bool = True,
-              ssl: SSLContext = None) -> HttpResponse:
+              ssl: SSLContext = None,
+              follow: bool = False) -> HttpResponse:
     """Do put http request. """
     return await _request_with_body(
         url, 'PUT', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl)
+        multipart, verify=verify, ssl=ssl, follow=follow)
 
 
 async def patch(url: str, data: DataType = None, headers: HeadersType = None,
                 json: dict = None, params: ParamsType = None,
                 connector: TCPConnector = None, json_serializer=dumps,
                 multipart: bool = False, verify: bool = True,
-                ssl: SSLContext = None) -> HttpResponse:
+                ssl: SSLContext = None,
+                follow: bool = False) -> HttpResponse:
     """Do patch http request. """
     return await _request_with_body(
         url, 'PATCH', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl)
+        multipart, verify=verify, ssl=ssl, follow=follow)
 
 
 async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
                  json: dict = None, params: ParamsType = None,
                  connector: TCPConnector = None, json_serializer=dumps,
                  multipart: bool = False, verify: bool = True,
-                 ssl: SSLContext = None) -> HttpResponse:
+                 ssl: SSLContext = None,
+                 follow: bool = False) -> HttpResponse:
     """Do delete http request. """
     return await _request_with_body(
         url, 'DELETE', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl)
+        multipart, verify=verify, ssl=ssl, follow=follow)
 
 
 async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   params: ParamsType = None, data: DataType = None,
                   connector: TCPConnector = None, multipart: bool = False,
                   verify: bool = True,
-                  ssl: SSLContext = None) -> HttpResponse:
+                  ssl: SSLContext = None,
+                  follow: bool = False) -> HttpResponse:
     """Do http request.
 
     Steps:
@@ -426,9 +403,9 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
         connector = _CACHE[key] = _CACHE.get(key) or TCPConnector()
     urlparsed = _get_url_parsed(url)
 
-    body: Optional[BodyType] = None
     boundary = None
     headers = headers or {}
+    body: ParsedBodyType = b''
 
     if method != 'GET' and data and not multipart:
         body = _setup_body_request(data, headers)
@@ -438,15 +415,85 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
         boundary = 'boundary-%d' % random.randint(10**8, 10**9)
         body = await _send_multipart(data, boundary, headers)
 
-    headers_data = _get_header_data(
-        urlparsed, method, headers, params, multipart, boundary)
-    try:
-        return await asyncio.wait_for(
-            _do_request(
-                urlparsed, headers_data, connector, body, verify, ssl),
-            timeout=connector.request_timeout
-        )
-    except ConnectTimeout:
-        raise
-    except futures._base.TimeoutError:
-        raise RequestTimeout()
+    max_redirects = 30
+    while True:
+        headers_data = _get_header_data(
+            urlparsed, method, headers, params, multipart, boundary)
+        try:
+            response = await asyncio.wait_for(
+                _do_request(
+                    urlparsed, headers_data, connector, body, verify, ssl,
+                    follow),
+                timeout=connector.request_timeout
+            )
+
+            if follow and response.status_code in {301, 302}:
+                max_redirects -= 1
+
+                if max_redirects == 0:
+                    raise MaxRedirects()
+
+                parsed_full_url = _get_url_parsed(
+                    response.headers[b'location'].decode())
+
+                # if full url, will have scheme
+                if parsed_full_url.scheme:
+                    urlparsed = parsed_full_url
+                else:
+                    urlparsed = _get_url_parsed(url.replace(
+                        urlparsed.path, response.headers[
+                            b'location'].decode()))
+            else:
+                return response
+        except ConnectTimeout:
+            raise
+        except futures._base.TimeoutError:
+            raise RequestTimeout()
+
+
+async def _write_and_read(
+        headers_data: str,
+        connection: Connection,
+        body: Optional[ParsedBodyType]) -> HttpResponse:
+    """Do Request-Response flow."""
+    to_send = headers_data.encode()
+
+    if not connection.writer or not connection.reader:
+        raise ConnectionError('Not connection writer or reader')
+    connection.writer.write(to_send)
+
+    if body:
+        if isinstance(body, (AsyncIterator, Iterator)):
+            await _send_chunks(connection, body)
+        else:
+            connection.writer.write(body)
+
+    response = HttpResponse()
+
+    # get response code and version
+    response.set_response_initial(await connection.reader.readline())
+
+    res_data = None
+    # reading headers
+    while True:
+        res_data = await connection.reader.readline()
+        if b': ' not in res_data:
+            break
+        response._set_header(*HttpHeaders._clear_line(res_data))
+
+    size = response.headers.get(b'content-length')
+    chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
+    keepalive = b'close' not in response.headers.get(b'connection', b'')
+    response.compressed = response.headers.get(b'content-encoding', '')
+
+    if size:
+        response._set_body(await connection.reader.read(int(size)))
+
+    if chunked:
+        connection.block_until_read_chunks()
+        response.chunked = True
+
+    if keepalive:
+        connection.keep_alive()
+        response._set_connection(connection)
+    return response

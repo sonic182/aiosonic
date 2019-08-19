@@ -39,11 +39,11 @@ aiosonic is 560.17% faster than httpx
 * Chunked requests
 * Connection Timeouts
 * Automatic Decompression
+* Follow Redirects
 
 # TODO
 
 * Better documentation
-* Follow Redirects
 * International Domains and URLs (idna + cache)
 * Requests using a http proxy
 * Sessions with Cookie Persistence
