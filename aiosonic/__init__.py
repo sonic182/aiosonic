@@ -182,8 +182,16 @@ def _get_header_data(url: ParseResult, method: str,
         query = urlencode(params)
         path += '%s' % query if '?' in path else '?%s' % query
     get_base = '%s %s HTTP/1.1%s' % (method, path, _NEW_LINE)
+
+    port = url.port or (
+        443 if url.scheme == 'https' else 80)
+    hostname = url.hostname
+
+    if port != 80:
+        hostname += ':' + str(port)
+
     headers_base = {
-        'HOST': url.hostname,
+        'HOST': hostname,
         'Connection': 'keep-alive',
         'User-Agent': 'aioload/%s' % VERSION
     }
@@ -245,7 +253,7 @@ async def _send_chunks(connection: Connection, body: BodyType):
         for chunk in body:
             _handle_chunk(chunk, connection)
     else:
-        raise Exception('wrong body param.')
+        raise ValueError('wrong body param.')
 
     if not connection.writer:
         raise MissingWriterException('missing writer in connection')
@@ -300,7 +308,46 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl)
-        response = await _write_and_read(headers_data, connection, body)
+        to_send = headers_data.encode()
+
+        if not connection.writer or not connection.reader:
+            raise ConnectionError('Not connection writer or reader')
+        connection.writer.write(to_send)
+
+        if body:
+            if isinstance(body, (AsyncIterator, Iterator)):
+                await _send_chunks(connection, body)
+            else:
+                connection.writer.write(body)
+
+        response = HttpResponse()
+
+        # get response code and version
+        response.set_response_initial(await connection.reader.readline())
+
+        res_data = None
+        # reading headers
+        while True:
+            res_data = await connection.reader.readline()
+            if b': ' not in res_data:
+                break
+            response._set_header(*HttpHeaders._clear_line(res_data))
+
+        size = response.headers.get(b'content-length')
+        chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
+        keepalive = b'close' not in response.headers.get(b'connection', b'')
+        response.compressed = response.headers.get(b'content-encoding', '')
+
+        if size:
+            response._set_body(await connection.reader.read(int(size)))
+
+        if chunked:
+            connection.block_until_read_chunks()
+            response.chunked = True
+
+        if keepalive:
+            connection.keep_alive()
+            response._set_connection(connection)
         return response
 
 
@@ -449,51 +496,3 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
             raise
         except futures._base.TimeoutError:
             raise RequestTimeout()
-
-
-async def _write_and_read(
-        headers_data: str,
-        connection: Connection,
-        body: Optional[ParsedBodyType]) -> HttpResponse:
-    """Do Request-Response flow."""
-    to_send = headers_data.encode()
-
-    if not connection.writer or not connection.reader:
-        raise ConnectionError('Not connection writer or reader')
-    connection.writer.write(to_send)
-
-    if body:
-        if isinstance(body, (AsyncIterator, Iterator)):
-            await _send_chunks(connection, body)
-        else:
-            connection.writer.write(body)
-
-    response = HttpResponse()
-
-    # get response code and version
-    response.set_response_initial(await connection.reader.readline())
-
-    res_data = None
-    # reading headers
-    while True:
-        res_data = await connection.reader.readline()
-        if b': ' not in res_data:
-            break
-        response._set_header(*HttpHeaders._clear_line(res_data))
-
-    size = response.headers.get(b'content-length')
-    chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
-    keepalive = b'close' not in response.headers.get(b'connection', b'')
-    response.compressed = response.headers.get(b'content-encoding', '')
-
-    if size:
-        response._set_body(await connection.reader.read(int(size)))
-
-    if chunked:
-        connection.block_until_read_chunks()
-        response.chunked = True
-
-    if keepalive:
-        connection.keep_alive()
-        response._set_connection(connection)
-    return response

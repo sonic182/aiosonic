@@ -4,6 +4,7 @@ import gzip
 import ssl
 import zlib
 
+import aiohttp
 from aiohttp import web
 import pytest
 
@@ -90,10 +91,29 @@ async def chunked_response(request):
     return response
 
 
+async def do_redirect(request):
+    """Sample router."""
+    raise web.HTTPFound('/')
+
+
+async def do_redirect_full_url(request: aiohttp.web.Request):
+    """Sample router."""
+    url = '{}://{}/'.format(request.scheme, request.host)
+    raise web.HTTPFound(url)
+
+
+async def max_redirects(request):
+    """Sample router."""
+    raise web.HTTPFound('/max_redirects')
+
+
 def get_app():
     """Get aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
+    application.router.add_get('/get_redirect', do_redirect)
+    application.router.add_get('/get_redirect_full', do_redirect_full_url)
+    application.router.add_get('/max_redirects', max_redirects)
     application.router.add_get('/gzip', hello_gzip)
     application.router.add_get('/deflate', hello_deflate)
     application.router.add_get('/chunked', chunked_response)

@@ -33,13 +33,15 @@ aiosonic is 560.17% faster than httpx
 
 # Features:
 
-* Keepalive and pool of connections
+* Keepalive and smart pool of connections
 * Multipart File Uploads
 * Chunked responses handling
 * Chunked requests
 * Connection Timeouts
 * Automatic Decompression
 * Follow Redirects
+* Fully type annotated.
+* 100% test coverage.
 
 # TODO
 

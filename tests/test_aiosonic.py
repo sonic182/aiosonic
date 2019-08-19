@@ -7,10 +7,14 @@ import pytest
 import aiosonic
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import RequestTimeout
+from aiosonic.exceptions import MaxRedirects
+from aiosonic.exceptions import HttpParsingError
+from aiosonic.exceptions import MissingWriterException
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
 from aiosonic.pools import CyclicQueuePool
 from aiosonic import _get_url_parsed
+from aiosonic import HttpResponse
 
 
 @pytest.mark.asyncio
@@ -420,3 +424,105 @@ async def test_close_old_keeped_conn(app, aiohttp_server):
     assert is_closing()
     await server1.close()
     await server2.close()
+
+
+@pytest.mark.asyncio
+async def test_get_redirect(app, aiohttp_server):
+    """Test follow redirect."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/get_redirect' % server.port
+
+    res = await aiosonic.get(url)
+    assert res.status_code == 302
+
+    res = await aiosonic.get(url, follow=True)
+    assert res.status_code == 200
+    assert await res.content() == b'Hello, world'
+    assert await res.text() == 'Hello, world'
+
+    url = 'http://localhost:%d/get_redirect_full' % server.port
+    res = await aiosonic.get(url, follow=True)
+    assert res.status_code == 200
+
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_max_redirects(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/max_redirects' % server.port
+
+    with pytest.raises(MaxRedirects):
+        await aiosonic.get(url, follow=True)
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_parse_response_line():
+    """Test parsing response line"""
+    response = HttpResponse()
+    response.set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_parse_bad_response_line():
+    """Test parsing bad response line"""
+    with pytest.raises(HttpParsingError):
+        HttpResponse().set_response_initial(b'foo bar baz')
+
+
+@pytest.mark.asyncio
+async def test_handle_bad_chunk(mocker):
+    """Test handling chunks in chunked request"""
+    with pytest.raises(MissingWriterException):
+        conn = mocker.MagicMock()
+        conn.writer = None
+        aiosonic._handle_chunk(b'foo', conn)
+
+
+@pytest.mark.asyncio
+async def test_sending_chunks_with_error(mocker):
+    """Sending bad chunck data type."""
+    conn = mocker.MagicMock()
+    conn.writer = None
+    mocker.patch('aiosonic._handle_chunk')
+
+    def chunks_data():
+        yield b'foo'
+
+    with pytest.raises(MissingWriterException):
+        await aiosonic._send_chunks(conn, chunks_data())
+
+    with pytest.raises(ValueError):
+        await aiosonic._send_chunks(conn, {})
+
+
+@pytest.mark.asyncio
+async def test_connection_error(mocker):
+    """Connection error check."""
+    acquire = mocker.patch('aiosonic.TCPConnector.acquire')
+    connector = mocker.MagicMock()
+
+    async def connect(*args, **kwargs):
+        return None, None
+
+    async def get_conn(*args, **kwargs):
+        conn = Connection(connector)
+        conn.connect = connect
+        conn.writer = None
+        return conn
+    acquire.return_value = get_conn()
+    connector.release.return_value = asyncio.Future()
+    connector.release.return_value.set_result(True)
+
+    with pytest.raises(ConnectionError):
+        await aiosonic.get('foo')
+
+
+@pytest.mark.asyncio
+async def test_request_multipart_value_error(mocker):
+    """Connection error check."""
+    with pytest.raises(ValueError):
+        await aiosonic.post('foo', data=b'foo', multipart=True)
