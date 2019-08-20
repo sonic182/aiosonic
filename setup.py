@@ -34,7 +34,7 @@ setup(
         'aiosonic_utils',
     ],
     classifiers=[
-        # 'Development Status :: 5 - Production/Stable',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Topic :: Software Development',
         'License :: OSI Approved :: MIT License',
@@ -43,7 +43,6 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     setup_requires=['pytest-runner'],
-    test_requires=['pytest'],
     install_requires=requirements('./requirements.txt'),
     extras_require={
         'test': requirements('./test-requirements.txt')
