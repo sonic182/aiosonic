@@ -1,38 +1,108 @@
-.. aiosonic documentation master file, created by
-   sphinx-quickstart on Sun Aug  4 20:11:31 2019.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
 
-Welcome to aiosonic's documentation!
-====================================
+===================
+Welcome to aiosonic
+===================
 
-.. .. toctree::
-..    :maxdepth: 2
-..    :caption: Contents:
+Really Fast asynchronus HTTP 1.1 client,  Support for http 2.0 is planned.
+
+Current version is |release|.
+
+Repo is hosted at Github_.
+
+.. _GitHub: https://github.com/sonic182/aiosonic
 
 
-Methods
+Features
+========
+
+- Keepalive and Smart Pool of Connections
+- Multipart File Uploads
+- Chunked responses handling
+- Chunked requests
+- Fully type annotated.
+- Connection Timeouts
+- Automatic Decompression
+- Follow Redirects
+- 100% test coverage.
+
+
+
+Requirements
+============
+
+- Python>=3.6
+
+Install
 =======
 
-.. autofunction:: aiosonic.get
-.. autofunction:: aiosonic.post
-.. autofunction:: aiosonic.put
-.. autofunction:: aiosonic.patch
-.. autofunction:: aiosonic.delete
-.. autofunction:: aiosonic.request
+.. code-block:: bash
 
-.. autoclass:: aiosonic.HttpHeaders
-   :members:
+   $ pip install aiosonic
 
-.. autoclass:: aiosonic.HttpResponse
-   :members:
+.. You may want to install *optional* :term:`cchardet` library as faster
+   replacement for :term:`chardet`:
 
 
-Types
-=====
+Getting Started
+===============
 
-.. autodata:: aiosonic.DataType
-.. autodata:: aiosonic.HeadersType
+.. code-block::
+
+    import asyncio
+    import aiosonic
+    import json
+    
+    
+    async def run():
+        """Start."""
+        response = await aiosonic.get('https://www.google.com/')
+        assert response.status_code == 200
+        assert b'Google' in (await response.content())
+    
+        url = "https://postman-echo.com/post"
+        posted_data = {'foo': 'bar'}
+        response = await aiosonic.post(url, data=posted_data)
+    
+        assert response.status_code == 200
+        data = json.loads(await response.content())
+        assert data['form'] == posted_data
+        print('success')
+    
+    
+    if __name__ == '__main__':
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(run())
+
+Benchmarks
+==========
+
+The numbers speak for themselves
+
+.. code-block:: bash
+
+ $ python tests/performance.py
+ doing tests...
+ {
+  "aiohttp": "1000 requests in 247.47 ms",
+  "requests": "1000 requests in 3625.10 ms",
+  "aiosonic": "1000 requests in 80.09 ms",
+  "aiosonic cyclic": "1000 requests in 128.71 ms",
+  "httpx": "1000 requests in 528.73 ms"
+ }
+ aiosonic is 209.00% faster than aiohttp
+ aiosonic is 4426.34% faster than requests
+ aiosonic is 60.70% faster than aiosonic cyclic
+ aiosonic is 560.17% faster than httpx
+
+
+Contributing
+============
+
+1. Fork
+2. create a branch `feature/your_feature`
+3. commit - push - pull request
+
+Thanks :)
 
 
 Indices and tables
@@ -41,3 +111,11 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+.. toctree::
+   :maxdepth: 2
+
+   index
+   examples
+   reference

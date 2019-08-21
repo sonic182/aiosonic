@@ -67,13 +67,9 @@ async def run():
     print('success')
 
 
-def start():
+if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run())
-
-
-if __name__ == '__main__':
-    start()
 ```
 
 # TODO
