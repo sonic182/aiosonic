@@ -4,3 +4,4 @@
 #
 #    pip-compile requirements.in
 #
+chardet==3.0.4

@@ -3,6 +3,7 @@
 import asyncio
 import random
 import re
+import codecs
 from concurrent import futures
 from json import dumps
 from ssl import SSLContext
@@ -24,6 +25,8 @@ from typing import Tuple
 from typing import Optional
 from typing import Sequence
 
+import chardet
+
 from aiosonic_utils.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
@@ -36,9 +39,16 @@ from aiosonic.exceptions import MissingWriterException
 from aiosonic.exceptions import MaxRedirects
 
 
+try:
+    import cchardet as chardet
+except Exception:
+    pass
+
+
 # VARIABLES
-HTTP_RESPONSE_STATUS_LINE = (r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) '
-                             r'(?P<reason>[\w]*)')
+_HTTP_RESPONSE_STATUS_LINE = re.compile(
+    r'HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)')
+_CHARSET_RGX = re.compile(r'charset=(?P<charset>[\w-]*);?')
 _CACHE: Dict[str, Any] = {}
 _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
@@ -116,7 +126,7 @@ class HttpResponse:
 
     def set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
-        res = re.match(HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
+        res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
         if not res:
             raise HttpParsingError('response line parsing error')
         self.response_initial = res.groupdict()
@@ -143,6 +153,31 @@ class HttpResponse:
         else:
             self.body += data
 
+    def _get_encoding(self) -> str:
+        ctype = self.headers.get('content-type', '').lower()
+        res = re.findall(_CHARSET_RGX, ctype)
+        encoding = ''
+
+        if res:
+            encoding = res[0]
+
+        if encoding:
+            try:
+                codecs.lookup(encoding)
+            except LookupError:
+                encoding = ''
+
+        if not encoding:
+            if 'application' in ctype and 'json' in ctype:
+                # RFC 7159 states that the default encoding is UTF-8.
+                encoding = 'utf-8'
+            else:
+                encoding = chardet.detect(self.body)['encoding']
+        if not encoding:
+            encoding = 'utf-8'
+
+        return encoding
+
     async def content(self) -> bytes:
         """Read response body."""
         if self.chunked and not self.body:
@@ -154,7 +189,10 @@ class HttpResponse:
 
     async def text(self) -> str:
         """Read response body."""
-        return (await self.content()).decode()
+        body = await self.content()
+        encoding = self._get_encoding()
+        return (body).decode(encoding)
+        # return (await self.content()).decode()
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
