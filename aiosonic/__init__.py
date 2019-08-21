@@ -25,8 +25,6 @@ from typing import Tuple
 from typing import Optional
 from typing import Sequence
 
-import chardet
-
 from aiosonic_utils.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
 from aiosonic.connectors import TCPConnector
@@ -40,8 +38,9 @@ from aiosonic.exceptions import MaxRedirects
 
 
 try:
+    import chardet
     import cchardet as chardet
-except Exception:
+except ImportError:
     pass
 
 
