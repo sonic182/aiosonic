@@ -7,7 +7,7 @@ from datetime import timedelta
 import json
 import random
 from time import sleep
-import httpx
+
 from urllib.request import urlopen
 from urllib.error import URLError
 
@@ -17,6 +17,7 @@ from uvicorn.main import Server
 from uvicorn.main import Config
 
 import aiohttp
+import httpx
 import requests
 
 import aiosonic
@@ -139,11 +140,11 @@ def do_tests(url):
     res5 = loop.run_until_complete(performance_httpx(
         url, concurrency))
     print(json.dumps({
-        'aiohttp': '1000 requests in %.2f ms' % res1,
-        'requests': '1000 requests in %.2f ms' % res3,
         'aiosonic': '1000 requests in %.2f ms' % res2,
         'aiosonic cyclic': '1000 requests in %.2f ms' % res4,
+        'aiohttp': '1000 requests in %.2f ms' % res1,
         'httpx': '1000 requests in %.2f ms' % res5,
+        'requests': '1000 requests in %.2f ms' % res3,
     }, indent=True))
     print('aiosonic is %.2f%% faster than aiohttp' % (
         ((res1 / res2) - 1) * 100))
@@ -153,6 +154,13 @@ def do_tests(url):
         ((res4 / res2) - 1) * 100))
     print('aiosonic is %.2f%% faster than httpx' % (
         ((res5 / res2) - 1) * 100))
+    return [
+        ['aiohttp', res1],
+        ['aiosonic', res2],
+        ['requests', res3],
+        ['aiosonic_cyclic', res4],
+        ['httpx', res5],
+    ]
 
 
 def start_server(port):
@@ -179,9 +187,11 @@ def main():
             if datetime.now() > max_wait:
                 raise
     try:
-        do_tests(url)
+        res = do_tests(url)
+        assert 'aiosonic' in sorted(res, key=lambda x: x[1])[0][0]
     finally:
         process.terminate()
 
 
-main()
+if __name__ == '__main__':
+    main()

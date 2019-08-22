@@ -14,9 +14,15 @@ help:
 
 test:
 	echo "TEST PYTHON 3.6"
-	docker run -it --rm -v $(shell pwd):/app python:3.6 bash -l -c "cd /root && cp -r /app/* . && pip install -e \".[test]\" && pytest"
+	docker run -it --rm -v $(shell pwd):/app python:3.6 bash -l -c "cd /root && cp -r /app/* . && pip install -r requirements.txt && pip install -e \".[test]\" && pytest"
 	echo "TEST PYTHON 3.7"
-	docker run -it --rm -v $(shell pwd):/app python:3.7 bash -l -c "cd /root && cp -r /app/* . && pip install -e \".[test]\" && pytest"
+	docker run -it --rm -v $(shell pwd):/app python:3.7 bash -l -c "cd /root && cp -r /app/* . && pip install -r requirements.txt && pip install -e \".[test]\" && pytest"
+
+clear:
+	-rm -r $(shell find . -name __pycache__) build dist .mypy_cache aiosonic.egg-info .eggs
+
+build: clear
+	python setup.py sdist bdist_wheel
 
 .PHONY: help Makefile
 
