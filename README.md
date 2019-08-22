@@ -55,15 +55,24 @@ async def run():
     """Start."""
     response = await aiosonic.get('https://www.google.com/')
     assert response.status_code == 200
-    assert b'Google' in (await response.content())
+    assert 'Google' in (await response.text())
 
     url = "https://postman-echo.com/post"
     posted_data = {'foo': 'bar'}
+
+    # post data as multipart form
     response = await aiosonic.post(url, data=posted_data)
 
     assert response.status_code == 200
     data = json.loads(await response.content())
     assert data['form'] == posted_data
+
+    # posted as json
+    response = await aiosonic.post(url, json=posted_data)
+
+    assert response.status_code == 200
+    data = json.loads(await response.content())
+    assert data['json'] == posted_data
     print('success')
 
 

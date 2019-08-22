@@ -64,25 +64,34 @@
 </div>
 <div class="section" id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
 <span class="kn">import</span> <span class="nn">aiosonic</span>
 <span class="kn">import</span> <span class="nn">json</span>
 
 
-<span class="k">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+<span class="n">async</span> <span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;Start.&quot;&quot;&quot;</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">aiosonic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com/&#39;</span><span class="p">)</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">await</span> <span class="n">aiosonic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;https://www.google.com/&#39;</span><span class="p">)</span>
     <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
-    <span class="k">assert</span> <span class="sa">b</span><span class="s1">&#39;Google&#39;</span> <span class="ow">in</span> <span class="p">(</span><span class="k">await</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">())</span>
+    <span class="k">assert</span> <span class="s1">&#39;Google&#39;</span> <span class="ow">in</span> <span class="p">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">())</span>
 
     <span class="n">url</span> <span class="o">=</span> <span class="s2">&quot;https://postman-echo.com/post&quot;</span>
     <span class="n">posted_data</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;foo&#39;</span><span class="p">:</span> <span class="s1">&#39;bar&#39;</span><span class="p">}</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">aiosonic</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">posted_data</span><span class="p">)</span>
+
+    <span class="c1"># post data as multipart form</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">await</span> <span class="n">aiosonic</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">posted_data</span><span class="p">)</span>
 
     <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
-    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="k">await</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">())</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">())</span>
     <span class="k">assert</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;form&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">posted_data</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">)</span>
+
+    <span class="c1"># posted as json</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">await</span> <span class="n">aiosonic</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">posted_data</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">())</span>
+    <span class="k">assert</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;json&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">posted_data</span>
+    <span class="k">print</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">)</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>

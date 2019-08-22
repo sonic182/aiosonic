@@ -46,32 +46,41 @@ Install
 Getting Started
 ===============
 
-.. code-block::
+.. code-block::  python
 
-    import asyncio
-    import aiosonic
-    import json
-    
-    
-    async def run():
-        """Start."""
-        response = await aiosonic.get('https://www.google.com/')
-        assert response.status_code == 200
-        assert b'Google' in (await response.content())
-    
-        url = "https://postman-echo.com/post"
-        posted_data = {'foo': 'bar'}
-        response = await aiosonic.post(url, data=posted_data)
-    
-        assert response.status_code == 200
-        data = json.loads(await response.content())
-        assert data['form'] == posted_data
-        print('success')
-    
-    
-    if __name__ == '__main__':
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(run())
+  import asyncio
+  import aiosonic
+  import json
+  
+  
+  async def run():
+      """Start."""
+      response = await aiosonic.get('https://www.google.com/')
+      assert response.status_code == 200
+      assert 'Google' in (await response.text())
+  
+      url = "https://postman-echo.com/post"
+      posted_data = {'foo': 'bar'}
+  
+      # post data as multipart form
+      response = await aiosonic.post(url, data=posted_data)
+  
+      assert response.status_code == 200
+      data = json.loads(await response.content())
+      assert data['form'] == posted_data
+  
+      # posted as json
+      response = await aiosonic.post(url, json=posted_data)
+  
+      assert response.status_code == 200
+      data = json.loads(await response.content())
+      assert data['json'] == posted_data
+      print('success')
+  
+  
+  if __name__ == '__main__':
+      loop = asyncio.get_event_loop()
+      loop.run_until_complete(run())
 
 Benchmarks
 ==========
