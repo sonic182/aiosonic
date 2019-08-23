@@ -40,6 +40,11 @@ steps:
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
       pip install -e ".[test]"
-      pytest --cov=aiosonic -n auto
-      coveralls
+      pytest --cov=aiosonic -n auto --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
     displayName: 'Run tests'
+
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFiles: '**/test-*.xml'
+      testRunTitle: 'Publish test results in $(imageName) for Python $(python.version)'
