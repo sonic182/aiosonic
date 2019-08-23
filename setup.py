@@ -20,6 +20,29 @@ def requirements(filename):
     return re.findall(RGX, read_file(filename)) or []
 
 
+# copied form uvicorn, mark to not install uvloop in windows
+env_marker = (
+    "sys_platform != 'win32'"
+    " and sys_platform != 'cygwin'"
+    " and platform_python_implementation != 'pypy'"
+)
+
+
+def add_marks(dependencies, marks):
+    """Add markers to dependencies.
+
+    Example:
+        uvloop==0.12.0 -> uvloop==0.12.0 ; sys_platform != 'win32'...
+    """
+    def _map_func(dependency):
+        for item, marker in marks.items():
+            if item in dependency:
+                return dependency + marker
+        return dependency
+
+    return list(map(_map_func, dependencies))
+
+
 setup(
     name='aiosonic',
     version=VERSION,
@@ -45,6 +68,12 @@ setup(
     setup_requires=['pytest-runner'],
     install_requires=requirements('./requirements.txt'),
     extras_require={
-        'test': requirements('./test-requirements.txt')
+        'test': add_marks(
+            requirements('./test-requirements.txt'),
+            {
+                'uvloop': ' ;' + env_marker,
+                'httptools': ' ;' + env_marker,
+            }
+        )
     }
 )
