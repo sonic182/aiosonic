@@ -40,5 +40,6 @@ steps:
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
       pip install -e ".[test]"
-      py.test -n auto
+      pytest --cov=aiosonic -n auto
+      coveralls
     displayName: 'Run tests'
