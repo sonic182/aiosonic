@@ -22,4 +22,4 @@ steps:
       pip install -r requirements.txt
       pip install -e ".[test]"
       py.test -n auto
-  displayName: 'Run tests'
+    displayName: 'Run tests'
