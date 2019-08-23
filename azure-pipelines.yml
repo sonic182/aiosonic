@@ -6,21 +6,14 @@ pool:
 
 strategy:
   matrix:
-    Python27:
-      python.version: '2.7'
     Python35:
       python.version: '3.5'
     Python36:
       python.version: '3.6'
 
 steps:
-- script: python -m pip install --upgrade pip setuptools wheel
-  displayName: 'Install tools'
-
-- script: pip install -e ".[test]"
-  displayName: 'Install requirements'
-
 - script: |
+    python -m pip install --upgrade pip setuptools wheel
     pip install -r requirements.txt
     pip install -e ".[test]"
     py.test -n auto
