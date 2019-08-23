@@ -3,22 +3,32 @@ trigger:
 
 strategy:
   matrix:
-    linux:
+    Python36-ubuntu:
+      python.version: '3.6'
       imageName: 'ubuntu-latest'
-    mac:
+
+    Python37-ubuntu:
+      python.version: '3.7'
+      imageName: 'ubuntu-latest'
+
+    Python36-macos:
+      python.version: '3.6'
       imageName: 'macOS-latest'
-    windows:
+
+    Python37-maOS:
+      python.version: '3.7'
+      imageName: 'macOS-latest'
+
+    Python36-windows:
+      python.version: '3.6'
+      imageName: 'windows-latest'
+
+    Python37-windows:
+      python.version: '3.7'
       imageName: 'windows-latest'
 
 pool:
   vmImage: $(imageName)
-
-strategy:
-  matrix:
-    Python36:
-      python.version: '3.6'
-    Python37:
-      python.version: '3.7'
 
 steps:
   - task: UsePythonVersion@0
