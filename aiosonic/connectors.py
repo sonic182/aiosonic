@@ -29,6 +29,10 @@ class TCPConnector:
 
     async def acquire(self, urlparsed: ParseResult):
         """Acquire connection."""
+        # Faster without timeout
+        if not self.timeouts.pool_acquire:
+            return await self.pool.acquire(urlparsed)
+
         try:
             return await asyncio.wait_for(
                 self.pool.acquire(urlparsed),
