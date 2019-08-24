@@ -110,8 +110,8 @@ async def max_redirects(request):
 
 async def slow_request(request):
     """Sample router."""
-    await asyncio.sleep(3)
-    raise web.Response(text='foo')
+    await asyncio.sleep(1)
+    return web.Response(text='foo')
 
 
 def get_app():

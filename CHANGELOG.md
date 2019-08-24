@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Json parsing with HttpResponse method
+- More Timeouts options
+- Timeouts overwritable by requests call
 
 ## [0.3.1] 2019-08-23
 ### Fixed

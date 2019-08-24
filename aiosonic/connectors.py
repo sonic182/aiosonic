@@ -50,12 +50,12 @@ class Connection:
         self.blocked = False
 
     async def connect(self, urlparsed: ParseResult, verify: bool,
-                      ssl_context: SSLContext):
+                      ssl_context: SSLContext, timeouts: Timeouts):
         """Connet with timeout."""
         try:
             await asyncio.wait_for(
                 self._connect(urlparsed, verify, ssl_context),
-                timeout=self.timeouts.sock_connect
+                timeout=(timeouts or self.timeouts).sock_connect
             )
         except futures._base.TimeoutError:
             raise ConnectTimeout()

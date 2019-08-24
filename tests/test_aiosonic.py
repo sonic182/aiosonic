@@ -236,6 +236,25 @@ async def test_read_timeout(app, aiohttp_server, mocker):
 
 
 @pytest.mark.asyncio
+async def test_timeouts_overriden(app, aiohttp_server, mocker):
+    """Test timeouts overriden."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/slow_request' % server.port
+
+    # request takes 1s so this timeout should not be applied
+    # instead the one provided by request call
+    connector = TCPConnector(timeouts=Timeouts(sock_read=2))
+
+    response = await aiosonic.get(url, connector=connector)
+    assert response.status_code == 200
+
+    with pytest.raises(ReadTimeout):
+        await aiosonic.get(url, connector=connector,
+                           timeouts=Timeouts(sock_read=0.3))
+    await server.close()
+
+
+@pytest.mark.asyncio
 async def test_request_timeout(app, aiohttp_server, mocker):
     """Test request timeout."""
     server = await aiohttp_server(app)
