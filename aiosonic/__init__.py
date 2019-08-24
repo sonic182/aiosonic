@@ -34,6 +34,7 @@ from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
 from aiosonic.utils import cache_decorator
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import ReadTimeout
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
@@ -367,7 +368,15 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
         response = HttpResponse()
 
         # get response code and version
-        response._set_response_initial(await connection.reader.readline())
+        try:
+            response._set_response_initial(
+                await asyncio.wait_for(
+                    connection.reader.readline(),
+                    connector.timeouts.sock_read
+                )
+            )
+        except futures._base.TimeoutError:
+            raise ReadTimeout()
 
         res_data = None
         # reading headers
@@ -515,7 +524,7 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                 _do_request(
                     urlparsed, headers_data, connector, body, verify, ssl,
                     follow),
-                timeout=connector.request_timeout
+                timeout=connector.timeouts.request_timeout
             )
 
             if follow and response.status_code in {301, 302}:

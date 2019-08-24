@@ -1,17 +1,20 @@
 
-from concurrent import futures
-
 
 # General
 class MissingWriterException(Exception):
     pass
 
+
 # timeouts
-class BaseTimeout(futures._base.TimeoutError):
+class BaseTimeout(Exception):
     pass
 
 
 class ConnectTimeout(BaseTimeout):
+    pass
+
+
+class ReadTimeout(BaseTimeout):
     pass
 
 

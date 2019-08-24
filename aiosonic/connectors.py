@@ -12,19 +12,19 @@ from urllib.parse import ParseResult
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.pools import SmartPool
+from aiosonic.timeout import Timeouts
 
 
 class TCPConnector:
 
-    def __init__(self, pool_size=25, request_timeout=27, connect_timeout=3,
+    def __init__(self, pool_size: int = 25, timeouts: Timeouts = None,
                  connection_cls=None, pool_cls=None):
         """Initialize."""
         self.pool_size = pool_size
-        self.request_timeout = request_timeout
-        self.connect_timeout = connect_timeout
         connection_cls = connection_cls or Connection
         pool_cls = pool_cls or SmartPool
         self.pool = pool_cls(self, pool_size, connection_cls)
+        self.timeouts = timeouts or Timeouts()
 
     async def acquire(self, urlparsed: ParseResult):
         """Acquire connection."""
@@ -55,7 +55,7 @@ class Connection:
         try:
             await asyncio.wait_for(
                 self._connect(urlparsed, verify, ssl_context),
-                timeout=self.connector.connect_timeout
+                timeout=self.timeouts.sock_connect
             )
         except futures._base.TimeoutError:
             raise ConnectTimeout()
@@ -70,7 +70,7 @@ class Connection:
             is_closing = getattr(
                 self.writer, 'is_closing', self.writer._transport.is_closing)
         else:
-            is_closing = lambda: True  # noqa
+            def is_closing(): return True  # noqa
 
         if not (self.key and key == self.key and not is_closing()):
             if self.writer:
@@ -119,6 +119,10 @@ class Connection:
     async def release(self):
         """Release connection."""
         await self.connector.release(self)
+
+    @property
+    def timeouts(self) -> Timeouts:
+        return self.connector.timeouts
 
     def __del__(self):
         """Cleanup."""

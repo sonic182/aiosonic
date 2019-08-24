@@ -1,5 +1,6 @@
 """Fixtures and more."""
 
+import asyncio
 import gzip
 import ssl
 import zlib
@@ -107,6 +108,12 @@ async def max_redirects(request):
     raise web.HTTPFound('/max_redirects')
 
 
+async def slow_request(request):
+    """Sample router."""
+    await asyncio.sleep(3)
+    raise web.Response(text='foo')
+
+
 def get_app():
     """Get aiohttp app."""
     application = web.Application()
@@ -117,6 +124,7 @@ def get_app():
     application.router.add_get('/gzip', hello_gzip)
     application.router.add_get('/deflate', hello_deflate)
     application.router.add_get('/chunked', chunked_response)
+    application.router.add_get('/slow_request', slow_request)
     application.router.add_post('/post', hello_post)
     application.router.add_post('/post_json', hello_post_json)
     application.router.add_put('/put_patch', put_patch_handler)
