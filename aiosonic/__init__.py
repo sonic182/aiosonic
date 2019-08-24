@@ -6,6 +6,7 @@ import re
 import codecs
 from concurrent import futures
 from json import dumps
+from json import loads
 from ssl import SSLContext
 import gzip
 import zlib
@@ -124,7 +125,7 @@ class HttpResponse:
         self.compressed = b''
         self.chunks_readed = False
 
-    def set_response_initial(self, data: bytes):
+    def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
         res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip())
         if not res:
@@ -176,7 +177,7 @@ class HttpResponse:
         if not encoding:
             encoding = 'utf-8'
 
-        return encoding
+        return encoding.lower()
 
     async def content(self) -> bytes:
         """Read response body."""
@@ -192,7 +193,12 @@ class HttpResponse:
         body = await self.content()
         encoding = self._get_encoding()
         return (body).decode(encoding)
-        # return (await self.content()).decode()
+
+    async def json(self, json_decoder=loads) -> dict:
+        """Read response body."""
+        assert 'application/json' in self.headers['content-type'].lower()
+        body = await self.content()
+        return json_decoder(body)
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
@@ -361,7 +367,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: str,
         response = HttpResponse()
 
         # get response code and version
-        response.set_response_initial(await connection.reader.readline())
+        response._set_response_initial(await connection.reader.readline())
 
         res_data = None
         # reading headers

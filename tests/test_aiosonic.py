@@ -461,14 +461,14 @@ async def test_max_redirects(app, aiohttp_server):
 def test_parse_response_line():
     """Test parsing response line"""
     response = HttpResponse()
-    response.set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
     assert response.status_code == 200
 
 
 def test_parse_bad_response_line():
     """Test parsing bad response line"""
     with pytest.raises(HttpParsingError):
-        HttpResponse().set_response_initial(b'foo bar baz')
+        HttpResponse()._set_response_initial(b'foo bar baz')
 
 
 def test_handle_bad_chunk(mocker):
@@ -528,7 +528,7 @@ async def test_request_multipart_value_error(mocker):
 def test_encoding_from_header():
     """Test use encoder from header."""
     response = HttpResponse()
-    response.set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
     response._set_header('content-type', 'text/html; charset=utf-8')
     response.body = b'foo'
     assert response._get_encoding() == 'utf-8'
@@ -538,3 +538,13 @@ def test_encoding_from_header():
 
     response._set_header('content-type', 'text/html; charset=weirdencoding')
     assert response._get_encoding() == 'ascii'
+
+
+@pytest.mark.asyncio
+async def test_json_response_parsing():
+    """Test json response parsing."""
+    response = HttpResponse()
+    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    response._set_header('content-type', 'application/json; charset=utf-8')
+    response.body = b'{"foo": "bar"}'
+    assert (await response.json()) == {'foo': 'bar'}
