@@ -15,10 +15,17 @@ Methods
 .. autofunction:: aiosonic.delete
 .. autofunction:: aiosonic.request
 
+
+Classes
+=======
+
 .. autoclass:: aiosonic.HttpHeaders
    :members:
 
 .. autoclass:: aiosonic.HttpResponse
+   :members:
+
+.. autoclass:: aiosonic.timeout.Timeouts
    :members:
 
 
