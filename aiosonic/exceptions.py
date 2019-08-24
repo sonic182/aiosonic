@@ -22,6 +22,10 @@ class RequestTimeout(BaseTimeout):
     pass
 
 
+class ConnectionPoolAcquireTimeout(BaseTimeout):
+    pass
+
+
 # parsing
 class HttpParsingError(Exception):
     pass

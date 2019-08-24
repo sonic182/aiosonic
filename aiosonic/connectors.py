@@ -11,6 +11,7 @@ from urllib.parse import ParseResult
 
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.pools import SmartPool
 from aiosonic.timeout import Timeouts
 
@@ -28,7 +29,13 @@ class TCPConnector:
 
     async def acquire(self, urlparsed: ParseResult):
         """Acquire connection."""
-        return await self.pool.acquire(urlparsed)
+        try:
+            return await asyncio.wait_for(
+                self.pool.acquire(urlparsed),
+                self.timeouts.pool_acquire
+            )
+        except futures._base.TimeoutError:
+            raise ConnectionPoolAcquireTimeout()
 
     async def release(self, conn):
         """Acquire connection."""

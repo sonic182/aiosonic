@@ -11,6 +11,7 @@ from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import MaxRedirects
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.connectors import TCPConnector
 from aiosonic.connectors import Connection
 from aiosonic.pools import CyclicQueuePool
@@ -270,6 +271,24 @@ async def test_request_timeout(app, aiohttp_server, mocker):
         await aiosonic.get(
             url, connector=TCPConnector(
                 timeouts=Timeouts(request_timeout=0.2)))
+    await server.close()
+
+
+@pytest.mark.asyncio
+async def test_pool_acquire_timeout(app, aiohttp_server, mocker):
+    """Test pool acquirere timeout."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/slow_request' % server.port
+
+    connector = TCPConnector(
+        pool_size=1, timeouts=Timeouts(pool_acquire=0.3))
+
+    with pytest.raises(ConnectionPoolAcquireTimeout):
+        await asyncio.gather(
+            aiosonic.get(url, connector=connector),
+            aiosonic.get(url, connector=connector),
+        )
+    await server.close()
 
 
 @pytest.mark.asyncio
