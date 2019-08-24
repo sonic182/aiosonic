@@ -38,37 +38,37 @@
 <h2>Methods<a class="headerlink" href="#methods" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="aiosonic.get">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">get</code><span class="sig-paren">(</span><em class="sig-param">url: str, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.get" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">get</code><span class="sig-paren">(</span><em class="sig-param">url: str, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.get" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do get http request.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="aiosonic.post">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">post</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.post" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">post</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.post" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do post http request.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="aiosonic.put">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">put</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.put" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">put</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.put" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do put http request.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="aiosonic.patch">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">patch</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.patch" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">patch</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.patch" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do patch http request.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="aiosonic.delete">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">delete</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = b'', headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.delete" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">delete</code><span class="sig-paren">(</span><em class="sig-param">url: str, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = b'', headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, json: dict = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, connector: aiosonic.connectors.TCPConnector = None, json_serializer=&lt;function dumps&gt;, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.delete" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do delete http request.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="aiosonic.request">
-<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">request</code><span class="sig-paren">(</span><em class="sig-param">url: str, method: str = 'GET', headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, connector: aiosonic.connectors.TCPConnector = None, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.request" title="Permalink to this definition">¶</a></dt>
+<em class="property">async </em><code class="sig-prename descclassname">aiosonic.</code><code class="sig-name descname">request</code><span class="sig-paren">(</span><em class="sig-param">url: str, method: str = 'GET', headers: Union[Dict[str, str], aiosonic.HttpHeaders] = None, params: Union[Dict[str, str], Sequence[Tuple[str, str]]] = None, data: Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes]] = None, connector: aiosonic.connectors.TCPConnector = None, multipart: bool = False, verify: bool = True, ssl: ssl.SSLContext = None, timeouts: aiosonic.timeout.Timeouts = None, follow: bool = False</em><span class="sig-paren">)</span> &#x2192; aiosonic.HttpResponse<a class="headerlink" href="#aiosonic.request" title="Permalink to this definition">¶</a></dt>
 <dd><p>Do http request.</p>
 <p>Steps:</p>
 <ul class="simple">
@@ -97,15 +97,15 @@
 </dd></dl>
 
 <dl class="method">
-<dt id="aiosonic.HttpResponse.read_chunks">
-<code class="sig-name descname">read_chunks</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; AsyncIterator[bytes]<a class="headerlink" href="#aiosonic.HttpResponse.read_chunks" title="Permalink to this definition">¶</a></dt>
-<dd><p>Read chunks from chunked response.</p>
+<dt id="aiosonic.HttpResponse.json">
+<em class="property">async </em><code class="sig-name descname">json</code><span class="sig-paren">(</span><em class="sig-param">json_decoder=&lt;function loads&gt;</em><span class="sig-paren">)</span> &#x2192; dict<a class="headerlink" href="#aiosonic.HttpResponse.json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read response body.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="aiosonic.HttpResponse.set_response_initial">
-<code class="sig-name descname">set_response_initial</code><span class="sig-paren">(</span><em class="sig-param">data: bytes</em><span class="sig-paren">)</span><a class="headerlink" href="#aiosonic.HttpResponse.set_response_initial" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse first bytes from http response.</p>
+<dt id="aiosonic.HttpResponse.read_chunks">
+<code class="sig-name descname">read_chunks</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; AsyncIterator[bytes]<a class="headerlink" href="#aiosonic.HttpResponse.read_chunks" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read chunks from chunked response.</p>
 </dd></dl>
 
 <dl class="method">

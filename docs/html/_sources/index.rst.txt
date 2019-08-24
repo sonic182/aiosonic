@@ -55,6 +55,7 @@ Getting Started
   
   async def run():
       """Start."""
+      # Sample get request
       response = await aiosonic.get('https://www.google.com/')
       assert response.status_code == 200
       assert 'Google' in (await response.text())
@@ -75,12 +76,23 @@ Getting Started
       assert response.status_code == 200
       data = json.loads(await response.content())
       assert data['json'] == posted_data
+  
+      # Sample get request + timeout
+      from aiosonic.timeout import Timeouts
+      timeouts = Timeouts(
+          sock_read=10,
+          sock_connect=3
+      )
+      response = await aiosonic.get('https://www.google.com/', timeouts=timeouts)
+      assert response.status_code == 200
+      assert 'Google' in (await response.text())
+  
       print('success')
-  
-  
-  if __name__ == '__main__':
-      loop = asyncio.get_event_loop()
-      loop.run_until_complete(run())
+
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run())
 
 Benchmarks
 ==========
