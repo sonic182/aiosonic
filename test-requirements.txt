@@ -26,8 +26,7 @@ hstspreload==2019.8.20    # via httpx
 httptools==0.0.13         # via uvicorn
 httpx==0.7.1
 hyperframe==5.2.0         # via h2
-idna-ssl==1.1.0           # via aiohttp
-idna==2.8                 # via httpx, idna-ssl, requests, yarl
+idna==2.8                 # via httpx, requests, yarl
 importlib-metadata==0.19  # via pluggy, pytest
 mccabe==0.6.1             # via flake8
 more-itertools==7.2.0     # via pytest
@@ -47,7 +46,7 @@ pytest-django==3.5.1
 pytest-flake8==1.0.4
 pytest-forked==1.0.2      # via pytest-xdist
 pytest-mock==1.10.4
-pytest-mypy==0.3.3
+pytest-mypy==0.4.0
 pytest-sugar==0.9.2
 pytest-xdist==1.29.0
 pytest==5.1.1
@@ -58,7 +57,7 @@ six==1.12.0               # via packaging, pytest-xdist
 sqlparse==0.3.0           # via django
 termcolor==1.1.0          # via pytest-sugar
 typed-ast==1.4.0          # via mypy
-typing-extensions==3.7.4  # via aiohttp, mypy
+typing-extensions==3.7.4  # via mypy
 urllib3==1.25.3           # via requests
 uvicorn==0.8.6
 uvloop==0.12.2            # via uvicorn
