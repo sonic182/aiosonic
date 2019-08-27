@@ -104,13 +104,13 @@
     <span class="k">assert</span> <span class="s1">&#39;Google&#39;</span> <span class="ow">in</span> <span class="p">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="p">())</span>
 
     <span class="k">print</span><span class="p">(</span><span class="s1">&#39;success&#39;</span><span class="p">)</span>
+
+
+ <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+     <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+     <span class="n">loop</span><span class="o">.</span><span class="n">run_until_complete</span><span class="p">(</span><span class="n">run</span><span class="p">())</span>
 </pre></div>
 </div>
-<dl class="simple">
-<dt>if __name__ == ‘__main__’:</dt><dd><p>loop = asyncio.get_event_loop()
-loop.run_until_complete(run())</p>
-</dd>
-</dl>
 </div>
 <div class="section" id="benchmarks">
 <h2>Benchmarks<a class="headerlink" href="#benchmarks" title="Permalink to this headline">¶</a></h2>
