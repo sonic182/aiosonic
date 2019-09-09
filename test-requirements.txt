@@ -4,7 +4,7 @@
 #
 #    pip-compile test-requirements.in
 #
-aiohttp==3.5.4
+aiohttp==3.6.0
 apipkg==1.5               # via execnet
 async-timeout==3.0.1      # via aiohttp
 atomicwrites==1.3.0       # via pytest
@@ -59,9 +59,9 @@ termcolor==1.1.0          # via pytest-sugar
 typed-ast==1.4.0          # via mypy
 typing-extensions==3.7.4  # via mypy
 urllib3==1.25.3           # via requests
-uvicorn==0.8.6
+uvicorn==0.9.0
 uvloop==0.12.2            # via uvicorn
 wcwidth==0.1.7            # via pytest
-websockets==7.0           # via uvicorn
+websockets==8.0.2         # via uvicorn
 yarl==1.3.0               # via aiohttp
 zipp==0.5.2               # via importlib-metadata
