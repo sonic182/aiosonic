@@ -114,13 +114,17 @@ HeadersType = Union[Dict[str, str], HttpHeaders]
 
 
 class HttpResponse:
-    """HttpResponse.
+    """Custom HttpResponse class for handling responses.
 
-    Class for handling response.
+    Properties:
+      * status_code (int): response status code
+      * headers (HttpHeaders): headers in case insensitive dict
+      * raw_headers (Sequence[Tuple[bytes, bytes]]): headers as raw format
     """
 
     def __init__(self):
         self.headers = HttpHeaders()
+        self.raw_headers = []
         self.body = b''
         self.response_initial = None
         self.connection = None
@@ -135,16 +139,17 @@ class HttpResponse:
             raise HttpParsingError('response line parsing error')
         self.response_initial = res.groupdict()
 
-    def _set_header(self, key: str, val: str):
+    def _set_header(self, key: bytes, val: bytes):
         """Set header to response."""
         self.headers[key] = val
+        self.raw_headers.append((key, val))
 
     def _set_connection(self, connection: Connection):
         """Set header to response."""
         self.connection = connection
 
     @property
-    def status_code(self):
+    def status_code(self) -> int:
         """Get status code."""
         return int(self.response_initial['code'])
 
@@ -495,12 +500,19 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   follow: bool = False) -> HttpResponse:
     """Do http request.
 
-    Steps:
-
-    * Prepare request meta (headers)
-    * Open connection
-    * Send request data
-    * Wait for response data
+    Params:
+        * **url**: url of request
+        * **method**: Http method of request
+        * **headers**: headers to add in request
+        * **params**: query params to add in
+          request if not manually added
+        * **data**: Data to be sent, this param is ignored for get requests.
+        * **connector**: TCPConnector to be used if provided
+        * **multipart**: Tell aiosonic if request is multipart
+        * **verify**: parameter to indicate whether to verify ssl
+        * **ssl**: this parameter allows to specify a custom ssl context
+        * **timeouts**: parameter to indicate timeouts for request
+        * **follow**: parameter to indicate wether to follow redirects
     """
     if not connector:
         key = 'connector_base'

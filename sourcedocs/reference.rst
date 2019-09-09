@@ -8,12 +8,12 @@ TODO: get better this page
 Methods
 =======
 
+.. autofunction:: aiosonic.request
 .. autofunction:: aiosonic.get
 .. autofunction:: aiosonic.post
 .. autofunction:: aiosonic.put
 .. autofunction:: aiosonic.patch
 .. autofunction:: aiosonic.delete
-.. autofunction:: aiosonic.request
 
 
 Classes
