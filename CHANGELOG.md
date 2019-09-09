@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] 2019-09-10
+### Added
+- raw_headers to HttpResponse objects
+
+### Changed
+- skip timeout usage for pool_acquire when not specified
+
 ## [0.4.0] 2019-08-24
 ### Added
 - Json parsing with HttpResponse method
@@ -61,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.4.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.4.1..HEAD
+[0.4.1]: https://github.com/sonic182/aiosonic/compare/0.4.0..0.4.1
 [0.4.0]: https://github.com/sonic182/aiosonic/compare/0.3.1..0.4.0
 [0.3.1]: https://github.com/sonic182/aiosonic/compare/0.3.0..0.3.1
 [0.3.0]: https://github.com/sonic182/aiosonic/compare/0.2.1..0.3.0
