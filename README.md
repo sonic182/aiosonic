@@ -8,7 +8,7 @@
 
 Fastest Python async http client
 
-Here is some [documentation](https://sonic182.github.io/aiosonic/html/index.html).
+Here is some [documentation](https://aiosonic.readthedocs.io/en/latest/).
 
 There is a performance script in tests folder which shows very nice numbers
 
