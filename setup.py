@@ -3,8 +3,6 @@
 import re
 from setuptools import setup
 
-from aiosonic.version import VERSION
-
 
 RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.]+)')
 
@@ -18,6 +16,11 @@ def read_file(filename):
 def requirements(filename):
     """Parse requirements from file."""
     return re.findall(RGX, read_file(filename)) or []
+
+
+def version():
+    data = read_file('./aiosonic/version.py')
+    return re.findall(r"VERSION = '([a-z0-9.]*)'", data)[0]
 
 
 # copied form uvicorn, mark to not install uvloop in windows
@@ -45,7 +48,7 @@ def add_marks(dependencies, marks):
 
 setup(
     name='aiosonic',
-    version=VERSION,
+    version=version(),
     description='Async http client',
     author='Johanderson Mogollon',
     author_email='johanderson@mogollon.com.ve',
