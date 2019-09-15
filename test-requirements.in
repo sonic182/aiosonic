@@ -1,7 +1,6 @@
 aiohttp
 coveralls
 django
-h2
 httpx
 pytest
 pytest-aiohttp

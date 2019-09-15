@@ -13,7 +13,7 @@ from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.connectors import TCPConnector
-from aiosonic.connectors import Connection
+from aiosonic.connection import Connection
 from aiosonic.pools import CyclicQueuePool
 from aiosonic.timeout import Timeouts
 from aiosonic import _get_url_parsed
@@ -216,7 +216,7 @@ async def test_connect_timeout(mocker):
     async def long_connect(*_args, **_kwargs):
         await asyncio.sleep(3)
 
-    _connect = mocker.patch('aiosonic.connectors.Connection._connect')
+    _connect = mocker.patch('aiosonic.connection.Connection._connect')
     _connect.return_value = long_connect()
 
     with pytest.raises(ConnectTimeout):
