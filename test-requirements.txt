@@ -24,7 +24,7 @@ h2==3.1.1                 # via httpx
 hpack==3.0.0              # via h2
 hstspreload==2019.8.27    # via httpx
 httptools==0.0.13         # via uvicorn
-httpx==0.7.2
+httpx==0.7.4
 hyperframe==5.2.0         # via h2
 idna==2.8                 # via httpx, requests, yarl
 importlib-metadata==0.19  # via pluggy, pytest
