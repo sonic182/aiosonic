@@ -110,7 +110,7 @@ class HttpHeaders(CaseInsensitiveDict):
 
 
 #: Headers
-HeadersType = Union[Dict[str, str], HttpHeaders]
+HeadersType = Union[Dict[str, str], Sequence[Tuple[str, str]], HttpHeaders]
 
 
 class HttpResponse:

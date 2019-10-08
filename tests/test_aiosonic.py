@@ -385,9 +385,9 @@ async def test_get_body_deflate(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = 'http://localhost:%d/deflate' % server.port
 
-    res = await aiosonic.get(url, headers={
-        'Accept-Encoding': 'gzip, deflate, br'
-    })
+    res = await aiosonic.get(url, headers=[
+        ('Accept-Encoding', 'gzip, deflate, br')
+    ])
     content = await res.content()
     assert res.status_code == 200
     assert content == b'Hello, world'
