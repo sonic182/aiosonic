@@ -9,12 +9,16 @@ from ssl import SSLContext
 from urllib.parse import ParseResult
 
 import h2.connection
-from hyperframe.frame import SettingsFrame
+import h2.events
 
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.timeout import Timeouts
 from aiosonic.connectors import TCPConnector
+from aiosonic.http2 import Http2Handler
+
+from aiosonic.types import ParamsType
+from aiosonic.types import ParsedBodyType
 
 
 class Connection:
@@ -30,6 +34,7 @@ class Connection:
         self.temp_key: Optional[str] = None
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
+        self.h2handler: Optional[Http2Handler] = None
 
     async def connect(self, urlparsed: ParseResult, verify: bool,
                       ssl_context: SSLContext, timeouts: Timeouts):
@@ -89,12 +94,7 @@ class Connection:
 
         if negotiated_protocol == 'h2':
             self.h2conn = h2.connection.H2Connection()
-
-            self.h2conn.initiate_connection()
-
-            # This reproduces the error in #396, by changing the header table size.
-            # self.h2conn.update_settings({SettingsFrame.HEADER_TABLE_SIZE: 4096})
-            self.writer.write(self.h2conn.data_to_send())
+            self.h2handler = Http2Handler(self)
 
     def keep_alive(self):
         """Check if keep alive."""
@@ -120,6 +120,8 @@ class Connection:
 
         if not self.blocked:
             await self.release()
+            if self.h2handler:
+                self.h2handler.cleanup()
 
     async def release(self):
         """Release connection."""
@@ -136,3 +138,6 @@ class Connection:
                 self.writer, 'is_closing', self.writer._transport.is_closing)
             if is_closing():
                 self.writer.close()
+
+    async def http2_request(self, headers: ParamsType, body: Optional[ParsedBodyType]):
+        return await self.h2handler.request(headers, body)

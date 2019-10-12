@@ -24,12 +24,9 @@ from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import Union
-from typing import Tuple
 from typing import Optional
-from typing import Sequence
 
 import chardet
-import h2.events
 
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -44,6 +41,12 @@ from aiosonic.exceptions import MaxRedirects
 from aiosonic.timeout import Timeouts
 from aiosonic.utils import cache_decorator
 from aiosonic.version import VERSION
+
+# TYPES
+from aiosonic.types import ParamsType
+from aiosonic.types import DataType
+from aiosonic.types import BodyType
+from aiosonic.types import ParsedBodyType
 
 
 try:
@@ -61,33 +64,6 @@ _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
 _COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
-
-
-# TYPES
-ParamsType = Union[
-    Dict[str, str],
-    Sequence[Tuple[str, str]],
-]
-#: Data to be sent in requests, allowed types
-DataType = Union[
-    str,
-    bytes,
-    dict,
-    tuple,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
-BodyType = Union[
-    str,
-    bytes,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
-ParsedBodyType = Union[
-    bytes,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
 
 
 # Functions with cache
@@ -270,8 +246,10 @@ def _get_header_data(url: ParseResult, connection: Connection, method: str,
         headers_base.update(headers)
 
     if http2conn:
-        http2conn.send_headers(1, headers_base.items(), end_stream=True)
-        return http2conn.data_to_send()
+        return headers_base
+        # stream_id = http2conn.get_next_available_stream_id()
+        # http2conn.send_headers(stream_id, headers_base.items(), end_stream=True)
+        # return http2conn.data_to_send()
 
     for key, data in headers_base.items():
         get_base += '%s: %s%s' % (key, data, _NEW_LINE)
@@ -379,10 +357,9 @@ async def _do_request(urlparsed: ParseResult, headers_data: Callable,
     async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl, timeouts)
         to_send = headers_data(connection=connection)
-        h2conn = connection.h2conn
 
-        if h2conn:
-            return await _http2_handle(connection, to_send, body)
+        if connection.h2conn:
+            return await connection.http2_request(to_send, body)
 
         if not connection.writer or not connection.reader:
             raise ConnectionError('Not connection writer or reader')
@@ -590,37 +567,3 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
             raise
         except futures._base.TimeoutError:
             raise RequestTimeout()
-
-
-async def _http2_handle(connection: Connection, headers: bytes,
-                        body: Optional[ParsedBodyType]):
-    """Handle."""
-    if not connection.writer or not connection.reader or not connection.h2conn:
-        raise ConnectionError('Not connection writer or reader or h2conn')
-
-    h2conn = connection.h2conn
-    # first send headers
-    connection.writer.write(headers)
-
-    # now read events...
-    while True:
-        data = await connection.reader.readline()
-        events = h2conn.receive_data(data)
-
-        print('events')
-        print(events)
-
-        for event in events:
-            if isinstance(event, h2.events.StreamEnded):
-                raise Exception('stream end')
-            elif isinstance(event, h2.events.SettingsAcknowledged):
-                # send data
-                raise Exception('ack')
-        data = h2conn.data_to_send()
-        print('data')
-        print(data)
-        connection.writer.write(data)
-
-        if not data:
-            raise Exception('asdf')
-

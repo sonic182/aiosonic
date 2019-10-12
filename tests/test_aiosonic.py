@@ -48,6 +48,23 @@ async def test_get_google():
     assert '<title>Google</title>' in await res.text()
 
 
+@pytest.mark.asyncio
+async def test_get_google_http2():
+    """Test simple get."""
+    url = 'https://www.google.com'
+    connector = TCPConnector(
+        timeouts=Timeouts(sock_connect=3, sock_read=4))
+
+    res = await aiosonic.get(url, connector=connector, headers={
+        'user-agent': (
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 '
+            'Safari/537.36')
+    })
+    assert res.status_code == 200
+    assert '<title>Google</title>' in await res.text()
+
+
 class MyConnection(Connection):
     """Connection to count keeped alives connections."""
 
