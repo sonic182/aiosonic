@@ -34,3 +34,8 @@ class HttpParsingError(Exception):
 # Redirects
 class MaxRedirects(Exception):
     pass
+
+
+# HTTP2
+class MissingEvent(Exception):
+    pass

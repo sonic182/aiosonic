@@ -5,6 +5,7 @@ import random
 import re
 import codecs
 from concurrent import futures
+from functools import partial
 from json import dumps
 from json import loads
 from ssl import SSLContext
@@ -19,19 +20,20 @@ from urllib.parse import ParseResult
 
 from typing import Any
 from typing import AsyncIterator
+from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import Union
-from typing import Tuple
 from typing import Optional
 from typing import Sequence
+from typing import Tuple
 
 import chardet
 
 from aiosonic_utils.structures import CaseInsensitiveDict
 
 from aiosonic.connectors import TCPConnector
-from aiosonic.connectors import Connection
+from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import ReadTimeout
 from aiosonic.exceptions import RequestTimeout
@@ -41,6 +43,12 @@ from aiosonic.exceptions import MaxRedirects
 from aiosonic.timeout import Timeouts
 from aiosonic.utils import cache_decorator
 from aiosonic.version import VERSION
+
+# TYPES
+from aiosonic.types import ParamsType
+from aiosonic.types import DataType
+from aiosonic.types import BodyType
+from aiosonic.types import ParsedBodyType
 
 
 try:
@@ -58,33 +66,6 @@ _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
 _COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
-
-
-# TYPES
-ParamsType = Union[
-    Dict[str, str],
-    Sequence[Tuple[str, str]],
-]
-#: Data to be sent in requests, allowed types
-DataType = Union[
-    str,
-    bytes,
-    dict,
-    tuple,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
-BodyType = Union[
-    str,
-    bytes,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
-ParsedBodyType = Union[
-    bytes,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-]
 
 
 # Functions with cache
@@ -225,11 +206,13 @@ class HttpResponse:
         self.chunks_readed = True
 
 
-def _get_header_data(url: ParseResult, method: str,
+def _get_header_data(url: ParseResult, connection: Connection, method: str,
                      headers: HeadersType = None, params: ParamsType = None,
                      multipart: bool = None, boundary: str = None) -> str:
     """Prepare get data."""
     path = url.path or '/'
+    http2conn = connection.h2conn
+
     if params:
         query = urlencode(params)
         path += '%s' % query if '?' in path else '?%s' % query
@@ -242,11 +225,20 @@ def _get_header_data(url: ParseResult, method: str,
     if port != 80:
         hostname += ':' + str(port)
 
-    headers_base = {
-        'HOST': hostname,
-        'Connection': 'keep-alive',
-        'User-Agent': 'aioload/%s' % VERSION
-    }
+    if http2conn:
+        headers_base = {
+            ':method': method,
+            ':authority': hostname.split(':')[0],
+            ':scheme': 'https',
+            ':path': path,
+            'user-agent': 'aioload/%s' % VERSION
+        }
+    else:
+        headers_base = {
+            'HOST': hostname,
+            'Connection': 'keep-alive',
+            'User-Agent': 'aioload/%s' % VERSION
+        }
 
     if multipart:
         headers_base[
@@ -255,9 +247,15 @@ def _get_header_data(url: ParseResult, method: str,
     if headers:
         headers_base.update(headers)
 
+    if http2conn:
+        return headers_base
+        # stream_id = http2conn.get_next_available_stream_id()
+        # http2conn.send_headers(stream_id, headers_base.items(), end_stream=True)
+        # return http2conn.data_to_send()
+
     for key, data in headers_base.items():
         get_base += '%s: %s%s' % (key, data, _NEW_LINE)
-    return get_base + _NEW_LINE
+    return (get_base + _NEW_LINE).encode()
 
 
 def _setup_body_request(
@@ -353,17 +351,21 @@ async def _send_multipart(data: Dict[str, str], boundary: str,
     return to_send
 
 
-async def _do_request(urlparsed: ParseResult, headers_data: str,
+async def _do_request(urlparsed: ParseResult, headers_data: Callable,
                       connector: TCPConnector, body: Optional[ParsedBodyType],
                       verify: bool, ssl: Optional[SSLContext],
                       timeouts: Timeouts, follow: bool) -> HttpResponse:
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
         await connection.connect(urlparsed, verify, ssl, timeouts)
-        to_send = headers_data.encode()
+        to_send = headers_data(connection=connection)
+
+        if connection.h2conn:
+            return await connection.http2_request(to_send, body)
 
         if not connection.writer or not connection.reader:
             raise ConnectionError('Not connection writer or reader')
+
         connection.writer.write(to_send)
 
         if body:
@@ -533,8 +535,10 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
 
     max_redirects = 30
     while True:
-        headers_data = _get_header_data(
-            urlparsed, method, headers, params, multipart, boundary)
+        headers_data = partial(
+            _get_header_data, url=urlparsed, method=method, headers=headers,
+            params=params, multipart=multipart, boundary=boundary
+        )
         try:
             response = await asyncio.wait_for(
                 _do_request(

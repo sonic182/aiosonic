@@ -5,19 +5,21 @@ from urllib.parse import urlparse
 
 import pytest
 import aiosonic
+from aiosonic import _get_url_parsed
+from aiosonic import HttpResponse
+from aiosonic.connectors import TCPConnector
+from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import ReadTimeout
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import MaxRedirects
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import MissingEvent
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
-from aiosonic.connectors import TCPConnector
-from aiosonic.connectors import Connection
+from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool
 from aiosonic.timeout import Timeouts
-from aiosonic import _get_url_parsed
-from aiosonic import HttpResponse
 
 
 @pytest.mark.asyncio
@@ -39,6 +41,23 @@ async def test_get_google():
     url = 'https://www.google.com'
 
     res = await aiosonic.get(url, headers={
+        'user-agent': (
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 '
+            'Safari/537.36')
+    })
+    assert res.status_code == 200
+    assert '<title>Google</title>' in await res.text()
+
+
+@pytest.mark.asyncio
+async def test_get_google_http2():
+    """Test simple get."""
+    url = 'https://www.google.com'
+    connector = TCPConnector(
+        timeouts=Timeouts(sock_connect=3, sock_read=4))
+
+    res = await aiosonic.get(url, connector=connector, headers={
         'user-agent': (
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) '
             'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 '
@@ -216,7 +235,7 @@ async def test_connect_timeout(mocker):
     async def long_connect(*_args, **_kwargs):
         await asyncio.sleep(3)
 
-    _connect = mocker.patch('aiosonic.connectors.Connection._connect')
+    _connect = mocker.patch('aiosonic.connection.Connection._connect')
     _connect.return_value = long_connect()
 
     with pytest.raises(ConnectTimeout):
@@ -601,3 +620,22 @@ async def test_json_response_parsing():
     response._set_header('content-type', 'application/json; charset=utf-8')
     response.body = b'{"foo": "bar"}'
     assert (await response.json()) == {'foo': 'bar'}
+
+
+class WrongEvent:
+    pass
+
+
+@pytest.mark.asyncio
+async def test_http2_wrong_event(mocker):
+    """Test json response parsing."""
+    mocker.patch('aiosonic.http2.Http2Handler.__init__', lambda x: None)
+    mocker.patch('aiosonic.http2.Http2Handler.h2conn')
+
+    handler = Http2Handler()
+
+    async def coro():
+        pass
+
+    with pytest.raises(MissingEvent):
+        await handler.handle_events([WrongEvent])
