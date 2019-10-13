@@ -25,6 +25,8 @@ from typing import Dict
 from typing import Iterator
 from typing import Union
 from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 import chardet
 
