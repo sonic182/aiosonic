@@ -5,6 +5,7 @@ from typing import Optional
 
 import h2.events
 
+from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParamsType
 from aiosonic.types import ParsedBodyType
 
@@ -79,43 +80,48 @@ class Http2Handler(object):
     async def reader_t(self):
         """Reader task."""
         read_size = 16000
-        h2conn = self.h2conn
 
         while True:
             data = await asyncio.wait_for(self.reader.read(read_size), 3)
-            events = h2conn.receive_data(data)
+            events = self.h2conn.receive_data(data)
 
             if not events:
                 continue
             else:
-                for event in events:
-                    if isinstance(event, h2.events.StreamEnded):
-                        self.requests[event.stream_id]['future'].set_result(
-                            self.requests[event.stream_id]['body'])
-                    elif isinstance(event, h2.events.DataReceived):
-                        self.requests[event.stream_id]['body'] += event.data
-
-                        if (event.stream_id in h2conn.streams
-                            and not h2conn.streams[event.stream_id].closed):
-                            h2conn.increment_flow_control_window(
-                                event.flow_controlled_length, event.stream_id)
-                        h2conn.increment_flow_control_window(
-                            event.flow_controlled_length)
-                    elif isinstance(event, h2.events.ResponseReceived):
-                        self.requests[
-                            event.stream_id]['headers'] = event.headers
-                    elif isinstance(event, (
-                            h2.events.WindowUpdated,
-                            h2.events.PingReceived,
-                            h2.events.RemoteSettingsChanged,
-                            h2.events.SettingsAcknowledged
-                    )):
-                        pass
-                    else:
-                        raise Exception(
-                            f'another event {event.__class__.__name__}')
+                self.handle_events(events)
 
                 await self.writer_q.put(True)
+
+    def handle_events(self, events):
+        """Handle http2 events."""
+        h2conn = self.h2conn
+
+        for event in events:
+            if isinstance(event, h2.events.StreamEnded):
+                self.requests[event.stream_id]['future'].set_result(
+                    self.requests[event.stream_id]['body'])
+            elif isinstance(event, h2.events.DataReceived):
+                self.requests[event.stream_id]['body'] += event.data
+
+                if (event.stream_id in h2conn.streams
+                    and not h2conn.streams[event.stream_id].closed):
+                    h2conn.increment_flow_control_window(
+                        event.flow_controlled_length, event.stream_id)
+                h2conn.increment_flow_control_window(
+                    event.flow_controlled_length)
+            elif isinstance(event, h2.events.ResponseReceived):
+                self.requests[
+                    event.stream_id]['headers'] = event.headers
+            elif isinstance(event, (
+                    h2.events.WindowUpdated,
+                    h2.events.PingReceived,
+                    h2.events.RemoteSettingsChanged,
+                    h2.events.SettingsAcknowledged
+            )):
+                pass
+            else:
+                raise MissingEvent(
+                    f'another event {event.__class__.__name__}')
 
     async def writer_t(self):
         """Writer task."""

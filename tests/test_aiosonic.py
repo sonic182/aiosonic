@@ -5,19 +5,21 @@ from urllib.parse import urlparse
 
 import pytest
 import aiosonic
+from aiosonic import _get_url_parsed
+from aiosonic import HttpResponse
+from aiosonic.connectors import TCPConnector
+from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import ReadTimeout
 from aiosonic.exceptions import RequestTimeout
 from aiosonic.exceptions import MaxRedirects
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import MissingEvent
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
-from aiosonic.connectors import TCPConnector
-from aiosonic.connection import Connection
+from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool
 from aiosonic.timeout import Timeouts
-from aiosonic import _get_url_parsed
-from aiosonic import HttpResponse
 
 
 @pytest.mark.asyncio
@@ -618,3 +620,22 @@ async def test_json_response_parsing():
     response._set_header('content-type', 'application/json; charset=utf-8')
     response.body = b'{"foo": "bar"}'
     assert (await response.json()) == {'foo': 'bar'}
+
+
+class WrongEvent:
+    pass
+
+
+@pytest.mark.asyncio
+async def test_http2_wrong_event(mocker):
+    """Test json response parsing."""
+    mocker.patch('aiosonic.http2.Http2Handler.__init__', lambda x: None)
+    mocker.patch('aiosonic.http2.Http2Handler.h2conn')
+
+    handler = Http2Handler()
+
+    async def coro():
+        pass
+
+    with pytest.raises(MissingEvent):
+        await handler.handle_events([WrongEvent])
