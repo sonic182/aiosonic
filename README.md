@@ -97,6 +97,9 @@ if __name__ == '__main__':
 
 # TODO
 
+* HTTP2
+  * [x] Get
+  * Request with data sending
 * Better documentation
 * International Domains and URLs (idna + cache)
 * Requests using a http proxy
