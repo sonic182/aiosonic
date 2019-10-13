@@ -208,7 +208,8 @@ class HttpResponse:
 
 def _get_header_data(url: ParseResult, connection: Connection, method: str,
                      headers: HeadersType = None, params: ParamsType = None,
-                     multipart: bool = None, boundary: str = None) -> str:
+                     multipart: bool = None, boundary: str = None
+                     ) -> Union[bytes, Dict[str, str]]:
     """Prepare get data."""
     path = url.path or '/'
     http2conn = connection.h2conn
@@ -225,6 +226,7 @@ def _get_header_data(url: ParseResult, connection: Connection, method: str,
     if port != 80:
         hostname += ':' + str(port)
 
+    # TODO: headers should be sequence of tuples instead of dict
     if http2conn:
         headers_base = {
             ':method': method,
@@ -249,9 +251,6 @@ def _get_header_data(url: ParseResult, connection: Connection, method: str,
 
     if http2conn:
         return headers_base
-        # stream_id = http2conn.get_next_available_stream_id()
-        # http2conn.send_headers(stream_id, headers_base.items(), end_stream=True)
-        # return http2conn.data_to_send()
 
     for key, data in headers_base.items():
         get_base += '%s: %s%s' % (key, data, _NEW_LINE)

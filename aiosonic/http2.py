@@ -5,6 +5,8 @@ from typing import Optional
 
 import h2.events
 
+from typing import Dict
+
 from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParamsType
 from aiosonic.types import ParsedBodyType
@@ -46,7 +48,8 @@ class Http2Handler(object):
         self.reader_task.cancel()
         self.writer_task.cancel()
 
-    async def request(self, headers: ParamsType, body: Optional[ParsedBodyType]):
+    async def request(self, headers: Dict[str, str],
+                      body: Optional[ParsedBodyType]):
         stream_id = self.h2conn.get_next_available_stream_id()
         self.h2conn.send_headers(stream_id, headers.items(),
                                  end_stream=True)
