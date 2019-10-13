@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
 * HTTP2
   * [x] Get
-  * Request with data sending
+  * [ ] Request with data sending
 * Better documentation
 * International Domains and URLs (idna + cache)
 * Requests using a http proxy
