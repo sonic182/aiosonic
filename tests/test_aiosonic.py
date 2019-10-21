@@ -537,6 +537,13 @@ def test_parse_response_line():
     assert response.status_code == 200
 
 
+def test_parse_response_line_with_empty_reason():
+    """Test parsing response line with empty reason-phrase"""
+    response = HttpResponse()
+    response._set_response_initial(b'HTTP/1.1 200 \r\n')
+    assert response.status_code == 200
+
+
 def test_parse_bad_response_line():
     """Test parsing bad response line"""
     with pytest.raises(HttpParsingError):
