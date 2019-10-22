@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] 2019-10-22
+### Added
+- http2 flag to allow it (maybe will be removed in future when http2 fully supported)
+
 ## [0.5.0] 2019-10-22
 ### Added
 - Http2 support
@@ -76,7 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.5.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.5.1..HEAD
+[0.5.1]: https://github.com/sonic182/aiosonic/compare/0.5.0..0.5.1
 [0.5.0]: https://github.com/sonic182/aiosonic/compare/0.4.1..0.5.0
 [0.4.1]: https://github.com/sonic182/aiosonic/compare/0.4.0..0.4.1
 [0.4.0]: https://github.com/sonic182/aiosonic/compare/0.3.1..0.4.0
