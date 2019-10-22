@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] 2019-10-13
+## [0.5.0] 2019-10-22
 ### Added
 - Http2 support
+  * Get requests (POST, PUT, ... requests with data sending missing)
+
+### Fixed
+- HTTP parsing error when reason-phrase empty [#30](https://github.com/sonic182/aiosonic/pull/30) (Thanks to [Dibel](https://github.com/Dibel))  
 
 ## [0.4.1] 2019-09-10
 ### Added
