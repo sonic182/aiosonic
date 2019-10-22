@@ -59,7 +59,7 @@ termcolor==1.1.0          # via pytest-sugar
 typed-ast==1.4.0          # via mypy
 typing-extensions==3.7.4  # via mypy
 urllib3==1.25.3           # via requests
-uvicorn==0.9.0
+uvicorn==0.9.1
 uvloop==0.12.2            # via uvicorn
 wcwidth==0.1.7            # via pytest
 websockets==8.0.2         # via uvicorn
