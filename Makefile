@@ -24,6 +24,9 @@ clear:
 build: clear
 	python setup.py sdist bdist_wheel
 
+upload_pypi: build
+	twine upload dist/*
+
 .PHONY: help Makefile
 
 # Catch-all target: route all unknown targets to Sphinx using the new
