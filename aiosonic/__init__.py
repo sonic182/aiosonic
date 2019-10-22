@@ -97,6 +97,9 @@ HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
 def _add_header(headers: HeadersType, key: str, value: str):
     """Safe add header method."""
     if isinstance(headers, List):
+        included = [item for item in headers if item[0] == key]
+        if included:
+            headers.remove(included[0])
         headers.append((key, value))
     else:
         headers[key] = value
