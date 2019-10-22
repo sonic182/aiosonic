@@ -374,10 +374,11 @@ async def _send_multipart(data: Dict[str, str], boundary: str,
 async def _do_request(urlparsed: ParseResult, headers_data: Callable,
                       connector: TCPConnector, body: Optional[ParsedBodyType],
                       verify: bool, ssl: Optional[SSLContext],
-                      timeouts: Optional[Timeouts]) -> HttpResponse:
+                      timeouts: Optional[Timeouts],
+                      http2: bool = False) -> HttpResponse:
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
-        await connection.connect(urlparsed, verify, ssl, timeouts)
+        await connection.connect(urlparsed, verify, ssl, timeouts, http2)
         to_send = headers_data(connection=connection)
 
         if connection.h2conn:
@@ -439,7 +440,7 @@ async def _request_with_body(
         params: ParamsType = None, connector: TCPConnector = None,
         json_serializer=dumps, multipart: bool = False,
         verify: bool = True, ssl: SSLContext = None, timeouts: Timeouts = None,
-        follow: bool = False) -> HttpResponse:
+        follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do post http request. """
     if not data and not json:
         TypeError('missing argument, either "json" or "data"')
@@ -449,7 +450,7 @@ async def _request_with_body(
         _add_header(headers, 'Content-Type', 'application/json')
     return await request(url, method, headers, params, data, connector,
                          multipart, verify=verify, ssl=ssl, follow=follow,
-                         timeouts=timeouts)
+                         timeouts=timeouts, http2=http2)
 
 
 # Module methods
@@ -457,11 +458,11 @@ async def get(url: str, headers: HeadersType = None,
               params: ParamsType = None,
               connector: TCPConnector = None, verify: bool = True,
               ssl: SSLContext = None, timeouts: Timeouts = None,
-              follow: bool = False) -> HttpResponse:
+              follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do get http request. """
     return await request(url, 'GET', headers, params, connector=connector,
                          verify=verify, ssl=ssl, follow=follow,
-                         timeouts=timeouts)
+                         timeouts=timeouts, http2=http2)
 
 
 async def post(url: str, data: DataType = None, headers: HeadersType = None,
@@ -469,11 +470,12 @@ async def post(url: str, data: DataType = None, headers: HeadersType = None,
                connector: TCPConnector = None, json_serializer=dumps,
                multipart: bool = False, verify: bool = True,
                ssl: SSLContext = None, timeouts: Timeouts = None,
-               follow: bool = False) -> HttpResponse:
+               follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do post http request. """
     return await _request_with_body(
         url, 'POST', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts)
+        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts,
+        http2=http2)
 
 
 async def put(url: str, data: DataType = None, headers: HeadersType = None,
@@ -481,11 +483,12 @@ async def put(url: str, data: DataType = None, headers: HeadersType = None,
               connector: TCPConnector = None, json_serializer=dumps,
               multipart: bool = False, verify: bool = True,
               ssl: SSLContext = None, timeouts: Timeouts = None,
-              follow: bool = False) -> HttpResponse:
+              follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do put http request. """
     return await _request_with_body(
         url, 'PUT', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts)
+        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts,
+        http2=http2)
 
 
 async def patch(url: str, data: DataType = None, headers: HeadersType = None,
@@ -493,11 +496,12 @@ async def patch(url: str, data: DataType = None, headers: HeadersType = None,
                 connector: TCPConnector = None, json_serializer=dumps,
                 multipart: bool = False, verify: bool = True,
                 ssl: SSLContext = None, timeouts: Timeouts = None,
-                follow: bool = False) -> HttpResponse:
+                follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do patch http request. """
     return await _request_with_body(
         url, 'PATCH', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts)
+        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts,
+        http2=http2)
 
 
 async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
@@ -505,11 +509,12 @@ async def delete(url: str, data: DataType = b'', headers: HeadersType = None,
                  connector: TCPConnector = None, json_serializer=dumps,
                  multipart: bool = False, verify: bool = True,
                  ssl: SSLContext = None, timeouts: Timeouts = None,
-                 follow: bool = False) -> HttpResponse:
+                 follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do delete http request. """
     return await _request_with_body(
         url, 'DELETE', data, headers, json, params, connector, json_serializer,
-        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts)
+        multipart, verify=verify, ssl=ssl, follow=follow, timeouts=timeouts,
+        http2=http2)
 
 
 async def request(url: str, method: str = 'GET', headers: HeadersType = None,
@@ -517,7 +522,7 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                   connector: TCPConnector = None, multipart: bool = False,
                   verify: bool = True,
                   ssl: SSLContext = None, timeouts: Timeouts = None,
-                  follow: bool = False) -> HttpResponse:
+                  follow: bool = False, http2: bool = False) -> HttpResponse:
     """Do http request.
 
     Params:
@@ -561,7 +566,7 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
             response = await asyncio.wait_for(
                 _do_request(
                     urlparsed, headers_data, connector, body, verify, ssl,
-                    timeouts),
+                    timeouts, http2),
                 timeout=(timeouts or connector.timeouts).request_timeout
             )
 

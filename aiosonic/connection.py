@@ -38,18 +38,19 @@ class Connection:
         self.h2handler: Optional[Http2Handler] = None
 
     async def connect(self, urlparsed: ParseResult, verify: bool,
-                      ssl_context: SSLContext, timeouts: Timeouts):
+                      ssl_context: SSLContext, timeouts: Timeouts,
+                      http2: bool = False):
         """Connet with timeout."""
         try:
             await asyncio.wait_for(
-                self._connect(urlparsed, verify, ssl_context),
+                self._connect(urlparsed, verify, ssl_context, http2),
                 timeout=(timeouts or self.timeouts).sock_connect
             )
         except futures._base.TimeoutError:
             raise ConnectTimeout()
 
     async def _connect(self, urlparsed: ParseResult, verify: bool,
-                       ssl_context: SSLContext):
+                       ssl_context: SSLContext, http2: bool):
         """Get reader and writer."""
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
 
@@ -69,7 +70,8 @@ class Connection:
                 ssl_context = ssl_context or ssl.create_default_context(
                     ssl.Purpose.SERVER_AUTH,
                 )
-                ssl_context.set_alpn_protocols(['h2', 'http/1.1'])
+                if http2:  # flag will be removed when fully http2 support
+                    ssl_context.set_alpn_protocols(['h2', 'http/1.1'])
                 if not verify:
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
