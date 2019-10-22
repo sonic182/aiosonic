@@ -238,7 +238,7 @@ def _get_header_data(url: ParseResult, connection: Connection, method: str,
     if port != 80:
         hostname += ':' + str(port)
 
-    headers_base = HttpHeaders()
+    headers_base = {}
     if http2conn:
         headers_base.update({
             ':method': method,
