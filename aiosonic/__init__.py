@@ -537,7 +537,8 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
         * **verify**: parameter to indicate whether to verify ssl
         * **ssl**: this parameter allows to specify a custom ssl context
         * **timeouts**: parameter to indicate timeouts for request
-        * **follow**: parameter to indicate wether to follow redirects
+        * **follow**: parameter to indicate whether to follow redirects
+        * **http2**: flag to indicate whether to use http2 (experimental)
     """
     if not connector:
         key = 'connector_base'
