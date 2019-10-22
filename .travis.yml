@@ -7,6 +7,6 @@ install:
   - pip install -r requirements.txt
   - pip install -e .[test]
 script:
-  - pytest --cov=aiosonic -n auto
+  - pytest --cov=aiosonic
 after_success:
   coveralls

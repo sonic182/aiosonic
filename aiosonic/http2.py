@@ -6,6 +6,7 @@ from typing import Optional
 import h2.events
 
 from typing import Dict
+from typing import Awaitable
 
 from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParamsType
@@ -54,7 +55,7 @@ class Http2Handler(object):
         self.h2conn.send_headers(stream_id, headers.items(),
                                  end_stream=True)
         from aiosonic import HttpResponse
-        future = asyncio.Future()
+        future: Awaitable[bytes] = asyncio.Future()
         self.requests[stream_id] = {
             'body': b'',
             'headers': None,

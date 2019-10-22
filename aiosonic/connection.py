@@ -4,8 +4,9 @@ import asyncio
 from asyncio import StreamReader
 from asyncio import StreamWriter
 import ssl
-from typing import Optional
 from ssl import SSLContext
+from typing import Dict
+from typing import Optional
 from urllib.parse import ParseResult
 
 import h2.connection
@@ -55,7 +56,8 @@ class Connection:
         if self.writer:
             # python 3.6 doesn't have writer.is_closing
             is_closing = getattr(
-                self.writer, 'is_closing', self.writer._transport.is_closing)
+                self.writer, 'is_closing',
+                self.writer._transport.is_closing)  # type: ignore
         else:
             def is_closing(): return True  # noqa
 
@@ -139,5 +141,7 @@ class Connection:
             if is_closing():
                 self.writer.close()
 
-    async def http2_request(self, headers: ParamsType, body: Optional[ParsedBodyType]):
-        return await self.h2handler.request(headers, body)
+    async def http2_request(self, headers: Dict[str, str],
+                            body: Optional[ParsedBodyType]):
+        if self.h2handler:
+            return await self.h2handler.request(headers, body)
