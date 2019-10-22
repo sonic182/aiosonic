@@ -179,7 +179,9 @@ async def test_post_json(app, aiohttp_server):
         'foo': 'bar'
     }
 
-    res = await aiosonic.post(url, json=data)
+    res = await aiosonic.post(url, json=data, headers=[
+        ['x-foo', 'bar']
+    ])
     assert res.status_code == 200
     assert await res.text() == 'bar'
     await server.close()
