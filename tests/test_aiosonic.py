@@ -36,18 +36,17 @@ async def test_simple_get(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
-async def test_get_google():
+async def test_get_python():
     """Test simple get."""
-    url = 'https://www.google.com'
+    url = 'https://www.python.org/'
 
     res = await aiosonic.get(url, headers={
         'user-agent': (
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 '
-            'Safari/537.36')
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:70.0)'
+            ' Gecko/20100101 Firefox/70.0')
     }, http2=True)
     assert res.status_code == 200
-    assert '<title>Google</title>' in await res.text()
+    assert '<title>Welcome to Python.org</title>' in await res.text()
 
 
 @pytest.mark.asyncio
