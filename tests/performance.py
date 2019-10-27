@@ -79,11 +79,11 @@ async def performance_aiohttp(url, concurrency):
         return await timeit_coro(session.get, (url))
 
 
-async def performance_aiosonic(url, concurrency, pool_cls=None):
+async def performance_aiosonic(url, concurrency, pool_cls=None, timeouts=None):
     """Test aiohttp performance."""
     return await timeit_coro(
         aiosonic.get, url, connector=TCPConnector(
-            pool_size=concurrency, pool_cls=pool_cls))
+            pool_size=concurrency, pool_cls=pool_cls), timeouts=timeouts)
 
 
 async def performance_httpx(url, concurrency, pool_cls=None):
@@ -127,7 +127,10 @@ def do_tests(url):
     res1 = loop.run_until_complete(performance_aiohttp(url, concurrency))
 
     # aiosonic
-    res2 = loop.run_until_complete(performance_aiosonic(url, concurrency))
+    # faster if not timeouts (asyncio.wait_for makes loop slower)
+    timeouts = aiosonic.timeout.Timeouts(None, None, None, None)
+    res2 = loop.run_until_complete(performance_aiosonic(
+        url, concurrency, timeouts=timeouts))
 
     # requests
     res3 = timeit_requests(url, concurrency)

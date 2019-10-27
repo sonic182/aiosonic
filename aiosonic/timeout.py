@@ -1,10 +1,14 @@
 
+from typing import Optional
+
 
 class Timeouts():
     """Timeouts class wrapper."""
 
-    def __init__(self, sock_connect: float = 5, sock_read: float = 30,
-                 pool_acquire: float = None, request_timeout: float = 60):
+    def __init__(self, sock_connect: Optional[float] = 5,
+                 sock_read: Optional[float] = 30,
+                 pool_acquire: Optional[float] = None,
+                 request_timeout: Optional[float] = 60):
         """Timeouts.
 
         Arguments:
