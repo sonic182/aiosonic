@@ -4,7 +4,7 @@ import re
 from setuptools import setup
 
 
-RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.]+)')
+RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.\w]+)')
 
 
 def read_file(filename):
