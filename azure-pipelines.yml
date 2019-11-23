@@ -31,6 +31,11 @@ pool:
   vmImage: $(imageName)
 
 steps:
+  - task: NodeTool@0 
+    displayName: 'Use Node version 12.x'
+    inputs:
+      versionSpec: '12.x'
+
   - task: UsePythonVersion@0
     displayName: 'Use Python $(python.version)'
     inputs:
