@@ -127,10 +127,7 @@ def do_tests(url):
     res1 = loop.run_until_complete(performance_aiohttp(url, concurrency))
 
     # aiosonic
-    # faster if not timeouts (asyncio.wait_for makes loop slower)
-    timeouts = aiosonic.timeout.Timeouts(None, None, None, None)
-    res2 = loop.run_until_complete(performance_aiosonic(
-        url, concurrency, timeouts=timeouts))
+    res2 = loop.run_until_complete(performance_aiosonic(url, concurrency))
 
     # requests
     res3 = timeit_requests(url, concurrency)
