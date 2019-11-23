@@ -50,20 +50,15 @@ async def test_get_python():
 
 
 @pytest.mark.asyncio
-async def test_get_google_http2():
-    """Test simple get."""
-    url = 'https://www.google.com'
+async def test_get_http2(http2_serv):
+    """Test simple get to node http2 server."""
+    url = http2_serv
     connector = TCPConnector(
         timeouts=Timeouts(sock_connect=3, sock_read=4))
 
-    res = await aiosonic.get(url, connector=connector, headers={
-        'user-agent': (
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.87 '
-            'Safari/537.36')
-    })
+    res = await aiosonic.get(url, connector=connector, verify=False)
     assert res.status_code == 200
-    assert '<title>Google</title>' in await res.text()
+    assert 'Hello World' == await res.text()
 
 
 class MyConnection(Connection):

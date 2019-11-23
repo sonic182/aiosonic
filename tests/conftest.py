@@ -1,8 +1,16 @@
 """Fixtures and more."""
 
 import asyncio
+from datetime import datetime
+from datetime import timedelta
 import gzip
+import multiprocessing as mp
+import os
+import random
 import ssl
+from time import sleep
+from urllib.request import urlopen
+from urllib.error import URLError
 import zlib
 
 import aiohttp
@@ -149,3 +157,32 @@ def ssl_context():
         'tests/files/certs/server.key'
     )
     return context
+
+
+@pytest.fixture
+def http2_serv():
+    """Sample aiohttp app."""
+
+    def _target(port):
+        os.system(f'node tests/app.js {port}')
+
+    port = random.randint(1000, 9999)
+    p = mp.Process(target=_target, args=(port,))
+    p.start()
+    url = f'https://localhost:{port}/'
+
+    # This restores the same behavior as before.
+    context = ssl._create_unverified_context()
+
+    max_wait = datetime.now() + timedelta(seconds=2)
+    while True:
+        try:
+            with urlopen(url, context=context) as response:
+                response.read()
+                break
+        except URLError:
+            sleep(0.1)
+            if datetime.now() > max_wait:
+                raise
+    yield url
+    p.terminate()
