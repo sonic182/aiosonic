@@ -159,15 +159,15 @@ def ssl_context():
     return context
 
 
+def node_http2(port):
+    os.system(f'node tests/app.js {port}')
+
+
 @pytest.fixture
 def http2_serv():
     """Sample aiohttp app."""
-
-    def _target(port):
-        os.system(f'node tests/app.js {port}')
-
     port = random.randint(1000, 9999)
-    p = mp.Process(target=_target, args=(port,))
+    p = mp.Process(target=node_http2, args=(port,))
     p.start()
     url = f'https://localhost:{port}/'
 
