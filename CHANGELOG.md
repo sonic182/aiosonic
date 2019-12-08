@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] 2019-12-08
+### Added
+- Nodejs app.js for a testing http2 server
+- Tests using this app.js node http1.1/2 server
+
+### Changed
+- Updated dependencies
+- Updated performance.py test for httpx 0.8.X
+
+### Fixed
+- Regex in setup.py
+
 ## [0.5.1] 2019-10-22
 ### Added
 - http2 flag to allow it (maybe will be removed in future when http2 fully supported)
@@ -80,7 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.5.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.5.2..HEAD
+[0.5.2]: https://github.com/sonic182/aiosonic/compare/0.5.1..0.5.2
 [0.5.1]: https://github.com/sonic182/aiosonic/compare/0.5.0..0.5.1
 [0.5.0]: https://github.com/sonic182/aiosonic/compare/0.4.1..0.5.0
 [0.4.1]: https://github.com/sonic182/aiosonic/compare/0.4.0..0.4.1
