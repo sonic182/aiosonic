@@ -642,3 +642,13 @@ async def test_http2_wrong_event(mocker):
 
     with pytest.raises(MissingEvent):
         await handler.handle_events([WrongEvent])
+
+
+@pytest.mark.asyncio
+async def test_get_no_hostname(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    url = 'http://:%d' % server.port
+
+    with pytest.raises(HttpParsingError):
+        await aiosonic.get(url)

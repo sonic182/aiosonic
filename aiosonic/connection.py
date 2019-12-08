@@ -14,6 +14,7 @@ import h2.events
 
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import HttpParsingError
 from aiosonic.timeout import Timeouts
 from aiosonic.connectors import TCPConnector
 from aiosonic.http2 import Http2Handler
@@ -52,6 +53,9 @@ class Connection:
     async def _connect(self, urlparsed: ParseResult, verify: bool,
                        ssl_context: SSLContext, http2: bool):
         """Get reader and writer."""
+        if not urlparsed.hostname:
+            raise HttpParsingError('missing hostname')
+
         key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
 
         if self.writer:
