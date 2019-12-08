@@ -101,19 +101,18 @@ The numbers speak for themselves
 
 .. code-block:: bash
 
- $ python tests/performance.py
+ $ python ./tests/performance.py
  doing tests...
+ httpx did break with: [Errno 24] Too many open files
  {
-  "aiohttp": "1000 requests in 247.47 ms",
-  "requests": "1000 requests in 3625.10 ms",
-  "aiosonic": "1000 requests in 80.09 ms",
-  "aiosonic cyclic": "1000 requests in 128.71 ms",
-  "httpx": "1000 requests in 528.73 ms"
+  "aiosonic": "1000 requests in 146.89 ms",
+  "aiosonic cyclic": "1000 requests in 146.17 ms",
+  "aiohttp": "1000 requests in 319.42 ms",
+  "requests": "1000 requests in 1766.96 ms"
  }
- aiosonic is 209.00% faster than aiohttp
- aiosonic is 4426.34% faster than requests
- aiosonic is 60.70% faster than aiosonic cyclic
- aiosonic is 560.17% faster than httpx
+ aiosonic is 117.46% faster than aiohttp
+ aiosonic is 1102.93% faster than requests
+ aiosonic is -0.49% faster than aiosonic cyclic
 
 
 Contributing
