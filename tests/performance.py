@@ -88,7 +88,7 @@ async def performance_aiosonic(url, concurrency, pool_cls=None, timeouts=None):
 
 async def performance_httpx(url, concurrency, pool_cls=None):
     """Test aiohttp performance."""
-    client = httpx.AsyncClient()
+    client = httpx
     # parallel doesn't exists in latest version of httpx
     # async with client.parallel() as parallel:
     #     pending_one = parallel.get('https://example.com/1')
@@ -137,30 +137,47 @@ def do_tests(url):
         url, concurrency, pool_cls=CyclicQueuePool))
 
     # httpx
-    res5 = loop.run_until_complete(performance_httpx(
-        url, concurrency))
-    print(json.dumps({
+    httpx_exc = False
+    res5 = None
+    try:
+        res5 = loop.run_until_complete(performance_httpx(
+            url, concurrency))
+    except Exception as exc:
+        httpx_exc = exc
+        print('httpx did break with: ' + str(exc))
+
+    to_print = {
         'aiosonic': '1000 requests in %.2f ms' % res2,
         'aiosonic cyclic': '1000 requests in %.2f ms' % res4,
         'aiohttp': '1000 requests in %.2f ms' % res1,
-        'httpx': '1000 requests in %.2f ms' % res5,
         'requests': '1000 requests in %.2f ms' % res3,
-    }, indent=True))
+    }
+
+    if not httpx_exc:
+        to_print.update({'httpx': '1000 requests in %.2f ms' % res5})
+
+    print(json.dumps(to_print, indent=True))
+
     print('aiosonic is %.2f%% faster than aiohttp' % (
         ((res1 / res2) - 1) * 100))
     print('aiosonic is %.2f%% faster than requests' % (
         ((res3 / res2) - 1) * 100))
     print('aiosonic is %.2f%% faster than aiosonic cyclic' % (
         ((res4 / res2) - 1) * 100))
-    print('aiosonic is %.2f%% faster than httpx' % (
-        ((res5 / res2) - 1) * 100))
-    return [
+
+    res = [
         ['aiohttp', res1],
         ['aiosonic', res2],
         ['requests', res3],
         ['aiosonic_cyclic', res4],
-        ['httpx', res5],
     ]
+
+    if not httpx_exc:
+        print('aiosonic is %.2f%% faster than httpx' % (
+            ((res5 / res2) - 1) * 100))
+        res.append(['httpx', res5])
+
+    return res
 
 
 def start_server(port):
