@@ -46,6 +46,10 @@ You can perform this test by installing all test dependencies with `pip install 
 * Fully type annotated.
 * 100% test coverage.
 
+# Installation
+
+`pip install aiosonic`
+
 # Usage
 
 ```python
