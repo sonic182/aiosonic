@@ -21,12 +21,11 @@ h2==3.1.1                 # via httpx
 hpack==3.0.0              # via h2
 hstspreload==2019.12.6    # via httpx
 httptools==0.0.13         # via uvicorn
-httpx==0.9.3
+httpx==0.9.4
 hyperframe==5.2.0         # via h2
 idna==2.8                 # via httpx, requests, yarl
-importlib-metadata==1.2.0  # via pluggy, pytest
 mccabe==0.6.1             # via flake8
-more-itertools==8.0.2     # via pytest, zipp
+more-itertools==8.0.2     # via pytest
 multidict==4.6.1          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
 mypy==0.750               # via pytest-mypy
@@ -60,4 +59,3 @@ uvloop==0.14.0            # via uvicorn
 wcwidth==0.1.7            # via pytest
 websockets==8.1           # via uvicorn
 yarl==1.4.2               # via aiohttp
-zipp==0.6.0               # via importlib-metadata
