@@ -229,7 +229,7 @@ def _get_header_data(url: ParseResult, connection: Connection, method: str,
     if params:
         query = urlencode(params)
         path += '%s' % query if '?' in path else '?%s' % query
-    get_base = '%s %s HTTP/1.1%s' % (method, path, _NEW_LINE)
+    get_base = '%s %s HTTP/1.1%s' % (method.upper(), path, _NEW_LINE)
 
     port = url.port or (
         443 if url.scheme == 'https' else 80)

@@ -61,6 +61,15 @@ async def test_get_http2(http2_serv):
     assert 'Hello World' == await res.text()
 
 
+@pytest.mark.asyncio
+async def test_method_lower(http2_serv):
+    """Test simple get to node http2 server."""
+    url = http2_serv
+    res = await aiosonic.request(url, method="get", verify=False)
+    assert res.status_code == 200
+    assert 'Hello World' == await res.text()
+
+
 class MyConnection(Connection):
     """Connection to count keeped alives connections."""
 

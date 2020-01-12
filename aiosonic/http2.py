@@ -89,9 +89,7 @@ class Http2Handler(object):
             data = await asyncio.wait_for(self.reader.read(read_size), 3)
             events = self.h2conn.receive_data(data)
 
-            if not events:
-                continue
-            else:
+            if events:
                 self.handle_events(events)
 
                 await self.writer_q.put(True)
