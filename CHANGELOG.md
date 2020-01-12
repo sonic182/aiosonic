@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.] 2020-01-12
+### Fixed
+- Method upcase in header all the time
+
 ## [0.5.2] 2019-12-08
 ### Added
 - Nodejs app.js for a testing http2 server
