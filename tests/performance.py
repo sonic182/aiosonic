@@ -88,14 +88,8 @@ async def performance_aiosonic(url, concurrency, pool_cls=None, timeouts=None):
 
 async def performance_httpx(url, concurrency, pool_cls=None):
     """Test aiohttp performance."""
-    client = httpx
-    # parallel doesn't exists in latest version of httpx
-    # async with client.parallel() as parallel:
-    #     pending_one = parallel.get('https://example.com/1')
-    #     pending_two = parallel.get('https://example.com/2')
-    #     response_one = await pending_one.get_response()
-    #     response_two = await pending_two.get_response()
-    return await timeit_coro(client.get, url)
+    async with httpx.AsyncClient() as client:
+        return await timeit_coro(client.get, url)
 
 
 def timeit_requests(url, concurrency, repeat=1000):
