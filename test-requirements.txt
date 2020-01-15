@@ -25,9 +25,8 @@ httptools==0.0.13         # via uvicorn
 httpx==0.11.0
 hyperframe==5.2.0         # via h2
 idna==2.8                 # via httpx, requests, yarl
-importlib-metadata==1.4.0  # via pluggy, pytest
 mccabe==0.6.1             # via flake8
-more-itertools==8.1.0     # via pytest, zipp
+more-itertools==8.1.0     # via pytest
 multidict==4.7.4          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
 mypy==0.761               # via pytest-mypy
@@ -40,7 +39,7 @@ pyparsing==2.4.6          # via packaging
 pytest-aiohttp==0.3.0
 pytest-asyncio==0.10.0
 pytest-cov==2.8.1
-pytest-django==3.7.0
+pytest-django==3.8.0
 pytest-flake8==1.0.4
 pytest-mock==2.0.0
 pytest-mypy==0.4.2
@@ -61,4 +60,3 @@ uvloop==0.14.0            # via uvicorn
 wcwidth==0.1.8            # via pytest
 websockets==8.1           # via uvicorn
 yarl==1.4.2               # via aiohttp
-zipp==0.6.0               # via importlib-metadata
