@@ -100,7 +100,7 @@ if __name__ == '__main__':
     loop.run_until_complete(run())
 ```
 
-# TODO (https://github.com/sonic182/aiosonic/projects/1)
+# [TODO'S](https://github.com/sonic182/aiosonic/projects/1)
 
 * HTTP2
   * [x] Get
