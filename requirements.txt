@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
-chardet==3.0.4
-h2==3.2.0
+chardet==3.0.4            # via -r requirements.in
+h2==3.2.0                 # via -r requirements.in
 hpack==3.0.0              # via h2
 hyperframe==5.2.0         # via h2
