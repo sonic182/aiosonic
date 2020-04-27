@@ -21,7 +21,7 @@ pytz==2019.2              # via babel
 requests==2.22.0          # via sphinx
 six==1.12.0               # via packaging
 snowballstemmer==1.9.0    # via sphinx
-sphinx==3.0.0             # via -r dev-requirements.in
+sphinx==3.0.3             # via -r dev-requirements.in
 sphinxcontrib-applehelp==1.0.1  # via sphinx
 sphinxcontrib-devhelp==1.0.1  # via sphinx
 sphinxcontrib-htmlhelp==1.0.2  # via sphinx
