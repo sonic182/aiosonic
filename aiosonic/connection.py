@@ -22,6 +22,12 @@ from aiosonic.http2 import Http2Handler
 from aiosonic.types import ParamsType
 from aiosonic.types import ParsedBodyType
 
+try:
+    # new Python 3.8 timeout exception
+    from asyncio.exceptions import TimeoutError as TimeoutException
+except ImportError:
+    from concurrent.futures._base import TimeoutError as TimeoutException
+
 
 class Connection:
     """Connection class."""
@@ -47,7 +53,7 @@ class Connection:
                 self._connect(urlparsed, verify, ssl_context, http2),
                 timeout=(timeouts or self.timeouts).sock_connect
             )
-        except futures._base.TimeoutError:
+        except TimeoutException:
             raise ConnectTimeout()
 
     async def _connect(self, urlparsed: ParseResult, verify: bool,

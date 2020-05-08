@@ -50,6 +50,12 @@ from aiosonic.types import DataType
 from aiosonic.types import BodyType
 from aiosonic.types import ParsedBodyType
 
+try:
+    # new Python 3.8 timeout exception
+    from asyncio.exceptions import TimeoutError as TimeoutException
+except ImportError:
+    from concurrent.futures._base import TimeoutError as TimeoutException
+
 
 try:
     import cchardet as chardet
@@ -405,7 +411,7 @@ async def _do_request(urlparsed: ParseResult, headers_data: Callable,
                     (timeouts or connector.timeouts).sock_read
                 )
             )
-        except futures._base.TimeoutError:
+        except TimeoutException:
             raise ReadTimeout()
 
         res_data = None
@@ -591,5 +597,5 @@ async def request(url: str, method: str = 'GET', headers: HeadersType = None,
                 return response
         except ConnectTimeout:
             raise
-        except futures._base.TimeoutError:
+        except TimeoutException:
             raise RequestTimeout()

@@ -240,7 +240,8 @@ async def test_connect_timeout(mocker):
     async def long_connect(*_args, **_kwargs):
         await asyncio.sleep(3)
 
-    _connect = mocker.patch('aiosonic.connection.Connection._connect')
+    _connect = mocker.patch(
+        'aiosonic.connection.Connection._connect', new=long_connect)
     _connect.return_value = long_connect()
 
     with pytest.raises(ConnectTimeout):
@@ -288,7 +289,7 @@ async def test_request_timeout(app, aiohttp_server, mocker):
     async def long_request(*_args, **_kwargs):
         await asyncio.sleep(3)
 
-    _connect = mocker.patch('aiosonic._do_request')
+    _connect = mocker.patch('aiosonic._do_request', new=long_request)
     _connect.return_value = long_request()
 
     with pytest.raises(RequestTimeout):
@@ -583,17 +584,17 @@ async def test_sending_chunks_with_error(mocker):
 @pytest.mark.asyncio
 async def test_connection_error(mocker):
     """Connection error check."""
-    acquire = mocker.patch('aiosonic.TCPConnector.acquire')
-    connector = mocker.MagicMock()
-
-    async def connect(*args, **kwargs):
-        return None, None
-
     async def get_conn(*args, **kwargs):
         conn = Connection(connector)
         conn.connect = connect
         conn.writer = None
         return conn
+
+    acquire = mocker.patch('aiosonic.TCPConnector.acquire', new=get_conn)
+    connector = mocker.MagicMock()
+
+    async def connect(*args, **kwargs):
+        return None, None
     acquire.return_value = get_conn()
     connector.release.return_value = asyncio.Future()
     connector.release.return_value.set_result(True)

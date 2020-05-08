@@ -18,6 +18,12 @@ from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.pools import SmartPool
 from aiosonic.timeout import Timeouts
 
+try:
+    # new Python 3.8 timeout exception
+    from asyncio.exceptions import TimeoutError as TimeoutException
+except ImportError:
+    from concurrent.futures._base import TimeoutError as TimeoutException
+
 
 class TCPConnector:
 
@@ -42,7 +48,7 @@ class TCPConnector:
                 self.pool.acquire(urlparsed),
                 self.timeouts.pool_acquire
             )
-        except futures._base.TimeoutError:
+        except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
 
     async def release(self, conn):
