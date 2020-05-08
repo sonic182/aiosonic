@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] 2020-05-08
+### Added
+- Compatibility with python 3.8 now is fully supported
+
 ## [0.5.3] 2020-01-12
 ### Fixed
 - Method upcase in header all the time
