@@ -26,9 +26,11 @@ except ImportError:
 
 
 class TCPConnector:
-
-    def __init__(self, pool_size: int = 25, timeouts: Timeouts = None,
-                 connection_cls=None, pool_cls=None):
+    def __init__(self,
+                 pool_size: int = 25,
+                 timeouts: Timeouts = None,
+                 connection_cls=None,
+                 pool_cls=None):
         """Initialize."""
         from aiosonic.connection import Connection  # avoid circular dependency
         self.pool_size = pool_size
@@ -44,10 +46,8 @@ class TCPConnector:
             return await self.pool.acquire(urlparsed)
 
         try:
-            return await asyncio.wait_for(
-                self.pool.acquire(urlparsed),
-                self.timeouts.pool_acquire
-            )
+            return await asyncio.wait_for(self.pool.acquire(urlparsed),
+                                          self.timeouts.pool_acquire)
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
 

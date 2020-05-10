@@ -31,7 +31,6 @@ except ImportError:
 
 class Connection:
     """Connection class."""
-
     def __init__(self, connector: TCPConnector):
         self.connector = connector
         self.reader: Optional[StreamReader] = None
@@ -44,15 +43,18 @@ class Connection:
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
 
-    async def connect(self, urlparsed: ParseResult, verify: bool,
-                      ssl_context: SSLContext, timeouts: Timeouts,
+    async def connect(self,
+                      urlparsed: ParseResult,
+                      verify: bool,
+                      ssl_context: SSLContext,
+                      timeouts: Timeouts,
                       http2: bool = False):
         """Connet with timeout."""
         try:
-            await asyncio.wait_for(
-                self._connect(urlparsed, verify, ssl_context, http2),
-                timeout=(timeouts or self.timeouts).sock_connect
-            )
+            await asyncio.wait_for(self._connect(urlparsed, verify,
+                                                 ssl_context, http2),
+                                   timeout=(timeouts
+                                            or self.timeouts).sock_connect)
         except TimeoutException:
             raise ConnectTimeout()
 
@@ -70,7 +72,9 @@ class Connection:
                 self.writer, 'is_closing',
                 self.writer._transport.is_closing)  # type: ignore
         else:
-            def is_closing(): return True  # noqa
+
+            def is_closing():
+                return True  # noqa
 
         if not (self.key and key == self.key and not is_closing()):
             if self.writer:
@@ -78,20 +82,16 @@ class Connection:
 
             if urlparsed.scheme == 'https':
                 ssl_context = ssl_context or ssl.create_default_context(
-                    ssl.Purpose.SERVER_AUTH,
-                )
+                    ssl.Purpose.SERVER_AUTH, )
                 if http2:  # flag will be removed when fully http2 support
                     ssl_context.set_alpn_protocols(['h2', 'http/1.1'])
                 if not verify:
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
-            port = urlparsed.port or (
-                443 if urlparsed.scheme == 'https' else 80)
+            port = urlparsed.port or (443
+                                      if urlparsed.scheme == 'https' else 80)
             self.reader, self.writer = await asyncio.open_connection(
-                urlparsed.hostname,
-                port,
-                ssl=ssl_context
-            )
+                urlparsed.hostname, port, ssl=ssl_context)
 
             self.temp_key = key
             await self._connection_made()
@@ -148,8 +148,8 @@ class Connection:
     def __del__(self):
         """Cleanup."""
         if self.writer:
-            is_closing = getattr(
-                self.writer, 'is_closing', self.writer._transport.is_closing)
+            is_closing = getattr(self.writer, 'is_closing',
+                                 self.writer._transport.is_closing)
             if is_closing():
                 self.writer.close()
 

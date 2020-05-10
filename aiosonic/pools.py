@@ -6,7 +6,6 @@ from urllib.parse import ParseResult
 
 class CyclicQueuePool:
     """Cyclic queue pool of connections."""
-
     def __init__(self, connector, pool_size, connection_cls):
         self.pool = asyncio.Queue(pool_size)
 
@@ -24,7 +23,6 @@ class CyclicQueuePool:
 
 class SmartPool:
     """Pool which utilizes alive connections."""
-
     def __init__(self, connector, pool_size, connection_cls):
         self.pool = set()
         self.sem = asyncio.Semaphore(pool_size)

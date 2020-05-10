@@ -1,5 +1,3 @@
-
-
 import asyncio
 from typing import Optional
 
@@ -14,7 +12,6 @@ from aiosonic.types import ParsedBodyType
 
 
 class Http2Handler(object):
-
     def __init__(self, connection):
         """Initialize."""
         self.connection = connection
@@ -52,8 +49,7 @@ class Http2Handler(object):
     async def request(self, headers: Dict[str, str],
                       body: Optional[ParsedBodyType]):
         stream_id = self.h2conn.get_next_available_stream_id()
-        self.h2conn.send_headers(stream_id, headers.items(),
-                                 end_stream=True)
+        self.h2conn.send_headers(stream_id, headers.items(), end_stream=True)
         from aiosonic import HttpResponse
         future: Awaitable[bytes] = asyncio.Future()
         self.requests[stream_id] = {
@@ -69,10 +65,7 @@ class Http2Handler(object):
         response = HttpResponse()
         for key, val in res['headers']:
             if key == b':status':
-                response.response_initial = {
-                    'version': b'2',
-                    'code': val
-                }
+                response.response_initial = {'version': b'2', 'code': val}
             else:
                 response._set_header(key, val)
 
@@ -106,24 +99,20 @@ class Http2Handler(object):
                 self.requests[event.stream_id]['body'] += event.data
 
                 if (event.stream_id in h2conn.streams
-                    and not h2conn.streams[event.stream_id].closed):
+                        and not h2conn.streams[event.stream_id].closed):
                     h2conn.increment_flow_control_window(
                         event.flow_controlled_length, event.stream_id)
                 h2conn.increment_flow_control_window(
                     event.flow_controlled_length)
             elif isinstance(event, h2.events.ResponseReceived):
-                self.requests[
-                    event.stream_id]['headers'] = event.headers
-            elif isinstance(event, (
-                    h2.events.WindowUpdated,
-                    h2.events.PingReceived,
-                    h2.events.RemoteSettingsChanged,
-                    h2.events.SettingsAcknowledged
-            )):
+                self.requests[event.stream_id]['headers'] = event.headers
+            elif isinstance(event,
+                            (h2.events.WindowUpdated, h2.events.PingReceived,
+                             h2.events.RemoteSettingsChanged,
+                             h2.events.SettingsAcknowledged)):
                 pass
             else:
-                raise MissingEvent(
-                    f'another event {event.__class__.__name__}')
+                raise MissingEvent(f'another event {event.__class__.__name__}')
 
     async def writer_t(self):
         """Writer task."""

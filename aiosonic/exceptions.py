@@ -1,5 +1,3 @@
-
-
 # General
 class MissingWriterException(Exception):
     pass

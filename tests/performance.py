@@ -24,7 +24,6 @@ import aiosonic
 from aiosonic.connectors import TCPConnector
 from aiosonic.pools import CyclicQueuePool
 
-
 try:
     import uvloop
     uvloop.install()
@@ -36,8 +35,10 @@ async def app(scope, receive, send):
     assert scope['type'] == 'http'
     res = b'foo'
     await send({
-        'type': 'http.response.start',
-        'status': 200,
+        'type':
+        'http.response.start',
+        'status':
+        200,
         'headers': [
             [b'content-type', b'text/plain'],
             [b'content-length', b'%d' % len(res)],
@@ -64,10 +65,7 @@ async def timeit_coro(func, *args, **kwargs):
     repeat = kwargs.pop('repeat', 1000)
     before = datetime.now()
     # Concurrent coroutines
-    await asyncio.gather(*[
-        func(*args, **kwargs)
-        for _ in range(repeat)
-    ])
+    await asyncio.gather(*[func(*args, **kwargs) for _ in range(repeat)])
     after = datetime.now()
     return (after - before) / timedelta(milliseconds=1)
 
@@ -81,9 +79,11 @@ async def performance_aiohttp(url, concurrency):
 
 async def performance_aiosonic(url, concurrency, pool_cls=None, timeouts=None):
     """Test aiohttp performance."""
-    return await timeit_coro(
-        aiosonic.get, url, connector=TCPConnector(
-            pool_size=concurrency, pool_cls=pool_cls), timeouts=timeouts)
+    return await timeit_coro(aiosonic.get,
+                             url,
+                             connector=TCPConnector(pool_size=concurrency,
+                                                    pool_cls=pool_cls),
+                             timeouts=timeouts)
 
 
 async def performance_httpx(url, concurrency, pool_cls=None):
@@ -95,10 +95,8 @@ async def performance_httpx(url, concurrency, pool_cls=None):
 def timeit_requests(url, concurrency, repeat=1000):
     """Timeit requests."""
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(
-        pool_connections=concurrency,
-        pool_maxsize=concurrency
-    )
+    adapter = requests.adapters.HTTPAdapter(pool_connections=concurrency,
+                                            pool_maxsize=concurrency)
     session.mount('http://', adapter)
     with futures.ThreadPoolExecutor(concurrency) as executor:
         to_wait = []
@@ -127,15 +125,14 @@ def do_tests(url):
     res3 = timeit_requests(url, concurrency)
 
     # aiosonic cyclic
-    res4 = loop.run_until_complete(performance_aiosonic(
-        url, concurrency, pool_cls=CyclicQueuePool))
+    res4 = loop.run_until_complete(
+        performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool))
 
     # httpx
     httpx_exc = False
     res5 = None
     try:
-        res5 = loop.run_until_complete(performance_httpx(
-            url, concurrency))
+        res5 = loop.run_until_complete(performance_httpx(url, concurrency))
     except Exception as exc:
         httpx_exc = exc
         print('httpx did break with: ' + str(exc))
@@ -152,12 +149,12 @@ def do_tests(url):
 
     print(json.dumps(to_print, indent=True))
 
-    print('aiosonic is %.2f%% faster than aiohttp' % (
-        ((res1 / res2) - 1) * 100))
-    print('aiosonic is %.2f%% faster than requests' % (
-        ((res3 / res2) - 1) * 100))
-    print('aiosonic is %.2f%% faster than aiosonic cyclic' % (
-        ((res4 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than aiohttp' %
+          (((res1 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than requests' %
+          (((res3 / res2) - 1) * 100))
+    print('aiosonic is %.2f%% faster than aiosonic cyclic' %
+          (((res4 / res2) - 1) * 100))
 
     res = [
         ['aiohttp', res1],
@@ -167,8 +164,8 @@ def do_tests(url):
     ]
 
     if not httpx_exc:
-        print('aiosonic is %.2f%% faster than httpx' % (
-            ((res5 / res2) - 1) * 100))
+        print('aiosonic is %.2f%% faster than httpx' %
+              (((res5 / res2) - 1) * 100))
         res.append(['httpx', res5])
 
     return res
@@ -184,7 +181,7 @@ def main():
     """Start."""
     port = random.randint(1000, 9000)
     url = 'http://0.0.0.0:%d' % port
-    process = Process(target=start_server, args=(port,))
+    process = Process(target=start_server, args=(port, ))
     process.start()
 
     max_wait = datetime.now() + timedelta(seconds=5)

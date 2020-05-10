@@ -27,24 +27,14 @@ async def hello(request):
 
 async def hello_gzip(request):
     """Sample router."""
-    headers = {
-        'Content-encoding': 'gzip'
-    }
-    return web.Response(
-        body=gzip.compress(b'Hello, world'),
-        headers=headers
-    )
+    headers = {'Content-encoding': 'gzip'}
+    return web.Response(body=gzip.compress(b'Hello, world'), headers=headers)
 
 
 async def hello_deflate(request):
     """Sample router."""
-    headers = {
-        'Content-encoding': 'deflate'
-    }
-    return web.Response(
-        body=zlib.compress(b'Hello, world'),
-        headers=headers
-    )
+    headers = {'Content-encoding': 'deflate'}
+    return web.Response(body=zlib.compress(b'Hello, world'), headers=headers)
 
 
 async def hello_post(request):
@@ -89,7 +79,6 @@ async def chunked_response(request):
         status=200,
         reason='OK',
         headers={'Content-Type': 'text/plain'},
-
     )
     # response.enable_chunked_encoding()
     await response.prepare(request)
@@ -152,10 +141,8 @@ def ssl_context():
     # python 3.5 compatibility
     context = ssl.SSLContext(
         getattr(ssl, 'PROTOCOL_TLS_SERVER', ssl.PROTOCOL_TLS))
-    context.load_cert_chain(
-        'tests/files/certs/server.cert',
-        'tests/files/certs/server.key'
-    )
+    context.load_cert_chain('tests/files/certs/server.cert',
+                            'tests/files/certs/server.key')
     return context
 
 
@@ -167,7 +154,7 @@ def node_http2(port):
 def http2_serv():
     """Sample aiohttp app."""
     port = random.randint(1000, 9999)
-    p = mp.Process(target=node_http2, args=(port,))
+    p = mp.Process(target=node_http2, args=(port, ))
     p.start()
     url = f'https://localhost:{port}/'
 

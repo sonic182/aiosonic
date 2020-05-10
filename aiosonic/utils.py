@@ -15,6 +15,8 @@ def cache_decorator(size=512):
             if len(_cache) > size:
                 _cache.pop(next(iter(_cache)))
             return res
+
         _wrapper.cache = _cache
         return _wrapper
+
     return decorator
