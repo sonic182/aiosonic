@@ -79,10 +79,10 @@ async def performance_aiohttp(url, concurrency):
 
 async def performance_aiosonic(url, concurrency, pool_cls=None, timeouts=None):
     """Test aiohttp performance."""
-    return await timeit_coro(aiosonic.get,
+    client = aiosonic.HTTPClient(
+        TCPConnector(pool_size=concurrency, pool_cls=pool_cls))
+    return await timeit_coro(client.get,
                              url,
-                             connector=TCPConnector(pool_size=concurrency,
-                                                    pool_cls=pool_cls),
                              timeouts=timeouts)
 
 
