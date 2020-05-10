@@ -56,7 +56,8 @@ Getting Started
   async def run():
       """Start."""
       # Sample get request
-      response = await aiosonic.get('https://www.google.com/')
+      client = aiosonic.HttpClient()
+      response = await client.get('https://www.google.com/')
       assert response.status_code == 200
       assert 'Google' in (await response.text())
   
@@ -83,7 +84,7 @@ Getting Started
           sock_read=10,
           sock_connect=3
       )
-      response = await aiosonic.get('https://www.google.com/', timeouts=timeouts)
+      response = await client.get('https://www.google.com/', timeouts=timeouts)
       assert response.status_code == 200
       assert 'Google' in (await response.text())
   

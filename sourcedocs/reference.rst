@@ -5,19 +5,19 @@ Reference
 
 TODO: get better this page
 
-Methods
-=======
+.. autoclass:: aiosonic.HTTPClient
 
-.. autofunction:: aiosonic.request
-.. autofunction:: aiosonic.get
-.. autofunction:: aiosonic.post
-.. autofunction:: aiosonic.put
-.. autofunction:: aiosonic.patch
-.. autofunction:: aiosonic.delete
+.. autofunction:: aiosonic.HTTPClient.request
+.. autofunction:: aiosonic.HTTPClient.get
+.. autofunction:: aiosonic.HTTPClient.post
+.. autofunction:: aiosonic.HTTPClient.put
+.. autofunction:: aiosonic.HTTPClient.patch
+.. autofunction:: aiosonic.HTTPClient.delete
 
 
 Classes
 =======
+
 
 .. autoclass:: aiosonic.HttpHeaders
    :members:
