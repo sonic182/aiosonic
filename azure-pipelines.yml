@@ -62,6 +62,7 @@ steps:
       pip install -r requirements.txt
       pip install -e ".[test]"
       pytest --cov=aiosonic --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
+    timeoutInMinutes: 5
     displayName: 'Run tests'
 
   - task: PublishTestResults@2
