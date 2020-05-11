@@ -51,3 +51,10 @@ class TCPConnector:
         res = self.pool.release(conn)
         if isinstance(res, Coroutine):
             await res
+
+    async def wait_free_pool(self):
+        """Wait until free pool."""
+        while True:
+            if self.pool.is_all_free():
+                return True
+            asyncio.sleep(0.02)

@@ -684,3 +684,16 @@ class HTTPClient:
                 raise
             except TimeoutException:
                 raise RequestTimeout()
+
+    async def wait_requests(self, timeout: int = 30):
+        """Wait until all pending requests are done.
+
+        If timeout, returns False
+        If not pending requests, returns True immediately.
+        This is useful when doing safe shutdown of a process.
+        """
+        try:
+            return await asyncio.wait_for(
+                self.connector.wait_free_pool(), timeout)
+        except TimeoutException:
+            return False

@@ -30,7 +30,7 @@ class Connection:
         self.connector = connector
         self.reader: Optional[StreamReader] = None
         self.writer: Optional[StreamWriter] = None
-        self.keep = False
+        self.keep = False  # keep alive flag
         self.key = None
         self.blocked = False
         self.temp_key: Optional[str] = None

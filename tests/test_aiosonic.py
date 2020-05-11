@@ -679,3 +679,16 @@ async def test_get_no_hostname(app, aiohttp_server):
 
     with pytest.raises(HttpParsingError):
         await client.get(url)
+
+
+@pytest.mark.asyncio
+async def test_wait_connections_empty():
+    """Test simple get."""
+    client = aiosonic.HTTPClient()
+    assert await client.wait_requests()
+    assert not await client.wait_requests(0)
+
+    connector = TCPConnector(pool_cls=CyclicQueuePool)
+    client = aiosonic.HTTPClient(connector)
+    assert await client.wait_requests()
+    assert not await client.wait_requests(0)
