@@ -65,14 +65,14 @@ Getting Started
       posted_data = {'foo': 'bar'}
   
       # post data as multipart form
-      response = await aiosonic.post(url, data=posted_data)
+      response = await client.post(url, data=posted_data)
   
       assert response.status_code == 200
       data = json.loads(await response.content())
       assert data['form'] == posted_data
   
       # posted as json
-      response = await aiosonic.post(url, json=posted_data)
+      response = await client.post(url, json=posted_data)
   
       assert response.status_code == 200
       data = json.loads(await response.content())
