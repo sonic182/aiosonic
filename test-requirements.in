@@ -2,7 +2,7 @@ aiohttp
 coveralls
 django
 httpx
-pytest<5.4
+pytest
 pytest-aiohttp
 pytest-asyncio
 pytest-cov
