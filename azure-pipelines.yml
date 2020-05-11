@@ -35,9 +35,11 @@ strategy:
       python.version: '3.7'
       imageName: 'windows-latest'
 
-    Python38-windows:
-      python.version: '3.8'
-      imageName: 'windows-latest'
+#     TODO: restore this when pytest-aiohttp solves error or
+#       when refactoring tests
+#     Python38-windows:
+#       python.version: '3.8'
+#       imageName: 'windows-latest'
 
 
 
