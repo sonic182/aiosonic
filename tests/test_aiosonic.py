@@ -682,13 +682,30 @@ async def test_get_no_hostname(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
-async def test_wait_connections_empty():
+async def test_wait_connections_empty(mocker):
     """Test simple get."""
     client = aiosonic.HTTPClient()
     assert await client.wait_requests()
-    assert not await client.wait_requests(0)
 
     connector = TCPConnector(pool_cls=CyclicQueuePool)
     client = aiosonic.HTTPClient(connector)
     assert await client.wait_requests()
+
+
+@pytest.mark.asyncio
+async def test_wait_connections_busy_timeout(mocker):
+    """Test simple get."""
+    async def long_connect(*_args, **_kwargs):
+        await asyncio.sleep(1)
+        return True
+
+    _connect = mocker.patch('aiosonic.connectors.TCPConnector.wait_free_pool',
+                            new=long_connect)
+
+    _connect.return_value = long_connect()
+    client = aiosonic.HTTPClient()
+    assert not await client.wait_requests(0)
+
+    connector = TCPConnector(pool_cls=CyclicQueuePool)
+    client = aiosonic.HTTPClient(connector)
     assert not await client.wait_requests(0)
