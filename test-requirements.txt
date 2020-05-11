@@ -16,7 +16,6 @@ coveralls==2.0.0          # via -r test-requirements.in
 django==3.0.6             # via -r test-requirements.in
 docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
-flake8==3.8.0             # via pytest-flake8
 h11==0.9.0                # via httpx, uvicorn
 h2==3.2.0                 # via httpx
 hpack==3.0.0              # via h2
@@ -25,7 +24,6 @@ httptools==0.1.1          # via uvicorn
 httpx==0.12.1             # via -r test-requirements.in
 hyperframe==5.2.0         # via h2
 idna==2.9                 # via httpx, requests, yarl
-mccabe==0.6.1             # via flake8
 more-itertools==8.2.0     # via pytest
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
@@ -33,18 +31,15 @@ mypy==0.770               # via pytest-mypy
 packaging==20.3           # via pytest, pytest-sugar
 pluggy==0.13.1            # via pytest
 py==1.8.1                 # via pytest
-pycodestyle==2.6.0        # via flake8
-pyflakes==2.2.0           # via flake8
 pyparsing==2.4.7          # via packaging
 pytest-aiohttp==0.3.0     # via -r test-requirements.in
 pytest-asyncio==0.12.0    # via -r test-requirements.in
 pytest-cov==2.8.1         # via -r test-requirements.in
 pytest-django==3.9.0      # via -r test-requirements.in
-pytest-flake8==1.0.5      # via -r test-requirements.in
 pytest-mock==3.1.0        # via -r test-requirements.in
 pytest-mypy==0.6.2        # via -r test-requirements.in
 pytest-sugar==0.9.3       # via -r test-requirements.in
-pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-flake8, pytest-mock, pytest-mypy, pytest-sugar
+pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar
 pytz==2020.1              # via django
 requests==2.23.0          # via coveralls
 rfc3986==1.4.0            # via httpx
