@@ -15,16 +15,17 @@ There is a performance script in tests folder which shows very nice numbers
 ```
 » python ./tests/performance.py
 doing tests...
-httpx did break with: [Errno 24] Too many open files
 {
- "aiosonic": "1000 requests in 146.89 ms",
- "aiosonic cyclic": "1000 requests in 146.17 ms",
- "aiohttp": "1000 requests in 319.42 ms",
- "requests": "1000 requests in 1766.96 ms"
+ "aiosonic": "1000 requests in 110.56 ms",
+ "aiosonic cyclic": "1000 requests in 207.75 ms",
+ "aiohttp": "1000 requests in 357.19 ms",
+ "requests": "1000 requests in 4274.21 ms",
+ "httpx": "1000 requests in 800.98 ms"
 }
-aiosonic is 117.46% faster than aiohttp
-aiosonic is 1102.93% faster than requests
-aiosonic is -0.49% faster than aiosonic cyclic
+aiosonic is 223.05% faster than aiohttp
+aiosonic is 3765.79% faster than requests
+aiosonic is 87.90% faster than aiosonic cyclic
+aiosonic is 624.45% faster than httpx
 ```
 
 You can perform this test by installing all test dependencies with `pip install -e ".[test]"` and doing `python tests/performance.py` in your own machine
