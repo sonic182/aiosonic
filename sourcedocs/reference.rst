@@ -13,6 +13,7 @@ TODO: get better this page
 .. autofunction:: aiosonic.HTTPClient.put
 .. autofunction:: aiosonic.HTTPClient.patch
 .. autofunction:: aiosonic.HTTPClient.delete
+.. autofunction:: aiosonic.HTTPClient.wait_requests
 
 
 Classes

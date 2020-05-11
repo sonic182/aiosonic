@@ -688,8 +688,8 @@ class HTTPClient:
     async def wait_requests(self, timeout: int = 30):
         """Wait until all pending requests are done.
 
-        If timeout, returns False
-        If not pending requests, returns True immediately.
+        If timeout, returns false.
+
         This is useful when doing safe shutdown of a process.
         """
         try:
