@@ -31,14 +31,15 @@ import chardet
 
 from aiosonic_utils.structures import CaseInsensitiveDict
 
-from aiosonic.connectors import TCPConnector
 from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectTimeout
+from aiosonic.exceptions import HttpParsingError
+from aiosonic.exceptions import MaxRedirects
+from aiosonic.exceptions import MissingWriterException
 from aiosonic.exceptions import ReadTimeout
 from aiosonic.exceptions import RequestTimeout
-from aiosonic.exceptions import HttpParsingError
-from aiosonic.exceptions import MissingWriterException
-from aiosonic.exceptions import MaxRedirects
+from aiosonic.connectors import TCPConnector
+from aiosonic.exceptions import TimeoutException
 from aiosonic.timeout import Timeouts
 from aiosonic.utils import cache_decorator
 from aiosonic.version import VERSION
@@ -48,12 +49,6 @@ from aiosonic.types import ParamsType
 from aiosonic.types import DataType
 from aiosonic.types import BodyType
 from aiosonic.types import ParsedBodyType
-
-try:
-    # new Python 3.8 timeout exception
-    from asyncio.exceptions import TimeoutError as TimeoutException
-except ImportError:
-    from concurrent.futures._base import TimeoutError as TimeoutException
 
 try:
     import cchardet as chardet

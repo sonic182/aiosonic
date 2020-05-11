@@ -15,18 +15,13 @@ import h2.events
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import HttpParsingError
+from aiosonic.exceptions import TimeoutException
 from aiosonic.timeout import Timeouts
 from aiosonic.connectors import TCPConnector
 from aiosonic.http2 import Http2Handler
 
 from aiosonic.types import ParamsType
 from aiosonic.types import ParsedBodyType
-
-try:
-    # new Python 3.8 timeout exception
-    from asyncio.exceptions import TimeoutError as TimeoutException
-except ImportError:
-    from concurrent.futures._base import TimeoutError as TimeoutException
 
 
 class Connection:

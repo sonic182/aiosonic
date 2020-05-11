@@ -1,3 +1,11 @@
+
+try:
+    # new Python 3.8 timeout exception
+    from asyncio.exceptions import TimeoutError as TimeoutException
+except ImportError:
+    from concurrent.futures._base import TimeoutError as TimeoutException
+
+
 # General
 class MissingWriterException(Exception):
     pass

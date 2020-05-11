@@ -15,14 +15,9 @@ from hyperframe.frame import SettingsFrame
 from concurrent import futures
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
+from aiosonic.exceptions import TimeoutException
 from aiosonic.pools import SmartPool
 from aiosonic.timeout import Timeouts
-
-try:
-    # new Python 3.8 timeout exception
-    from asyncio.exceptions import TimeoutError as TimeoutException
-except ImportError:
-    from concurrent.futures._base import TimeoutError as TimeoutException
 
 
 class TCPConnector:
