@@ -60,31 +60,38 @@ import json
 
 
 async def run():
-    """Start."""
-    # Sample get request
     client = aiosonic.HttpClient()
+
+    # ##################
+    # Sample get request
+    # ##################
     response = await client.get('https://www.google.com/')
     assert response.status_code == 200
     assert 'Google' in (await response.text())
 
+    # ##################
+    # Post data as multipart form
+    # ##################
     url = "https://postman-echo.com/post"
     posted_data = {'foo': 'bar'}
-
-    # post data as multipart form
     response = await client.post(url, data=posted_data)
 
     assert response.status_code == 200
     data = json.loads(await response.content())
     assert data['form'] == posted_data
 
-    # posted as json
+    # ##################
+    # Posted as json
+    # ##################
     response = await client.post(url, json=posted_data)
 
     assert response.status_code == 200
     data = json.loads(await response.content())
     assert data['json'] == posted_data
 
-    # Sample get request + timeout
+    # ##################
+    # Sample request + timeout
+    # ##################
     from aiosonic.timeout import Timeouts
     timeouts = Timeouts(
         sock_read=10,
