@@ -16,14 +16,11 @@ coveralls==2.0.0          # via -r test-requirements.in
 django==3.0.6             # via -r test-requirements.in
 docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
-h11==0.9.0                # via httpx, uvicorn
-h2==3.2.0                 # via httpx
-hpack==3.0.0              # via h2
-hstspreload==2020.5.5     # via httpx
+h11==0.9.0                # via httpcore, uvicorn
+httpcore==0.10.2          # via httpx
 httptools==0.1.1          # via uvicorn
-httpx==0.12.1             # via -r test-requirements.in
-hyperframe==5.2.0         # via h2
-idna==2.9                 # via httpx, requests, yarl
+httpx==0.14.3             # via -r test-requirements.in
+idna==2.9                 # via requests, rfc3986, yarl
 more-itertools==8.2.0     # via pytest
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
@@ -42,14 +39,14 @@ pytest-sugar==0.9.3       # via -r test-requirements.in
 pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar
 pytz==2020.1              # via django
 requests==2.23.0          # via coveralls
-rfc3986==1.4.0            # via httpx
+rfc3986[idna2008]==1.4.0  # via httpx
 six==1.14.0               # via packaging
-sniffio==1.1.0            # via httpx
+sniffio==1.1.0            # via httpcore, httpx
 sqlparse==0.3.1           # via django
 termcolor==1.1.0          # via pytest-sugar
 typed-ast==1.4.1          # via mypy
 typing-extensions==3.7.4.2  # via mypy
-urllib3==1.25.9           # via httpx, requests
+urllib3==1.25.9           # via requests
 uvicorn==0.11.5           # via -r test-requirements.in
 uvloop==0.14.0            # via uvicorn
 wcwidth==0.1.9            # via pytest
