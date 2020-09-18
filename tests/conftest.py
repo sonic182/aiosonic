@@ -156,7 +156,7 @@ def http2_serv():
         else:
             break
 
-        if datetime.utc() > max_wait:
+        if datetime.utcnow() > max_wait:
             raise Exception('cannot run node http2 server')
         sleep(0.02)
 

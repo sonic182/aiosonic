@@ -5,7 +5,6 @@ httpx
 pytest
 pytest-aiohttp
 pytest-asyncio
-pytest-flake8
 pytest-cov
 pytest-django
 pytest-mock
