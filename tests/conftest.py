@@ -149,7 +149,7 @@ def ssl_context():
 def http2_serv():
     """Sample aiohttp app."""
     while True:
-        port = random.randint(1025, 60000)
+        port = random.randint(1025, 49151)
         if not __is_port_in_use(port):
             break
 
