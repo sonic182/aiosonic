@@ -21,3 +21,5 @@ logs/*.log*
 *.csv
 .mypy_cache/
 junit/
+env/
+venv*/
