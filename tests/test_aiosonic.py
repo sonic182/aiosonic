@@ -77,6 +77,7 @@ async def test_method_lower(http2_serv):
 
 class MyConnection(Connection):
     """Connection to count keeped alives connections."""
+
     def __init__(self, *args, **kwargs):
         self.counter = 0
         super(MyConnection, self).__init__(*args, **kwargs)

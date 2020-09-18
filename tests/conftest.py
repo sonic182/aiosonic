@@ -3,7 +3,6 @@
 import asyncio
 from datetime import datetime
 from datetime import timedelta
-import errno
 import gzip
 import random
 import socket
@@ -11,8 +10,6 @@ import signal
 import ssl
 import subprocess
 from time import sleep
-from urllib.request import urlopen
-from urllib.error import URLError
 import zlib
 
 import aiohttp
