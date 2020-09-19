@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime
 from datetime import timedelta
+import random
 import gzip
 import socket
 import signal
@@ -147,34 +148,24 @@ def ssl_context():
 @pytest.fixture
 def http2_serv():
     """Sample aiohttp app."""
-
-    max_wait = datetime.utcnow() + timedelta(seconds=3)
-    while True:
-        port = 3000
-        if __is_port_in_use(port):
-            port += 1
-        else:
-            break
-
-        if datetime.utcnow() > max_wait:
-            raise Exception('cannot run node http2 server')
-        sleep(0.02)
+    port = random.randint(3000, 4000)
 
     kwargs = dict(
         stdin=subprocess.PIPE,
         shell=True)
 
-    with subprocess.Popen(f"node tests/app.js {port}", **kwargs) as proc:
-        url = f'https://localhost:{port}/'
+    proc = subprocess.Popen(f"node tests/app.js {port}", **kwargs)
+    url = f'https://localhost:{port}/'
 
-        # This restores the same behavior as before.
-        max_wait = datetime.utcnow() + timedelta(seconds=3)
-        while not __is_port_in_use(port):
-            sleep(0.2)
-            if datetime.utc() > max_wait:
-                raise Exception('cannot run node http2 server')
-        yield url
-        proc.send_signal(signal.SIGINT)
+    # This restores the same behavior as before.
+    max_wait = datetime.utcnow() + timedelta(seconds=3)
+    while not __is_port_in_use(port):
+        sleep(0.2)
+        if datetime.utcnow() > max_wait:
+            raise Exception('cannot run node http2 server')
+    yield url
+    proc.send_signal(signal.SIGINT)
+    proc.terminate()
 
 
 def __is_port_in_use(port):

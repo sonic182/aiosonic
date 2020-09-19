@@ -27,7 +27,8 @@ async def test_simple_get(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = 'http://localhost:%d' % server.port
 
-    client = aiosonic.HTTPClient()
+    connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    client = aiosonic.HTTPClient(connector)
     res = await client.get(url)
     assert res.status_code == 200
     assert await res.content() == b'Hello, world'
@@ -36,24 +37,26 @@ async def test_simple_get(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
-async def test_get_python():
+@pytest.mark.timeout(3)
+async def test_get_python(http2_serv):
     """Test simple get."""
-    url = 'https://www.python.org/'
+    url = http2_serv
 
-    client = aiosonic.HTTPClient()
+    connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    client = aiosonic.HTTPClient(connector)
     res = await client.get(
         url,
+        verify=False,
         headers={
             'user-agent':
             ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:70.0)'
              ' Gecko/20100101 Firefox/70.0')
-        },
-        http2=True)
-    assert res.status_code == 200
-    assert '<title>Welcome to Python.org</title>' in await res.text()
+        }, http2=True)
+    assert 'Hello World' in await res.text()
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(3)
 async def test_get_http2(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -66,6 +69,7 @@ async def test_get_http2(http2_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(3)
 async def test_method_lower(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -657,6 +661,7 @@ class WrongEvent:
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(3)
 async def test_http2_wrong_event(mocker):
     """Test json response parsing."""
     mocker.patch('aiosonic.http2.Http2Handler.__init__', lambda x: None)
