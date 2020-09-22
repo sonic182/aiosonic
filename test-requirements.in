@@ -10,4 +10,5 @@ pytest-django
 pytest-mock
 pytest-mypy
 pytest-sugar
+pytest-timeout
 uvicorn

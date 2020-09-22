@@ -3,14 +3,13 @@
 import asyncio
 from datetime import datetime
 from datetime import timedelta
-import gzip
-import multiprocessing as mp
-import os
 import random
+import gzip
+import socket
+import signal
 import ssl
+import subprocess
 from time import sleep
-from urllib.request import urlopen
-from urllib.error import URLError
 import zlib
 
 import aiohttp
@@ -146,30 +145,30 @@ def ssl_context():
     return context
 
 
-def node_http2(port):
-    os.system(f'node tests/app.js {port}')
-
-
 @pytest.fixture
 def http2_serv():
     """Sample aiohttp app."""
-    port = random.randint(1000, 9999)
-    p = mp.Process(target=node_http2, args=(port, ))
-    p.start()
+    port = random.randint(3000, 4000)
+
+    kwargs = dict(
+        stdin=subprocess.PIPE,
+        shell=True)
+
+    proc = subprocess.Popen(f"node tests/app.js {port}", **kwargs)
     url = f'https://localhost:{port}/'
 
     # This restores the same behavior as before.
-    context = ssl._create_unverified_context()
-
-    max_wait = datetime.now() + timedelta(seconds=2)
-    while True:
-        try:
-            with urlopen(url, context=context) as response:
-                response.read()
-                break
-        except URLError:
-            sleep(0.1)
-            if datetime.now() > max_wait:
-                raise
+    max_wait = datetime.utcnow() + timedelta(seconds=3)
+    while not __is_port_in_use(port):
+        sleep(0.2)
+        if datetime.utcnow() > max_wait:
+            raise Exception('cannot run node http2 server')
     yield url
-    p.terminate()
+    proc.send_signal(signal.SIGINT)
+    proc.terminate()
+
+
+def __is_port_in_use(port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    result_of_check = sock.connect_ex(("localhost", port))
+    return result_of_check == 0
