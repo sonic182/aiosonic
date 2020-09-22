@@ -24,13 +24,14 @@ httptools==0.1.1          # via uvicorn
 httpx==0.12.1             # via -r test-requirements.in
 hyperframe==5.2.0         # via h2
 idna==2.9                 # via httpx, requests, yarl
+iniconfig==1.0.1          # via pytest
 more-itertools==8.2.0     # via pytest
 multidict==4.7.5          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
 mypy==0.770               # via pytest-mypy
 packaging==20.3           # via pytest, pytest-sugar
 pluggy==0.13.1            # via pytest
-py==1.8.1                 # via pytest
+py==1.9.0                 # via pytest
 pyparsing==2.4.7          # via packaging
 pytest-aiohttp==0.3.0     # via -r test-requirements.in
 pytest-asyncio==0.12.0    # via -r test-requirements.in
@@ -40,7 +41,7 @@ pytest-mock==3.1.0        # via -r test-requirements.in
 pytest-mypy==0.6.2        # via -r test-requirements.in
 pytest-sugar==0.9.3       # via -r test-requirements.in
 pytest-timeout==1.4.2     # via -r test-requirements.in
-pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
+pytest==6.0.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
 pytz==2020.1              # via django
 requests==2.23.0          # via coveralls
 rfc3986==1.4.0            # via httpx
@@ -48,11 +49,11 @@ six==1.14.0               # via packaging
 sniffio==1.1.0            # via httpx
 sqlparse==0.3.1           # via django
 termcolor==1.1.0          # via pytest-sugar
+toml==0.10.1              # via pytest
 typed-ast==1.4.1          # via mypy
 typing-extensions==3.7.4.2  # via mypy
 urllib3==1.25.9           # via httpx, requests
 uvicorn==0.11.5           # via -r test-requirements.in
 uvloop==0.14.0            # via uvicorn
-wcwidth==0.1.9            # via pytest
 websockets==8.1           # via uvicorn
 yarl==1.4.2               # via aiohttp
