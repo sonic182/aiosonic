@@ -412,7 +412,7 @@ async def _do_request(urlparsed: ParseResult,
         response.compressed = response.headers.get(b'content-encoding', '')
 
         if size:
-            response._set_body(await connection.reader.read(int(size)))
+            response._set_body(await connection.reader.readexactly(int(size)))
 
         if chunked:
             connection.block_until_read_chunks()
