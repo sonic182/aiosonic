@@ -13,7 +13,7 @@ chardet==3.0.4            # via aiohttp, httpx, requests
 click==7.1.2              # via uvicorn
 coverage==5.1             # via coveralls, pytest-cov
 coveralls==2.0.0          # via -r test-requirements.in
-django==3.0.6             # via -r test-requirements.in
+django==3.0.7             # via -r test-requirements.in
 docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
 h11==0.9.0                # via httpx, uvicorn
