@@ -148,13 +148,7 @@ def ssl_context():
 @pytest.fixture
 def http2_serv():
     """Sample aiohttp app."""
-    port = random.randint(3000, 4000)
-    max_wait = datetime.utcnow() + timedelta(seconds=1)
-    while __is_port_in_use(port):
-        sleep(0.2)
-        port = random.randint(3000, 4000)
-        if datetime.utcnow() > max_wait:
-            raise Exception('cannot find free port')
+    port = __get_sample_port(3000, 4000)
 
     kwargs = dict(
         stdin=subprocess.PIPE,
@@ -163,12 +157,7 @@ def http2_serv():
     proc = subprocess.Popen(f"node tests/app.js {port}", **kwargs)
     url = f'https://localhost:{port}/'
 
-    # This restores the same behavior as before.
-    max_wait = datetime.utcnow() + timedelta(seconds=3)
-    while not __is_port_in_use(port):
-        sleep(0.2)
-        if datetime.utcnow() > max_wait:
-            raise Exception('cannot run node http2 server')
+    __check_server(port)
     yield url
     proc.send_signal(signal.SIGINT)
     proc.terminate()
@@ -178,3 +167,22 @@ def __is_port_in_use(port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     result_of_check = sock.connect_ex(("localhost", port))
     return result_of_check == 0
+
+
+def __get_sample_port(_from, to):
+    port = random.randint(_from, to)
+    max_wait = datetime.utcnow() + timedelta(seconds=1)
+    while __is_port_in_use(port):
+        sleep(0.2)
+        port = random.randint(3000, 4000)
+        if datetime.utcnow() > max_wait:
+            raise Exception('cannot find free port')
+    return port
+
+
+def __check_server(port):
+    max_wait = datetime.utcnow() + timedelta(seconds=3)
+    while not __is_port_in_use(port):
+        sleep(0.2)
+        if datetime.utcnow() > max_wait:
+            raise Exception('cannot run node http2 server')
