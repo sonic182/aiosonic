@@ -21,7 +21,7 @@ Download file
      url = 'https://images.dog.ceo/breeds/leonberg/n02111129_2301.jpg'
      client = aiosonic.HTTPClient()
 
-     res = await client.get(url, verify=False)
+     res = await client.get(url)
      assert res.status_code == 200
 
      if res.chunked:
