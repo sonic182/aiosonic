@@ -38,7 +38,7 @@ pytest-cov==2.8.1         # via -r test-requirements.in
 pytest-django==3.9.0      # via -r test-requirements.in
 pytest-mock==3.1.0        # via -r test-requirements.in
 pytest-mypy==0.6.2        # via -r test-requirements.in
-pytest-sugar==0.9.3       # via -r test-requirements.in
+pytest-sugar==0.9.4       # via -r test-requirements.in
 pytest-timeout==1.4.2     # via -r test-requirements.in
 pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
 pytz==2020.1              # via django
