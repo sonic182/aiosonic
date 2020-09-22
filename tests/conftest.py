@@ -149,6 +149,12 @@ def ssl_context():
 def http2_serv():
     """Sample aiohttp app."""
     port = random.randint(3000, 4000)
+    max_wait = datetime.utcnow() + timedelta(seconds=1)
+    while __is_port_in_use(port):
+        sleep(0.2)
+        port = random.randint(3000, 4000)
+        if datetime.utcnow() > max_wait:
+            raise Exception('cannot find free port')
 
     kwargs = dict(
         stdin=subprocess.PIPE,
