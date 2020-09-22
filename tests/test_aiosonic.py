@@ -40,6 +40,7 @@ async def test_simple_get(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
+@skip_http2
 @pytest.mark.timeout(3)
 async def test_get_python(http2_serv):
     """Test simple get."""
