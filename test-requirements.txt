@@ -5,54 +5,52 @@
 #    pip-compile test-requirements.in
 #
 aiohttp==3.6.2            # via -r test-requirements.in, pytest-aiohttp
-asgiref==3.2.7            # via django
+asgiref==3.2.10           # via django
 async-timeout==3.0.1      # via aiohttp
-attrs==19.3.0             # via aiohttp, pytest
-certifi==2020.4.5.1       # via httpx, requests
-chardet==3.0.4            # via aiohttp, httpx, requests
+attrs==20.2.0             # via aiohttp, pytest
+certifi==2020.6.20        # via httpx, requests
+chardet==3.0.4            # via aiohttp, requests
 click==7.1.2              # via uvicorn
-coverage==5.1             # via coveralls, pytest-cov
-coveralls==2.0.0          # via -r test-requirements.in
-django==3.0.6             # via -r test-requirements.in
+coverage==5.3             # via coveralls, pytest-cov
+coveralls==2.1.2          # via -r test-requirements.in
+django==3.1.1             # via -r test-requirements.in
 docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
-h11==0.9.0                # via httpx, uvicorn
-h2==3.2.0                 # via httpx
-hpack==3.0.0              # via h2
-hstspreload==2020.5.5     # via httpx
+h11==0.9.0                # via httpcore, uvicorn
+httpcore==0.11.0          # via httpx
 httptools==0.1.1          # via uvicorn
-httpx==0.12.1             # via -r test-requirements.in
-hyperframe==5.2.0         # via h2
-idna==2.9                 # via httpx, requests, yarl
-more-itertools==8.2.0     # via pytest
-multidict==4.7.5          # via aiohttp, yarl
+httpx==0.15.0             # via -r test-requirements.in
+idna==2.10                # via requests, rfc3986, yarl
+iniconfig==1.0.1          # via pytest
+more-itertools==8.5.0     # via pytest
+multidict==4.7.6          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
-mypy==0.770               # via pytest-mypy
-packaging==20.3           # via pytest, pytest-sugar
+mypy==0.782               # via pytest-mypy
+packaging==20.4           # via pytest, pytest-sugar
 pluggy==0.13.1            # via pytest
-py==1.8.1                 # via pytest
+py==1.9.0                 # via pytest
 pyparsing==2.4.7          # via packaging
 pytest-aiohttp==0.3.0     # via -r test-requirements.in
-pytest-asyncio==0.12.0    # via -r test-requirements.in
-pytest-cov==2.8.1         # via -r test-requirements.in
-pytest-django==3.9.0      # via -r test-requirements.in
-pytest-mock==3.1.0        # via -r test-requirements.in
-pytest-mypy==0.6.2        # via -r test-requirements.in
-pytest-sugar==0.9.3       # via -r test-requirements.in
+pytest-asyncio==0.14.0    # via -r test-requirements.in
+pytest-cov==2.10.1        # via -r test-requirements.in
+pytest-django==3.10.0     # via -r test-requirements.in
+pytest-mock==3.3.1        # via -r test-requirements.in
+pytest-mypy==0.7.0        # via -r test-requirements.in
+pytest-sugar==0.9.4       # via -r test-requirements.in
 pytest-timeout==1.4.2     # via -r test-requirements.in
-pytest==5.4.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
+pytest==6.0.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
 pytz==2020.1              # via django
-requests==2.23.0          # via coveralls
-rfc3986==1.4.0            # via httpx
-six==1.14.0               # via packaging
-sniffio==1.1.0            # via httpx
+requests==2.24.0          # via coveralls
+rfc3986[idna2008]==1.4.0  # via httpx
+six==1.15.0               # via packaging
+sniffio==1.1.0            # via httpcore, httpx
 sqlparse==0.3.1           # via django
 termcolor==1.1.0          # via pytest-sugar
+toml==0.10.1              # via pytest
 typed-ast==1.4.1          # via mypy
-typing-extensions==3.7.4.2  # via mypy
-urllib3==1.25.9           # via httpx, requests
-uvicorn==0.11.5           # via -r test-requirements.in
+typing-extensions==3.7.4.3  # via mypy
+urllib3==1.25.10          # via requests
+uvicorn==0.11.8           # via -r test-requirements.in
 uvloop==0.14.0            # via uvicorn
-wcwidth==0.1.9            # via pytest
 websockets==8.1           # via uvicorn
-yarl==1.4.2               # via aiohttp
+yarl==1.5.1               # via aiohttp
