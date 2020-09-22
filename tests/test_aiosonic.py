@@ -41,7 +41,7 @@ async def test_simple_get(app, aiohttp_server):
 
 @pytest.mark.asyncio
 @skip_http2
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(5)
 async def test_get_python(http2_serv):
     """Test simple get."""
     url = http2_serv
@@ -61,7 +61,7 @@ async def test_get_python(http2_serv):
 
 @pytest.mark.asyncio
 @skip_http2
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(5)
 async def test_get_http2(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -75,7 +75,7 @@ async def test_get_http2(http2_serv):
 
 @pytest.mark.asyncio
 @skip_http2
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(5)
 async def test_method_lower(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -668,7 +668,7 @@ class WrongEvent:
 
 @pytest.mark.asyncio
 @skip_http2
-@pytest.mark.timeout(3)
+@pytest.mark.timeout(5)
 async def test_http2_wrong_event(mocker):
     """Test json response parsing."""
     mocker.patch('aiosonic.http2.Http2Handler.__init__', lambda x: None)
@@ -722,3 +722,34 @@ async def test_wait_connections_busy_timeout(mocker):
     connector = TCPConnector(pool_cls=CyclicQueuePool)
     client = aiosonic.HTTPClient(connector)
     assert not await client.wait_requests(0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(5)
+async def test_get_image(http2_serv):
+    """Test get image."""
+    url = http2_serv + 'sample.png'
+
+    client = aiosonic.HTTPClient()
+    res = await client.get(url, verify=False)
+    assert res.status_code == 200
+    assert res.chunked
+    with open('tests/sample.png', 'rb') as _file:
+        assert (await res.content()) == _file.read()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(5)
+async def test_get_image_chunked(http2_serv):
+    """Test get image chunked."""
+    url = http2_serv + 'sample.png'
+
+    client = aiosonic.HTTPClient()
+    res = await client.get(url, verify=False)
+    assert res.status_code == 200
+    assert res.chunked
+    filebytes = b''
+    async for chunk in res.read_chunks():
+        filebytes += chunk
+    with open('tests/sample.png', 'rb') as _file:
+        assert filebytes == _file.read()
