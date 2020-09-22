@@ -159,8 +159,10 @@ def http2_serv():
 
     __check_server(port)
     yield url
-    proc.send_signal(signal.SIGINT)
-    proc.terminate()
+    try:
+        proc.send_signal(signal.SIGINT)
+    except ValueError:
+        proc.terminate()
 
 
 def __is_port_in_use(port):
