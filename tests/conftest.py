@@ -5,8 +5,9 @@ from datetime import datetime
 from datetime import timedelta
 import random
 import gzip
-import socket
-import signal
+from urllib.error import URLError
+from urllib.request import urlopen
+from http.client import RemoteDisconnected
 import ssl
 import subprocess
 from time import sleep
@@ -49,7 +50,7 @@ async def hello_post(request):
         res = web.Response(text=data)
         res.force_close()
         return res
-    elif data:
+    if data:
         return web.Response(text=data)
     return web.Response(text='Hello, world')
 
@@ -152,6 +153,8 @@ def http2_serv():
 
     proc = subprocess.Popen(
         f"node tests/app.js {port}",
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
         shell=True
     )
     url = f'https://localhost:{port}/'
@@ -162,9 +165,14 @@ def http2_serv():
 
 
 def __is_port_in_use(port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result_of_check = sock.connect_ex(("localhost", port))
-    return result_of_check == 0
+    try:
+        urlopen(f'http://localhost:{port}/').getcode()
+        return True
+    except URLError as err:
+        if isinstance(err.reason, ConnectionRefusedError):
+            return False
+    except RemoteDisconnected:
+        return True
 
 
 def __get_sample_port(_from, to):
