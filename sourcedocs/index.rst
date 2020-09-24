@@ -3,7 +3,7 @@
 Welcome to aiosonic
 ===================
 
-Really Fast asynchronus HTTP 1.1 client,  Support for http 2.0 is planned.
+Really Fast Python asyncio HTTP 1.1 client, Support for http 2.0 is planned.
 
 Current version is |release|.
 
@@ -105,7 +105,7 @@ Getting Started
 Benchmarks
 ==========
 
-The numbers speak for themselves
+Some benchmarking
 
 .. code-block:: bash
 
