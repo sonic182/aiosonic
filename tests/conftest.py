@@ -145,24 +145,20 @@ def ssl_context():
     return context
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def http2_serv():
     """Sample aiohttp app."""
     port = __get_sample_port(3000, 4000)
 
-    kwargs = dict(
-        stdin=subprocess.PIPE,
-        shell=True)
-
-    proc = subprocess.Popen(f"node tests/app.js {port}", **kwargs)
+    proc = subprocess.Popen(
+        f"node tests/app.js {port}",
+        shell=True
+    )
     url = f'https://localhost:{port}/'
 
     __check_server(port)
     yield url
-    try:
-        proc.send_signal(signal.SIGINT)
-    except ValueError:
-        proc.terminate()
+    proc.terminate()
 
 
 def __is_port_in_use(port):
@@ -173,17 +169,17 @@ def __is_port_in_use(port):
 
 def __get_sample_port(_from, to):
     port = random.randint(_from, to)
-    max_wait = datetime.utcnow() + timedelta(seconds=1)
+    max_wait = datetime.utcnow() + timedelta(seconds=3)
     while __is_port_in_use(port):
         sleep(0.2)
-        port = random.randint(3000, 4000)
+        port = random.randint(_from, to)
         if datetime.utcnow() > max_wait:
             raise Exception('cannot find free port')
     return port
 
 
 def __check_server(port):
-    max_wait = datetime.utcnow() + timedelta(seconds=3)
+    max_wait = datetime.utcnow() + timedelta(seconds=10)
     while not __is_port_in_use(port):
         sleep(0.2)
         if datetime.utcnow() > max_wait:
