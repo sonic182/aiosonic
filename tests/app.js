@@ -10,7 +10,7 @@ var myArgs = process.argv.slice(2);
 const server = createSecureServer(
   { cert, key, allowHTTP1: true },
   onRequest
-).listen(myArgs[0]);
+).listen(myArgs[0], "0.0.0.0");
 
 function onRequest(req, res) {
   // Detects if it is a HTTPS request or HTTP/2
