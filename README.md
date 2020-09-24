@@ -4,9 +4,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/sonic182/aiosonic/badge.svg?branch=master)](https://coveralls.io/github/sonic182/aiosonic?branch=master)
 [![PyPI version](https://badge.fury.io/py/aiosonic.svg)](https://badge.fury.io/py/aiosonic)
 [![Documentation Status](https://readthedocs.org/projects/aiosonic/badge/?version=latest)](https://aiosonic.readthedocs.io/en/latest/?badge=latest)
-# aiosonic
+# aiosonic - a Python asyncio http client
 
-Fastest Python async http client
+Very fast Python asyncio http client
 
 Here is some [documentation](https://aiosonic.readthedocs.io/en/latest/).
 
