@@ -17,9 +17,9 @@ django==3.1.1             # via -r test-requirements.in
 docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
 h11==0.9.0                # via httpcore, uvicorn
-httpcore==0.11.0          # via httpx
+httpcore==0.12.0          # via httpx
 httptools==0.1.1          # via uvicorn
-httpx==0.15.3             # via -r test-requirements.in
+httpx==0.16.0             # via -r test-requirements.in
 idna==2.10                # via requests, rfc3986, yarl
 iniconfig==1.0.1          # via pytest
 more-itertools==8.5.0     # via pytest
