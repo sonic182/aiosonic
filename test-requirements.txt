@@ -4,7 +4,7 @@
 #
 #    pip-compile test-requirements.in
 #
-aiohttp==3.6.2            # via -r test-requirements.in, pytest-aiohttp
+aiohttp==3.6.3            # via -r test-requirements.in, pytest-aiohttp
 asgiref==3.2.10           # via django
 async-timeout==3.0.1      # via aiohttp
 attrs==20.2.0             # via aiohttp, pytest
