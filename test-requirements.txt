@@ -33,7 +33,7 @@ pyparsing==2.4.7          # via packaging
 pytest-aiohttp==0.3.0     # via -r test-requirements.in
 pytest-asyncio==0.14.0    # via -r test-requirements.in
 pytest-cov==2.10.1        # via -r test-requirements.in
-pytest-django==3.10.0     # via -r test-requirements.in
+pytest-django==4.0.0      # via -r test-requirements.in
 pytest-mock==3.3.1        # via -r test-requirements.in
 pytest-mypy==0.7.0        # via -r test-requirements.in
 pytest-sugar==0.9.4       # via -r test-requirements.in
