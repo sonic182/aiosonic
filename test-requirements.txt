@@ -18,7 +18,6 @@ docopt==0.6.2             # via coveralls
 filelock==3.0.12          # via pytest-mypy
 h11==0.9.0                # via httpcore, uvicorn
 httpcore==0.11.0          # via httpx
-httptools==0.1.1          # via uvicorn
 httpx==0.15.3             # via -r test-requirements.in
 idna==2.10                # via requests, rfc3986, yarl
 iniconfig==1.0.1          # via pytest
@@ -50,7 +49,5 @@ toml==0.10.1              # via pytest
 typed-ast==1.4.1          # via mypy
 typing-extensions==3.7.4.3  # via mypy
 urllib3==1.25.10          # via requests
-uvicorn==0.11.8           # via -r test-requirements.in
-uvloop==0.14.0            # via uvicorn
-websockets==8.1           # via uvicorn
+uvicorn==0.12.2           # via -r test-requirements.in
 yarl==1.5.1               # via aiohttp
