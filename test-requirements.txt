@@ -22,7 +22,6 @@ httptools==0.1.1          # via uvicorn
 httpx==0.15.3             # via -r test-requirements.in
 idna==2.10                # via requests, rfc3986, yarl
 iniconfig==1.0.1          # via pytest
-more-itertools==8.5.0     # via pytest
 multidict==4.7.6          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
 mypy==0.782               # via pytest-mypy
@@ -38,7 +37,7 @@ pytest-mock==3.3.1        # via -r test-requirements.in
 pytest-mypy==0.7.0        # via -r test-requirements.in
 pytest-sugar==0.9.4       # via -r test-requirements.in
 pytest-timeout==1.4.2     # via -r test-requirements.in
-pytest==6.0.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
+pytest==6.1.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
 pytz==2020.1              # via django
 requests==2.24.0          # via coveralls
 rfc3986[idna2008]==1.4.0  # via httpx
