@@ -4,7 +4,7 @@
 #
 #    pip-compile test-requirements.in
 #
-aiohttp==3.6.2            # via -r test-requirements.in, pytest-aiohttp
+aiohttp==3.7.2            # via -r test-requirements.in, pytest-aiohttp
 asgiref==3.2.10           # via django
 async-timeout==3.0.1      # via aiohttp
 attrs==20.2.0             # via aiohttp, pytest
@@ -48,7 +48,7 @@ sqlparse==0.3.1           # via django
 termcolor==1.1.0          # via pytest-sugar
 toml==0.10.1              # via pytest
 typed-ast==1.4.1          # via mypy
-typing-extensions==3.7.4.3  # via mypy
+typing-extensions==3.7.4.3  # via aiohttp, mypy
 urllib3==1.25.10          # via requests
 uvicorn==0.11.8           # via -r test-requirements.in
 uvloop==0.14.0            # via uvicorn
