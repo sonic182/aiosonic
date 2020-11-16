@@ -1,15 +1,16 @@
 """Main module."""
 
-import asyncio
-import random
 import re
-import codecs
+from asyncio import wait_for
+from asyncio import get_event_loop
+from random import randint
+from codecs import lookup 
 from functools import partial
 from json import dumps
 from json import loads
 from ssl import SSLContext
-import gzip
-import zlib
+from gzip import decompress as gzip_decompress
+from zlib import decompress as zlib_decompress
 
 from io import IOBase
 from os.path import basename
@@ -145,9 +146,9 @@ class HttpResponse:
     def _set_body(self, data):
         """Set body."""
         if self.compressed == b'gzip':
-            self.body += gzip.decompress(data)
+            self.body += gzip_decompress(data)
         elif self.compressed == b'deflate':
-            self.body += zlib.decompress(data)
+            self.body += zlib_decompress(data)
         else:
             self.body += data
 
@@ -161,7 +162,7 @@ class HttpResponse:
 
         if encoding:
             try:
-                codecs.lookup(encoding)
+                lookup(encoding)
             except LookupError:
                 encoding = ''
 
@@ -342,7 +343,7 @@ async def _send_multipart(data: Dict[str, str],
             to_send += to_write.encode()
 
             # read and write chunks
-            loop = asyncio.get_event_loop()
+            loop = get_event_loop()
             while True:
                 data = await loop.run_in_executor(None, val.read, chunk_size)
                 if not data:
@@ -392,7 +393,7 @@ async def _do_request(urlparsed: ParseResult,
 
         # get response code and version
         try:
-            response._set_response_initial(await asyncio.wait_for(
+            response._set_response_initial(await wait_for(
                 connection.reader.readline(),
                 (timeouts or connector.timeouts).sock_read))
         except TimeoutException:
@@ -642,7 +643,7 @@ class HTTPClient:
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError('data should be dict')
-            boundary = 'boundary-%d' % random.randint(10**8, 10**9)
+            boundary = 'boundary-%d' % randint(10**8, 10**9)
             body = await _send_multipart(data, boundary, headers)
 
         max_redirects = 30
@@ -655,7 +656,7 @@ class HTTPClient:
                                    multipart=multipart,
                                    boundary=boundary)
             try:
-                response = await asyncio.wait_for(
+                response = await wait_for(
                     _do_request(urlparsed, headers_data, self.connector, body,
                                 verify, ssl, timeouts, http2),
                     timeout=(timeouts
@@ -693,7 +694,7 @@ class HTTPClient:
         This is useful when doing safe shutdown of a process.
         """
         try:
-            return await asyncio.wait_for(
+            return await wait_for(
                 self.connector.wait_free_pool(), timeout)
         except TimeoutException:
             return False
