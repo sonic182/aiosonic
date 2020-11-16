@@ -228,8 +228,9 @@ def _get_header_data(url: ParseResult,
 
     if params:
         query = urlencode(params)
-        path += '%s' % query if '?' in path else '?%s' % query
-    get_base = '%s %s HTTP/1.1%s' % (method.upper(), path, _NEW_LINE)
+        path += f'{query}' if '?' in path else f'?{query}'
+    uppercase_method = method.upper()
+    get_base = f'{uppercase_method} {path} HTTP/1.1{_NEW_LINE}'
 
     port = url.port or (443 if url.scheme == 'https' else 80)
     hostname = url.hostname
@@ -244,18 +245,17 @@ def _get_header_data(url: ParseResult,
             ':authority': hostname.split(':')[0],
             ':scheme': 'https',
             ':path': path,
-            'user-agent': 'aioload/%s' % VERSION
+            'user-agent': f'aioload/{VERSION}'
         })
     else:
         headers_base.update({
             'HOST': hostname,
             'Connection': 'keep-alive',
-            'User-Agent': 'aioload/%s' % VERSION
+            'User-Agent': f'aioload/{VERSION}'
         })
 
     if multipart:
-        headers_base[
-            'Content-Type'] = 'multipart/form-data; boundary="%s"' % boundary
+        headers_base['Content-Type'] = f'multipart/form-data; boundary="{boundary}"'
 
     if headers:
         headers_base.update(headers)
@@ -264,7 +264,7 @@ def _get_header_data(url: ParseResult,
         return headers_base
 
     for key, data in headers_base.items():
-        get_base += '%s: %s%s' % (key, data, _NEW_LINE)
+        get_base += f'{key}: {data}{_NEW_LINE}'
     return (get_base + _NEW_LINE).encode()
 
 
@@ -358,7 +358,7 @@ async def _send_multipart(data: Dict[str, str],
             to_send += val.encode() + _NEW_LINE.encode()
 
     # write --boundary-- for finish
-    to_send += ('--%s--' % boundary).encode()
+    to_send += (f'--{boundary}--').encode()
     _add_header(headers, 'Content-Length', str(len(to_send)))
     return to_send
 
