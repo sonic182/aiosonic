@@ -5,9 +5,9 @@ from asyncio import sleep as asyncio_sleep
 from asyncio import StreamReader
 from asyncio import StreamWriter
 import ssl
+from ssl import SSLContext
 from typing import Coroutine
 from typing import Optional
-from ssl import SSLContext
 from urllib.parse import ParseResult
 
 #import h2.connection (unused)
