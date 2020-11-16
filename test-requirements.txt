@@ -7,7 +7,7 @@
 aiohttp==3.6.2            # via -r test-requirements.in, pytest-aiohttp
 asgiref==3.2.10           # via django
 async-timeout==3.0.1      # via aiohttp
-attrs==20.2.0             # via aiohttp, pytest
+attrs==20.2.0             # via aiohttp, pytest, pytest-mypy
 certifi==2020.6.20        # via httpx, requests
 chardet==3.0.4            # via aiohttp, requests
 click==7.1.2              # via uvicorn
@@ -35,7 +35,7 @@ pytest-asyncio==0.14.0    # via -r test-requirements.in
 pytest-cov==2.10.1        # via -r test-requirements.in
 pytest-django==3.10.0     # via -r test-requirements.in
 pytest-mock==3.3.1        # via -r test-requirements.in
-pytest-mypy==0.7.0        # via -r test-requirements.in
+pytest-mypy==0.8.0        # via -r test-requirements.in
 pytest-sugar==0.9.4       # via -r test-requirements.in
 pytest-timeout==1.4.2     # via -r test-requirements.in
 pytest==6.0.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
