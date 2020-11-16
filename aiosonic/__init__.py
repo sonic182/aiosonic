@@ -85,7 +85,8 @@ class HttpHeaders(CaseInsensitiveDict):
     @staticmethod
     def _clear_line(line: bytes):
         """Clear readed line."""
-        return line.rstrip().split(b': ')
+        line = line.rstrip()
+        return line.split(b': ') if b': ' in line else line.split(b':')
 
 
 #: Headers
@@ -403,7 +404,7 @@ async def _do_request(urlparsed: ParseResult,
         # reading headers
         while True:
             res_data = await connection.reader.readline()
-            if b': ' not in res_data:
+            if b': ' not in res_data and b':' not in res_data:
                 break
             response._set_header(*HttpHeaders._clear_line(res_data))
 
