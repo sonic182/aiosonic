@@ -331,7 +331,7 @@ async def _send_multipart(data: Dict[str, str],
     to_send = b''
     for key, val in data.items():
         # write --boundary + field
-        to_send += ('--%s%s' % (boundary, _NEW_LINE)).encode()
+        to_send += (f'--{boundary}{_NEW_LINE}').encode()
 
         if isinstance(val, IOBase):
             # TODO: Utility to accept files with multipart metadata
@@ -353,8 +353,7 @@ async def _send_multipart(data: Dict[str, str],
             val.close()
 
         else:
-            to_send += ('Content-Disposition: form-data; name="%s"%s%s' %
-                        (key, _NEW_LINE, _NEW_LINE)).encode()
+            to_send += (f'Content-Disposition: form-data; name="{key}"{_NEW_LINE}{_NEW_LINE}').encode()
             to_send += val.encode() + _NEW_LINE.encode()
 
     # write --boundary-- for finish

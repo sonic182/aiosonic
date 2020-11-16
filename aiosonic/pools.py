@@ -40,7 +40,7 @@ class SmartPool:
         """Acquire connection."""
         await self.sem.acquire()
         if urlparsed:
-            key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
+            key = f'{urlparsed.hostname}-{urlparsed.port}'
             for item in self.pool:
                 if item.key == key:
                     self.pool.remove(item)

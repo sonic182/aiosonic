@@ -59,7 +59,7 @@ class Connection:
         if not urlparsed.hostname:
             raise HttpParsingError('missing hostname')
 
-        key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
+        key = f'{urlparsed.hostname}-{urlparsed.port}'
 
         if self.writer:
             # python 3.6 doesn't have writer.is_closing
