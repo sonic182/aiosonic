@@ -1,10 +1,10 @@
 """Connection stuffs."""
 
-import asyncio
-from asyncio import StreamReader
-from asyncio import StreamWriter
 import ssl
 from ssl import SSLContext
+from asyncio import wait_for, open_connection
+from asyncio import StreamReader
+from asyncio import StreamWriter
 from typing import Dict
 from typing import Optional
 from urllib.parse import ParseResult
@@ -12,7 +12,7 @@ from urllib.parse import ParseResult
 import h2.connection
 import h2.events
 
-from concurrent import futures
+#from concurrent import futures (unused)
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import TimeoutException
@@ -46,7 +46,7 @@ class Connection:
                       http2: bool = False):
         """Connet with timeout."""
         try:
-            await asyncio.wait_for(self._connect(urlparsed, verify,
+            await wait_for(self._connect(urlparsed, verify,
                                                  ssl_context, http2),
                                    timeout=(timeouts
                                             or self.timeouts).sock_connect)
@@ -59,7 +59,7 @@ class Connection:
         if not urlparsed.hostname:
             raise HttpParsingError('missing hostname')
 
-        key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
+        key = f'{urlparsed.hostname}-{urlparsed.port}'
 
         if self.writer:
             # python 3.6 doesn't have writer.is_closing
@@ -85,7 +85,7 @@ class Connection:
                     ssl_context.verify_mode = ssl.CERT_NONE
             port = urlparsed.port or (443
                                       if urlparsed.scheme == 'https' else 80)
-            self.reader, self.writer = await asyncio.open_connection(
+            self.reader, self.writer = await open_connection(
                 urlparsed.hostname, port, ssl=ssl_context)
 
             self.temp_key = key

@@ -1,18 +1,19 @@
 """Connector stuffs."""
 
-import asyncio
+from asyncio import wait_for
+from asyncio import sleep as asyncio_sleep
 from asyncio import StreamReader
 from asyncio import StreamWriter
 import ssl
+from ssl import SSLContext
 from typing import Coroutine
 from typing import Optional
-from ssl import SSLContext
 from urllib.parse import ParseResult
 
-import h2.connection
+#import h2.connection (unused)
 from hyperframe.frame import SettingsFrame
 
-from concurrent import futures
+#from concurrent import futures (unused)
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.exceptions import TimeoutException
@@ -41,7 +42,7 @@ class TCPConnector:
             return await self.pool.acquire(urlparsed)
 
         try:
-            return await asyncio.wait_for(self.pool.acquire(urlparsed),
+            return await wait_for(self.pool.acquire(urlparsed),
                                           self.timeouts.pool_acquire)
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
@@ -57,4 +58,4 @@ class TCPConnector:
         while True:
             if self.pool.is_all_free():
                 return True
-            asyncio.sleep(0.02)
+            asyncio_sleep(0.02)

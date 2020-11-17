@@ -1,14 +1,14 @@
 """Pools module."""
 
-import asyncio
 from urllib.parse import ParseResult
-
+from asyncio import Semaphore
+from asyncio import Queue
 
 class CyclicQueuePool:
     """Cyclic queue pool of connections."""
     def __init__(self, connector, pool_size, connection_cls):
         self.pool_size = pool_size
-        self.pool = asyncio.Queue(pool_size)
+        self.pool = Queue(pool_size)
 
         for _ in range(pool_size):
             self.pool.put_nowait(connection_cls(connector))
@@ -31,7 +31,7 @@ class SmartPool:
     def __init__(self, connector, pool_size, connection_cls):
         self.pool_size = pool_size
         self.pool = set()
-        self.sem = asyncio.Semaphore(pool_size)
+        self.sem = Semaphore(pool_size)
 
         for _ in range(pool_size):
             self.pool.add(connection_cls(connector))
@@ -40,7 +40,7 @@ class SmartPool:
         """Acquire connection."""
         await self.sem.acquire()
         if urlparsed:
-            key = '%s-%s' % (urlparsed.hostname, urlparsed.port)
+            key = f'{urlparsed.hostname}-{urlparsed.port}'
             for item in self.pool:
                 if item.key == key:
                     self.pool.remove(item)
