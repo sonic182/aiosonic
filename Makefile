@@ -22,7 +22,7 @@ clear:
 	-rm -r $(shell find . -name __pycache__) build dist .mypy_cache aiosonic.egg-info .eggs
 
 build: clear
-	python setup.py sdist bdist_wheel
+	python setup.py sdist
 
 upload_pypi: build
 	twine upload dist/*
