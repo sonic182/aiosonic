@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] 2020-11-22
+### Fixed
+- Parsing response headers
+- Some code refactor for string interpolation. (Thanks to [machinexa2](https://github.com/machinexa2))  
+
+### Updated
+- Dependabot
+
 ## [0.7.0] 2020-09-23
 ### Added
 - HTTPClient class
