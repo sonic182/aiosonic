@@ -85,8 +85,7 @@ class HttpHeaders(CaseInsensitiveDict):
     @staticmethod
     def _clear_line(line: bytes):
         """Clear readed line."""
-        line = line.rstrip()
-        return line.split(b': ') if b': ' in line else line.split(b':')
+        return line.rstrip().split(b': ', 1)
 
 
 #: Headers
