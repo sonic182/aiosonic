@@ -116,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.7.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.7.1..HEAD
+[0.7.1]: https://github.com/sonic182/aiosonic/compare/0.7.0..0.7.1
 [0.7.0]: https://github.com/sonic182/aiosonic/compare/0.6.0..0.7.0
 [0.6.0]: https://github.com/sonic182/aiosonic/compare/0.5.3..0.6.0
 [0.5.3]: https://github.com/sonic182/aiosonic/compare/0.5.2..0.5.3
