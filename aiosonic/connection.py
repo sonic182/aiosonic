@@ -72,8 +72,7 @@ class Connection:
                 return True  # noqa
 
         if not (self.key and key == self.key and not is_closing()):
-            if self.writer:
-                self.writer.close()
+            self.close()
 
             if urlparsed.scheme == 'https':
                 ssl_context = ssl_context or ssl.create_default_context(
@@ -125,7 +124,7 @@ class Connection:
             self.key = None
             self.h2conn = None
             if self.writer:
-                self.writer.close()
+                self.close()
 
         if not self.blocked:
             await self.release()
@@ -142,10 +141,14 @@ class Connection:
 
     def __del__(self):
         """Cleanup."""
+        self.close(True)
+
+    def close(self, check_closing=False):
+        """Close connection if opened."""
         if self.writer:
             is_closing = getattr(self.writer, 'is_closing',
                                  self.writer._transport.is_closing)
-            if is_closing():
+            if not check_closing or is_closing():
                 self.writer.close()
 
     async def http2_request(self, headers: Dict[str, str],
