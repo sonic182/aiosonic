@@ -7,7 +7,7 @@ TODO: More examples
 
 
 Download file
-#############
+=============
 
 
 .. code-block::  python
@@ -41,7 +41,7 @@ Download file
 
 
 Concurrent Requests
-#################
+===================
 
 
 .. code-block::  python

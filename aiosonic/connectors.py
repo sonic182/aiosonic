@@ -22,12 +22,23 @@ from aiosonic.timeout import Timeouts
 
 
 class TCPConnector:
+    """TCPConnector.
+
+    Holds the main logic for making connections to destination hosts.
+
+    Params:
+        * **pool_size**: size for pool of connections
+        * **timeouts**: global timeouts to use for connections with this connector.
+        * **connection_cls**: connection class to be used. default: :class:`aiosonic.connection.Connection`
+        * **pool_cls**: pool class to be used. default: :class:`aiosonic.pools.SmartPool`
+
+    """
+
     def __init__(self,
                  pool_size: int = 25,
                  timeouts: Timeouts = None,
                  connection_cls=None,
                  pool_cls=None):
-        """Initialize."""
         from aiosonic.connection import Connection  # avoid circular dependency
         self.pool_size = pool_size
         connection_cls = connection_cls or Connection
@@ -48,7 +59,7 @@ class TCPConnector:
             raise ConnectionPoolAcquireTimeout()
 
     async def release(self, conn):
-        """Acquire connection."""
+        """Release connection."""
         res = self.pool.release(conn)
         if isinstance(res, Coroutine):
             await res

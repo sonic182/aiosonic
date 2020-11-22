@@ -18,7 +18,7 @@ class CyclicQueuePool:
         return await self.pool.get()
 
     async def release(self, conn):
-        """Acquire connection."""
+        """Release connection."""
         return self.pool.put_nowait(conn)
 
     def is_all_free(self):
@@ -54,7 +54,7 @@ class SmartPool:
         return self.pool.pop()
 
     def release(self, conn):
-        """Acquire connection."""
+        """Release connection."""
         self.pool.add(conn)
         self.sem.release()
 
