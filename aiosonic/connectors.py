@@ -28,7 +28,7 @@ class TCPConnector:
 
     Params:
         * **pool_size**: size for pool of connections
-        * **timeouts**: global timeouts to use for connections with this connector.
+        * **timeouts**: global timeouts to use for connections with this connector. default: :class:`aiosonic.timeout.Timeouts` instance with default args.
         * **connection_cls**: connection class to be used. default: :class:`aiosonic.connection.Connection`
         * **pool_cls**: pool class to be used. default: :class:`aiosonic.pools.SmartPool`
 
