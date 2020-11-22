@@ -19,10 +19,10 @@ Download file
 
  async def run():
      url = 'https://images.dog.ceo/breeds/leonberg/n02111129_2301.jpg'
-     client = aiosonic.HTTPClient()
+     async with aiosonic.HTTPClient() as client:
 
-     res = await client.get(url)
-     assert res.status_code == 200
+        res = await client.get(url)
+        assert res.status_code == 200
 
      if res.chunked:
          # write in chunks

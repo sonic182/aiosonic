@@ -25,6 +25,12 @@ class CyclicQueuePool:
         """Indicates if all pool is free."""
         return self.pool_size == self.pool.qsize()
 
+    async def cleanup(self):
+        """Get all conn and close them, this method let this pool unusable."""
+        for _ in range(self.pool_size):
+            conn = self.pool.get()
+            conn.close()
+
 
 class SmartPool:
     """Pool which utilizes alive connections."""
@@ -55,3 +61,9 @@ class SmartPool:
     def is_all_free(self):
         """Indicates if all pool is free."""
         return self.pool_size == self.sem._value
+
+    async def cleanup(self):
+        """Get all conn and close them, this method let this pool unusable."""
+        for count in range(self.pool_size):
+            conn = await self.acquire()
+            conn.close()

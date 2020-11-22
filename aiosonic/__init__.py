@@ -437,6 +437,17 @@ class HTTPClient:
         """
         self.connector = connector or TCPConnector()
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args, **_kwargs):
+        await self.shutdown()
+
+    async def shutdown(self):
+        """Cleanup connections, this method makes client unusable."""
+        await self.connector.cleanup()
+
+
     async def _request_with_body(self,
                                  url: str,
                                  method: str,
