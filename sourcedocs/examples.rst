@@ -38,3 +38,36 @@ Download file
  if __name__ == '__main__':
      loop = asyncio.get_event_loop()
      loop.run_until_complete(run())
+
+
+Concurrent Requests
+#################
+
+
+.. code-block::  python
+
+   import aiosonic
+   import asyncio
+
+
+   async def main():
+       urls = [
+           'https://www.facebook.com/',
+           'https://www.google.com/',
+           'https://twitch.tv/',
+           'https://linkedin.com/',
+       ]
+       async with aiosonic.HTTPClient() as client:
+           # asyncio.gather is the key for concurrent requests.
+           responses = await asyncio.gather(*[client.get(url) for url in urls])
+
+           # stream/chunked responses doesn't release the connection acquired
+           # from the pool until the response has been read, so better to read
+           # it.
+           for response in responses:
+               if response.chunked:
+                   await response.text()
+
+           assert all([res.status_code in [200, 301] for res in responses])
+
+   asyncio.run(main())
