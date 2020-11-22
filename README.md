@@ -101,6 +101,7 @@ async def run():
     response = await client.get('https://www.google.com/', timeouts=timeouts)
     assert response.status_code == 200
     assert 'Google' in (await response.text())
+    await client.shutdown()
 
     print('success')
 
