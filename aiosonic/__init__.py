@@ -148,7 +148,7 @@ class HttpResponse:
             self._set_header(*header_tuple)
 
             # set cookies in response
-            if header_tuple[0].lower() == b'set-cookies':
+            if header_tuple[0].lower() == b'set-cookie':
                 self.cookies = cookies.SimpleCookie(header_tuple[1].decode())
 
     def _set_connection(self, connection: Connection):
