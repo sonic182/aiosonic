@@ -121,7 +121,7 @@ if __name__ == '__main__':
 * Requests using a http proxy
 * Sessions with Cookie Persistence
 * Basic/Digest Authentication
-* Elegant Key/Value Cookies
+* [x] Elegant Key/Value Cookies
 
 # Development
 

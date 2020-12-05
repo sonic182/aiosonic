@@ -443,14 +443,15 @@ class HTTPClient:
     """aiosonic.HTTPClient class.
 
     This class holds the client creation that will be used for requests.
+
+    Params:
+        * **connector**: TCPConnector to be used if provided
+        * **handle_cookies**: Flag to indicate if keep response cookies in
+            client and send them in next requests.
     """
 
     def __init__(self, connector: TCPConnector = None, handle_cookies=False):
-        """Initialize client options.
-
-        Params:
-            * **connector**: TCPConnector to be used if provided
-        """
+        """Initialize client options."""
         self.connector = connector or TCPConnector()
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
