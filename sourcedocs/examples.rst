@@ -71,3 +71,22 @@ Concurrent Requests
            assert all([res.status_code in [200, 301] for res in responses])
 
    asyncio.run(main())
+
+
+Cookies handling
+================
+
+Adding `handle_cookies=True` to the client, it will save response cookies and send it again for new requests. This is usefull for scraping sessions handling.
+
+.. code-block::  python
+
+   import aiosonic
+   import asyncio
+
+
+   async def main():
+       async with aiosonic.HTTPClient(handle_cookies=True) as client:
+           responses = await client.get('https://www.google.com/')
+           print(response.cookies)
+
+   asyncio.run(main())

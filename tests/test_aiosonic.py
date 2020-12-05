@@ -750,3 +750,21 @@ async def test_get_image_chunked(http2_serv):
             filebytes += chunk
         with open('tests/sample.png', 'rb') as _file:
             assert filebytes == _file.read()
+
+
+@pytest.mark.asyncio
+async def test_get_with_cookies(app, aiohttp_server):
+    """Test simple get."""
+    server = await aiohttp_server(app)
+    url = f'http://localhost:{server.port}/cookies'
+
+    connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    async with aiosonic.HTTPClient(connector, handle_cookies=True) as client:
+        res = await client.get(url)
+        assert res.status_code == 200
+        assert res.cookies
+
+        # check if server got cookies
+        res = await client.get(url)
+        assert await res.text() == 'Got cookies'
+        await server.close()
