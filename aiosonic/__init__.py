@@ -113,9 +113,11 @@ class HttpResponse:
     """Custom HttpResponse class for handling responses.
 
     Properties:
-      * status_code (int): response status code
-      * headers (HttpHeaders): headers in case insensitive dict
-      * raw_headers (List[Tuple[bytes, bytes]]): headers as raw format
+      * **status_code** (int): response status code
+      * **headers** (:class:`aiosonic.HttpHeaders`): headers in case insensitive dict
+      * **cookies** (:class:`http.cookies.SimpleCookie`): instance of SimpleCookies
+        if cookies present in respone.
+      * **raw_headers** (List[Tuple[bytes, bytes]]): headers as raw format
     """
 
     def __init__(self):
