@@ -25,6 +25,16 @@ async def hello(request):
     return web.Response(text='Hello, world')
 
 
+async def hello_cookies(request):
+    """Sample hello cookies."""
+    res = 'Got cookies' if request.cookies else 'Hello, world'
+    return web.Response(text=res, headers={
+        'set-cookies': 'csrftoken=sometoken; expires=Sat, '
+                       '04-Dec-2021 11:33:13 GMT; '
+                       'Max-Age=31449600; Path=/'
+    })
+
+
 async def hello_gzip(request):
     """Sample router."""
     headers = {'Content-encoding': 'gzip'}
@@ -115,6 +125,7 @@ def get_app():
     """Get aiohttp app."""
     application = web.Application()
     application.router.add_get('/', hello)
+    application.router.add_get('/cookies', hello_cookies)
     application.router.add_get('/get_redirect', do_redirect)
     application.router.add_get('/get_redirect_full', do_redirect_full_url)
     application.router.add_get('/max_redirects', max_redirects)

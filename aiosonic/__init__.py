@@ -1,49 +1,46 @@
 """Main module."""
 
 import re
-from asyncio import wait_for
-from asyncio import get_event_loop
-from random import randint
-from codecs import lookup 
+from asyncio import get_event_loop, wait_for
+from codecs import lookup
 from functools import partial
-from json import dumps
-from json import loads
-from ssl import SSLContext
 from gzip import decompress as gzip_decompress
+from http import cookies
+from io import IOBase
+from json import dumps, loads
+from os.path import basename
+from random import randint
+from ssl import SSLContext
+from typing import (
+    Any,
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
+from urllib.parse import ParseResult, urlencode, urlparse
 from zlib import decompress as zlib_decompress
 
-from io import IOBase
-from os.path import basename
-from urllib.parse import urlparse
-from urllib.parse import urlencode
-from urllib.parse import ParseResult
-
-from typing import Any
-from typing import AsyncIterator
-from typing import Callable
-from typing import Dict
-from typing import Iterator
-from typing import Union
-from typing import Optional
-from typing import List
-from typing import Tuple
-
 import chardet
-
-from aiosonic_utils.structures import CaseInsensitiveDict
-
 from aiosonic.connection import Connection
-from aiosonic.exceptions import ConnectTimeout
-from aiosonic.exceptions import HttpParsingError
-from aiosonic.exceptions import MaxRedirects
-from aiosonic.exceptions import MissingWriterException
-from aiosonic.exceptions import ReadTimeout
-from aiosonic.exceptions import RequestTimeout
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import TimeoutException
+from aiosonic.exceptions import (
+    ConnectTimeout,
+    HttpParsingError,
+    MaxRedirects,
+    MissingWriterException,
+    ReadTimeout,
+    RequestTimeout,
+    TimeoutException,
+)
 from aiosonic.timeout import Timeouts
 from aiosonic.utils import cache_decorator
 from aiosonic.version import VERSION
+from aiosonic_utils.structures import CaseInsensitiveDict
 
 # TYPES
 from aiosonic.types import ParamsType
@@ -103,6 +100,15 @@ def _add_header(headers: HeadersType, key: str, value: str):
         headers[key] = value
 
 
+async def _headers_iterator(connection: Connection):
+    """Transform loop to iterator."""
+    while True:
+        res_data = await connection.reader.readline()
+        if b': ' not in res_data and b':' not in res_data:
+            break
+        yield res_data
+
+
 class HttpResponse:
     """Custom HttpResponse class for handling responses.
 
@@ -111,8 +117,10 @@ class HttpResponse:
       * headers (HttpHeaders): headers in case insensitive dict
       * raw_headers (List[Tuple[bytes, bytes]]): headers as raw format
     """
+
     def __init__(self):
         self.headers = HttpHeaders()
+        self.cookies = None
         self.raw_headers = []
         self.body = b''
         self.response_initial = None
@@ -133,6 +141,15 @@ class HttpResponse:
         """Set header to response."""
         self.headers[key] = val
         self.raw_headers.append((key, val))
+
+    async def _set_response_headers(self, iterator):
+        async for header_data in iterator:
+            header_tuple = HttpHeaders._clear_line(header_data)
+            self._set_header(*header_tuple)
+
+            # set cookies in response
+            if header_tuple[0].lower() == b'set-cookies':
+                self.cookies = cookies.SimpleCookie(header_tuple[1].decode())
 
     def _set_connection(self, connection: Connection):
         """Set header to response."""
@@ -352,7 +369,8 @@ async def _send_multipart(data: Dict[str, str],
             val.close()
 
         else:
-            to_send += (f'Content-Disposition: form-data; name="{key}"{_NEW_LINE}{_NEW_LINE}').encode()
+            to_send += (
+                f'Content-Disposition: form-data; name="{key}"{_NEW_LINE}{_NEW_LINE}').encode()
             to_send += val.encode() + _NEW_LINE.encode()
 
     # write --boundary-- for finish
@@ -400,11 +418,8 @@ async def _do_request(urlparsed: ParseResult,
 
         res_data = None
         # reading headers
-        while True:
-            res_data = await connection.reader.readline()
-            if b': ' not in res_data and b':' not in res_data:
-                break
-            response._set_header(*HttpHeaders._clear_line(res_data))
+
+        await response._set_response_headers(_headers_iterator(connection))
 
         size = response.headers.get(b'content-length')
         chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
@@ -429,13 +444,16 @@ class HTTPClient:
 
     This class holds the client creation that will be used for requests.
     """
-    def __init__(self, connector: TCPConnector = None):
+
+    def __init__(self, connector: TCPConnector = None, handle_cookies=False):
         """Initialize client options.
 
         Params:
             * **connector**: TCPConnector to be used if provided
         """
         self.connector = connector or TCPConnector()
+        self.handle_cookies = handle_cookies
+        self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
 
     async def __aenter__(self):
         return self
@@ -446,7 +464,6 @@ class HTTPClient:
     async def shutdown(self):
         """Cleanup connections, this method makes client unusable."""
         await self.connector.cleanup()
-
 
     async def _request_with_body(self,
                                  url: str,
@@ -648,6 +665,9 @@ class HTTPClient:
         headers = headers or {}
         body: ParsedBodyType = b''
 
+        if self.handle_cookies:
+            self._add_cookies_to_request(urlparsed.hostname, headers)
+
         if method != 'GET' and data and not multipart:
             body = _setup_body_request(data, headers)
         elif multipart:
@@ -690,6 +710,8 @@ class HTTPClient:
                                 urlparsed.path,
                                 response.headers[b'location'].decode()))
                 else:
+                    if self.handle_cookies:
+                        self._save_new_cookies(urlparsed.hostname, response)
                     return response
             except ConnectTimeout:
                 raise
@@ -708,3 +730,16 @@ class HTTPClient:
                 self.connector.wait_free_pool(), timeout)
         except TimeoutException:
             return False
+
+    def _add_cookies_to_request(self, host: str, headers: HeadersType):
+        """Add cookies to request."""
+        host_cookies = self.cookies_map.get(host)
+        if (host_cookies and
+                not any([header.lower() == 'cookie'
+                         for header in headers.keys()])):
+            headers['Cookie'] = host_cookies.output(header="")
+
+    def _save_new_cookies(self, host: str, response: HttpResponse):
+        """Save new cookies in map."""
+        if response.cookies:
+            self.cookies_map[host] = response.cookies
