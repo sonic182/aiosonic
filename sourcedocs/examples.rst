@@ -76,17 +76,24 @@ Concurrent Requests
 Cookies handling
 ================
 
-Adding `handle_cookies=True` to the client, it will save response cookies and send it again for new requests. This is usefull for scraping sessions handling.
+Adding `handle_cookies=True` to the client, it will save response cookies and send it again for new requests. This is useful to have same cookies workflow as in browsers, also for web scraping.
 
 .. code-block::  python
 
-   import aiosonic
-   import asyncio
-
-
-   async def main():
-       async with aiosonic.HTTPClient(handle_cookies=True) as client:
-           responses = await client.get('https://www.google.com/')
-           print(response.cookies)
-
-   asyncio.run(main())
+    import aiosonic
+    import asyncio
+    from urllib.parse import urlencode
+    
+    
+    async def main():
+        async with aiosonic.HTTPClient(handle_cookies=True) as client:
+            cookies = {'foo1': 'bar1', 'foo2': 'bar2'}
+            url = 'https://postman-echo.com/cookies/set'
+            # server will respond those cookies
+            response = await client.get(url, params=cookies, follow=True)
+            # client keep cookies in "cookies_map"
+            print(client.cookies_map['postman-echo.com'])
+            print(await response.text())
+    
+    
+    asyncio.run(main())

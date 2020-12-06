@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Some more documentation in reference
 - Cookie handling with `handle_cookies` flag in client
 
+### Improved
+- benchmarch improved after `headers_base` variable was changed to a list (faster to add and iterate items in a list vs dict)
+
 ## [0.7.2] 2020-11-23
 ### Added
 - Safe/gracefully shutdown of client
