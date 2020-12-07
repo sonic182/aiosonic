@@ -80,13 +80,20 @@ Adding `handle_cookies=True` to the client, it will save response cookies and se
 
 .. code-block::  python
 
-   import aiosonic
-   import asyncio
-
-
-   async def main():
-       async with aiosonic.HTTPClient(handle_cookies=True) as client:
-           response = await client.get('https://www.google.com/')
-           print(response.cookies)
-
-   asyncio.run(main())
+    import aiosonic
+    import asyncio
+    from urllib.parse import urlencode
+    
+    
+    async def main():
+        async with aiosonic.HTTPClient(handle_cookies=True) as client:
+            cookies = {'foo1': 'bar1', 'foo2': 'bar2'}
+            url = 'https://postman-echo.com/cookies/set'
+            # server will respond those cookies
+            response = await client.get(url, params=cookies, follow=True)
+            # client keep cookies in "cookies_map"
+            print(client.cookies_map['postman-echo.com'])
+            print(await response.text())
+    
+    
+    asyncio.run(main())

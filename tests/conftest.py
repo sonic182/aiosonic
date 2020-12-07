@@ -30,8 +30,8 @@ async def hello_cookies(request):
     res = 'Got cookies' if request.cookies else 'Hello, world'
     return web.Response(text=res, headers={
         'set-cookie': 'csrftoken=sometoken; expires=Sat, '
-                       '04-Dec-2021 11:33:13 GMT; '
-                       'Max-Age=31449600; Path=/'
+                      '04-Dec-2021 11:33:13 GMT; '
+                      'Max-Age=31449600; Path=/'
     })
 
 

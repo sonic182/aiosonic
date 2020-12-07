@@ -89,18 +89,31 @@ class HttpHeaders(CaseInsensitiveDict):
 HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
 
 
-def _add_header(headers: HeadersType, key: str, value: str):
+def _headers_iterator(headers: HeadersType):
+    iterator = headers if isinstance(headers, List) else headers.items()
+    for key, data in iterator:
+        yield key, data
+
+
+def _add_headers(headers: HeadersType, headers_to_add: HeadersType):
+    """Safe add multiple headers."""
+    for key, data in _headers_iterator(headers_to_add):
+        _add_header(headers, key, data)
+
+
+def _add_header(headers: HeadersType, key: str, value: str, replace=False):
     """Safe add header method."""
     if isinstance(headers, List):
-        included = [item for item in headers if item[0] == key]
-        if included:
-            headers.remove(included[0])
+        if replace:
+            included = [item for item in headers if item[0] == key]
+            if included:
+                headers.remove(included[0])
         headers.append((key, value))
     else:
         headers[key] = value
 
 
-async def _headers_iterator(connection: Connection):
+async def _parse_headers_iterator(connection: Connection):
     """Transform loop to iterator."""
     while True:
         res_data = await connection.reader.readline()
@@ -151,7 +164,12 @@ class HttpResponse:
 
             # set cookies in response
             if header_tuple[0].lower() == b'set-cookie':
-                self.cookies = cookies.SimpleCookie(header_tuple[1].decode())
+                self._update_cookies(header_tuple)
+
+    def _update_cookies(self, header_tuple):
+        """Update jar of cookies."""
+        self.cookies = self.cookies or cookies.SimpleCookie()
+        self.cookies.load(header_tuple[1].decode())
 
     def _set_connection(self, connection: Connection):
         """Set header to response."""
@@ -251,14 +269,14 @@ def _get_header_data(url: ParseResult,
     get_base = f'{uppercase_method} {path} HTTP/1.1{_NEW_LINE}'
 
     port = url.port or (443 if url.scheme == 'https' else 80)
-    hostname = url.hostname
+    hostname = str(url.hostname)
 
     if port != 80:
         hostname += ':' + str(port)
 
-    headers_base = {}
+    headers_base = []
     if http2conn:
-        headers_base.update({
+        _add_headers(headers_base, {
             ':method': method,
             ':authority': hostname.split(':')[0],
             ':scheme': 'https',
@@ -266,22 +284,23 @@ def _get_header_data(url: ParseResult,
             'user-agent': f'aioload/{VERSION}'
         })
     else:
-        headers_base.update({
+        _add_headers(headers_base, {
             'HOST': hostname,
             'Connection': 'keep-alive',
             'User-Agent': f'aioload/{VERSION}'
         })
 
     if multipart:
-        headers_base['Content-Type'] = f'multipart/form-data; boundary="{boundary}"'
+        _add_header(headers_base, 'Content-Type',
+                    f'multipart/form-data; boundary="{boundary}"')
 
     if headers:
-        headers_base.update(headers)
+        _add_headers(headers_base, headers)
 
     if http2conn:
         return headers_base
 
-    for key, data in headers_base.items():
+    for key, data in _headers_iterator(headers_base):
         get_base += f'{key}: {data}{_NEW_LINE}'
     return (get_base + _NEW_LINE).encode()
 
@@ -421,7 +440,7 @@ async def _do_request(urlparsed: ParseResult,
         res_data = None
         # reading headers
 
-        await response._set_response_headers(_headers_iterator(connection))
+        await response._set_response_headers(_parse_headers_iterator(connection))
 
         size = response.headers.get(b'content-length')
         chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
@@ -665,7 +684,7 @@ class HTTPClient:
         urlparsed = _get_url_parsed(url)
 
         boundary = None
-        headers = headers or {}
+        headers = headers or []
         body: ParsedBodyType = b''
 
         if self.handle_cookies:
@@ -695,11 +714,18 @@ class HTTPClient:
                     timeout=(timeouts
                              or self.connector.timeouts).request_timeout)
 
+                if self.handle_cookies:
+                    self._save_new_cookies(urlparsed.hostname, response)
+
                 if follow and response.status_code in {301, 302}:
                     max_redirects -= 1
 
                     if max_redirects == 0:
                         raise MaxRedirects()
+
+                    if self.handle_cookies:
+                        self._add_cookies_to_request(
+                            urlparsed.hostname, headers)
 
                     parsed_full_url = _get_url_parsed(
                         response.headers[b'location'].decode())
@@ -713,8 +739,6 @@ class HTTPClient:
                                 urlparsed.path,
                                 response.headers[b'location'].decode()))
                 else:
-                    if self.handle_cookies:
-                        self._save_new_cookies(urlparsed.hostname, response)
                     return response
             except ConnectTimeout:
                 raise
@@ -739,8 +763,10 @@ class HTTPClient:
         host_cookies = self.cookies_map.get(host)
         if (host_cookies and
                 not any([header.lower() == 'cookie'
-                         for header in headers.keys()])):
-            headers['Cookie'] = host_cookies.output(header="")
+                         for header, _ in headers])):
+            cookies_str = host_cookies.output(header='Cookie:')
+            for cookie_data in cookies_str.split('\r\n'):
+                _add_header(headers, *cookie_data.split(': ', 1))
 
     def _save_new_cookies(self, host: str, response: HttpResponse):
         """Save new cookies in map."""
