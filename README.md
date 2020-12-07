@@ -14,19 +14,19 @@ Here is some [documentation](https://aiosonic.readthedocs.io/en/latest/).
 There is a performance script in tests folder which shows very nice numbers
 
 ```
-» python ./tests/performance.py
+» python tests/performance.py
 doing tests...
 {
- "aiosonic": "1000 requests in 110.56 ms",
- "aiosonic cyclic": "1000 requests in 207.75 ms",
- "aiohttp": "1000 requests in 357.19 ms",
- "requests": "1000 requests in 4274.21 ms",
- "httpx": "1000 requests in 800.98 ms"
+ "aiosonic": "1000 requests in 110.03 ms",
+ "aiosonic cyclic": "1000 requests in 332.10 ms",
+ "aiohttp": "1000 requests in 427.31 ms",
+ "requests": "1000 requests in 4915.04 ms",
+ "httpx": "1000 requests in 638.04 ms"
 }
-aiosonic is 223.05% faster than aiohttp
-aiosonic is 3765.79% faster than requests
-aiosonic is 87.90% faster than aiosonic cyclic
-aiosonic is 624.45% faster than httpx
+aiosonic is 288.36% faster than aiohttp
+aiosonic is 4367.04% faster than requests
+aiosonic is 201.83% faster than aiosonic cyclic
+aiosonic is 479.89% faster than httpx
 ```
 
 You can perform this test by installing all test dependencies with `pip install -e ".[test]"` and doing `python tests/performance.py` in your own machine
