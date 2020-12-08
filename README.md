@@ -119,8 +119,8 @@ if __name__ == '__main__':
 * Better documentation
 * International Domains and URLs (idna + cache)
 * Requests using a http proxy
-* Sessions with Cookie Persistence
 * Basic/Digest Authentication
+* [x] Sessions with Cookie Persistence
 * [x] Elegant Key/Value Cookies
 
 # Development
