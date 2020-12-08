@@ -469,13 +469,16 @@ class HTTPClient:
         * **connector**: TCPConnector to be used if provided
         * **handle_cookies**: Flag to indicate if keep response cookies in
             client and send them in next requests.
+        * **verify_ssl**: Flag to indicate if verify ssl certificates.
     """
 
-    def __init__(self, connector: TCPConnector = None, handle_cookies=False):
+    def __init__(self, connector: TCPConnector = None, handle_cookies=False,
+                 verify_ssl=True):
         """Initialize client options."""
         self.connector = connector or TCPConnector()
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
+        self.verify_ssl = verify_ssl
 
     async def __aenter__(self):
         return self
@@ -699,6 +702,8 @@ class HTTPClient:
             body = await _send_multipart(data, boundary, headers)
 
         max_redirects = 30
+        # if class or request method has false, it will be false
+        verify_ssl = verify and self.verify_ssl 
         while True:
             headers_data = partial(_get_header_data,
                                    url=urlparsed,
@@ -710,7 +715,7 @@ class HTTPClient:
             try:
                 response = await wait_for(
                     _do_request(urlparsed, headers_data, self.connector, body,
-                                verify, ssl, timeouts, http2),
+                                verify_ssl, ssl, timeouts, http2),
                     timeout=(timeouts
                              or self.connector.timeouts).request_timeout)
 
