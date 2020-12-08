@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] 2020-12-08
+### Added
+- verify_ssl flag in HTTPClient class
+
 ## [0.8.0] 2020-12-07
 ### Added
 - Some more documentation in reference
@@ -132,7 +136,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.8.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.8.1..HEAD
+[0.8.1]: https://github.com/sonic182/aiosonic/compare/0.8.0..0.8.1
 [0.8.0]: https://github.com/sonic182/aiosonic/compare/0.7.2..0.8.0
 [0.7.2]: https://github.com/sonic182/aiosonic/compare/0.7.1..0.7.2
 [0.7.1]: https://github.com/sonic182/aiosonic/compare/0.7.0..0.7.1
