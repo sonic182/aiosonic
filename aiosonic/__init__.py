@@ -82,7 +82,7 @@ class HttpHeaders(CaseInsensitiveDict):
     @staticmethod
     def _clear_line(line: bytes):
         """Clear readed line."""
-        return line.rstrip().split(b': ', 1)
+        return line.rstrip().decode().split(': ', 1)
 
 
 #: Headers
@@ -163,13 +163,13 @@ class HttpResponse:
             self._set_header(*header_tuple)
 
             # set cookies in response
-            if header_tuple[0].lower() == b'set-cookie':
+            if header_tuple[0].lower() == 'set-cookie':
                 self._update_cookies(header_tuple)
 
     def _update_cookies(self, header_tuple):
         """Update jar of cookies."""
         self.cookies = self.cookies or cookies.SimpleCookie()
-        self.cookies.load(header_tuple[1].decode())
+        self.cookies.load(header_tuple[1])
 
     def _set_connection(self, connection: Connection):
         """Set header to response."""
@@ -182,9 +182,9 @@ class HttpResponse:
 
     def _set_body(self, data):
         """Set body."""
-        if self.compressed == b'gzip':
+        if self.compressed == 'gzip':
             self.body += gzip_decompress(data)
-        elif self.compressed == b'deflate':
+        elif self.compressed == 'deflate':
             self.body += zlib_decompress(data)
         else:
             self.body += data
@@ -442,10 +442,10 @@ async def _do_request(urlparsed: ParseResult,
 
         await response._set_response_headers(_parse_headers_iterator(connection))
 
-        size = response.headers.get(b'content-length')
-        chunked = response.headers.get(b'transfer-encoding', '') == b'chunked'
-        keepalive = b'close' not in response.headers.get(b'connection', b'')
-        response.compressed = response.headers.get(b'content-encoding', '')
+        size = response.headers.get('content-length')
+        chunked = response.headers.get('transfer-encoding', '') == 'chunked'
+        keepalive = 'close' not in response.headers.get('connection', '')
+        response.compressed = response.headers.get('content-encoding', '')
 
         if size:
             response._set_body(await connection.reader.readexactly(int(size)))
@@ -703,7 +703,7 @@ class HTTPClient:
 
         max_redirects = 30
         # if class or request method has false, it will be false
-        verify_ssl = verify and self.verify_ssl 
+        verify_ssl = verify and self.verify_ssl
         while True:
             headers_data = partial(_get_header_data,
                                    url=urlparsed,
@@ -733,7 +733,7 @@ class HTTPClient:
                             urlparsed.hostname, headers)
 
                     parsed_full_url = _get_url_parsed(
-                        response.headers[b'location'].decode())
+                        response.headers['location'])
 
                     # if full url, will have scheme
                     if parsed_full_url.scheme:
@@ -742,7 +742,7 @@ class HTTPClient:
                         urlparsed = _get_url_parsed(
                             url.replace(
                                 urlparsed.path,
-                                response.headers[b'location'].decode()))
+                                response.headers['location']))
                 else:
                     return response
             except ConnectTimeout:
