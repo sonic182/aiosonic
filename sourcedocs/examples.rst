@@ -73,6 +73,33 @@ Concurrent Requests
    asyncio.run(main())
 
 
+Chunked Requests
+================
+
+Specifying an iterator as the request body, it will make the request transfer made by chunks
+
+
+.. code-block::  python
+
+   import aiosonic
+   import asyncio
+   import json
+
+
+   async def main():
+       async def data():
+           yield b'foo'
+           yield b'bar'
+
+       async with aiosonic.HTTPClient() as client:
+           url = 'https://postman-echo.com/post'
+           response = await client.post(url, data=data())
+           print(json.dumps(await response.json(), indent=10))
+
+
+asyncio.run(main())
+
+
 Cookies handling
 ================
 
