@@ -10,6 +10,6 @@ def test_headers_retrival():
 
 def test_headers_retrival_common():
     """Test reading header with more than one ":" char ocurrence."""
-    res = [b'Authorization', b'Bearer foobar']
-    sample_header = b': '.join(res) + b'\r\n'
+    res = ['Authorization', 'Bearer foobar']
+    sample_header = b': '.join([item.encode() for item in res]) + b'\r\n'
     assert HttpHeaders._clear_line(sample_header) == res
