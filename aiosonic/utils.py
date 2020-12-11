@@ -1,7 +1,8 @@
 """Utils."""
+from typing import Callable
 
 
-def cache_decorator(size=512):
+def cache_decorator(size: int=512) -> Callable:
     """Dummy cache decorator."""
     _cache = {}
 

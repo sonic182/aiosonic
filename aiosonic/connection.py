@@ -26,7 +26,7 @@ from aiosonic.types import ParsedBodyType
 
 class Connection:
     """Connection class."""
-    def __init__(self, connector: TCPConnector):
+    def __init__(self, connector: TCPConnector) -> None:
         self.connector = connector
         self.reader: Optional[StreamReader] = None
         self.writer: Optional[StreamWriter] = None
@@ -43,7 +43,7 @@ class Connection:
                       verify: bool,
                       ssl_context: SSLContext,
                       timeouts: Timeouts,
-                      http2: bool = False):
+                      http2: bool = False) -> None:
         """Connet with timeout."""
         try:
             await wait_for(self._connect(urlparsed, verify,
@@ -54,7 +54,7 @@ class Connection:
             raise ConnectTimeout()
 
     async def _connect(self, urlparsed: ParseResult, verify: bool,
-                       ssl_context: SSLContext, http2: bool):
+                       ssl_context: SSLContext, http2: bool) -> None:
         """Get reader and writer."""
         if not urlparsed.hostname:
             raise HttpParsingError('missing hostname')
@@ -90,7 +90,7 @@ class Connection:
             self.temp_key = key
             await self._connection_made()
 
-    async def _connection_made(self):
+    async def _connection_made(self) -> None:
         tls_conn = self.writer.get_extra_info('ssl_object')
         if not tls_conn:
             return
@@ -104,7 +104,7 @@ class Connection:
             self.h2conn = h2.connection.H2Connection()
             self.h2handler = Http2Handler(self)
 
-    def keep_alive(self):
+    def keep_alive(self) -> None:
         """Check if keep alive."""
         self.keep = True
 
@@ -116,7 +116,7 @@ class Connection:
         """Get connection from pool."""
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(self, exc_type: None, exc: None, tb: None) -> None:
         """Release connection."""
         if self.keep and not exc:
             self.key = self.temp_key
@@ -131,7 +131,7 @@ class Connection:
             if self.h2handler:
                 self.h2handler.cleanup()
 
-    async def release(self):
+    async def release(self) -> None:
         """Release connection."""
         await self.connector.release(self)
 
@@ -139,11 +139,11 @@ class Connection:
     def timeouts(self) -> Timeouts:
         return self.connector.timeouts
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup."""
         self.close(True)
 
-    def close(self, check_closing=False):
+    def close(self, check_closing: bool=False) -> None:
         """Close connection if opened."""
         if self.writer:
             is_closing = getattr(self.writer, 'is_closing',

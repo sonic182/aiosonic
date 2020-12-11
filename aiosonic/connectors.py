@@ -2,19 +2,14 @@
 
 from asyncio import wait_for
 from asyncio import sleep as asyncio_sleep
-from asyncio import StreamReader
-from asyncio import StreamWriter
-import ssl
 from ssl import SSLContext
 from typing import Coroutine
-from typing import Optional
 from urllib.parse import ParseResult
 
-#import h2.connection (unused)
+# import h2.connection (unused)
 from hyperframe.frame import SettingsFrame
 
-#from concurrent import futures (unused)
-from aiosonic.exceptions import ConnectTimeout
+# from concurrent import futures (unused)
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.exceptions import TimeoutException
 from aiosonic.pools import SmartPool
@@ -54,7 +49,7 @@ class TCPConnector:
 
         try:
             return await wait_for(self.pool.acquire(urlparsed),
-                                          self.timeouts.pool_acquire)
+                                  self.timeouts.pool_acquire)
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
 

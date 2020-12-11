@@ -4,6 +4,7 @@ from urllib.parse import ParseResult
 from asyncio import Semaphore
 from asyncio import Queue
 
+
 class CyclicQueuePool:
     """Cyclic queue pool of connections."""
     def __init__(self, connector, pool_size, connection_cls):
@@ -53,7 +54,7 @@ class SmartPool:
                     return item
         return self.pool.pop()
 
-    def release(self, conn):
+    def release(self, conn) -> None:
         """Release connection."""
         self.pool.add(conn)
         self.sem.release()
@@ -62,7 +63,7 @@ class SmartPool:
         """Indicates if all pool is free."""
         return self.pool_size == self.sem._value
 
-    async def cleanup(self):
+    async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""
         for count in range(self.pool_size):
             conn = await self.acquire()

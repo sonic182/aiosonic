@@ -7,7 +7,7 @@ class Timeouts():
                  sock_connect: Optional[float] = 5,
                  sock_read: Optional[float] = 30,
                  pool_acquire: Optional[float] = None,
-                 request_timeout: Optional[float] = 60):
+                 request_timeout: Optional[float] = 60) -> None:
         """Timeouts.
 
         Arguments:
