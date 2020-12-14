@@ -20,7 +20,6 @@ h11==0.11.0               # via httpcore, uvicorn
 httpcore==0.12.2          # via httpx
 httpx==0.16.1             # via -r test-requirements.in
 idna==2.10                # via requests, rfc3986, yarl
-importlib-metadata==2.0.0  # via pluggy, pytest
 iniconfig==1.1.1          # via pytest
 multidict==5.0.2          # via aiohttp, yarl
 mypy-extensions==0.4.3    # via mypy
@@ -47,8 +46,7 @@ sqlparse==0.4.1           # via django
 termcolor==1.1.0          # via pytest-sugar
 toml==0.10.2              # via pytest
 typed-ast==1.4.1          # via mypy
-typing-extensions==3.7.4.3  # via aiohttp, mypy, uvicorn, yarl
+typing-extensions==3.7.4.3  # via aiohttp, mypy
 urllib3==1.26.2           # via requests
-uvicorn==0.12.2           # via -r test-requirements.in
+uvicorn==0.13.1           # via -r test-requirements.in
 yarl==1.6.3               # via aiohttp
-zipp==3.4.0               # via importlib-metadata
