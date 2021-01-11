@@ -152,7 +152,7 @@ class HttpResponse:
             raise HttpParsingError('response line parsing error')
         self.response_initial = res.groupdict()
 
-    def _set_header(self, key: bytes, val: bytes):
+    def _set_header(self, key: bytes = b'', val: bytes = b''):
         """Set header to response."""
         self.headers[key] = val
         self.raw_headers.append((key, val))
