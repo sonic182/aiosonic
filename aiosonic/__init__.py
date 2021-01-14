@@ -264,6 +264,8 @@ def _get_header_data(url: ParseResult,
                      boundary: str = None) -> Union[bytes, HeadersType]:
     """Prepare get data."""
     path = url.path or '/'
+    if url.query:
+        path += '?' + url.query
     http2conn = connection.h2conn
 
     if params:

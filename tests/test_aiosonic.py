@@ -151,6 +151,20 @@ async def test_get_with_params(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
+async def test_get_with_params_in_url(app, aiohttp_server):
+    """Test get with params."""
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d?foo=bar' % server.port
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url)
+        assert res.status_code == 200
+        assert await res.text() == 'bar'
+        await server.close()
+
+
+
+@pytest.mark.asyncio
 async def test_get_with_params_tuple(app, aiohttp_server):
     """Test get with params as tuple."""
     server = await aiohttp_server(app)
