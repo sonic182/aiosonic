@@ -1,5 +1,6 @@
 
 from aiosonic import HttpHeaders
+from aiosonic import HttpResponse
 
 
 def test_headers_retrival():
@@ -13,3 +14,10 @@ def test_headers_retrival_common():
     res = ['Authorization', 'Bearer foobar']
     sample_header = b': '.join([item.encode() for item in res]) + b'\r\n'
     assert HttpHeaders._clear_line(sample_header) == res
+
+
+def test_headers_parsing():
+    """Test parsing header with no value."""
+    parsing = HttpResponse()
+    parsing._set_header(*HttpHeaders._clear_line(b'Expires: \r\n'))
+    assert parsing.raw_headers == [('Expires', '')]

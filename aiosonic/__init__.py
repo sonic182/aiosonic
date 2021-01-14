@@ -82,7 +82,11 @@ class HttpHeaders(CaseInsensitiveDict):
     @staticmethod
     def _clear_line(line: bytes):
         """Clear readed line."""
-        return line.rstrip().decode().split(': ', 1)
+        decoded = line.rstrip().decode()
+        pair = decoded.split(': ', 1)
+        if len(pair) < 2:
+            return decoded.split(':')
+        return pair
 
 
 #: Headers
@@ -152,7 +156,7 @@ class HttpResponse:
             raise HttpParsingError('response line parsing error')
         self.response_initial = res.groupdict()
 
-    def _set_header(self, key: bytes = b'', val: bytes = b''):
+    def _set_header(self, key: str, val: str):
         """Set header to response."""
         self.headers[key] = val
         self.raw_headers.append((key, val))
