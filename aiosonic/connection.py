@@ -12,7 +12,7 @@ from urllib.parse import ParseResult
 import h2.connection
 import h2.events
 
-#from concurrent import futures (unused)
+# from concurrent import futures (unused)
 from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.exceptions import TimeoutException
@@ -26,6 +26,7 @@ from aiosonic.types import ParsedBodyType
 
 class Connection:
     """Connection class."""
+
     def __init__(self, connector: TCPConnector) -> None:
         self.connector = connector
         self.reader: Optional[StreamReader] = None
@@ -46,10 +47,9 @@ class Connection:
                       http2: bool = False) -> None:
         """Connet with timeout."""
         try:
-            await wait_for(self._connect(urlparsed, verify,
-                                                 ssl_context, http2),
-                                   timeout=(timeouts
-                                            or self.timeouts).sock_connect)
+            await wait_for(self._connect(
+                urlparsed, verify, ssl_context, http2
+            ), timeout=timeouts.sock_connect)
         except TimeoutException:
             raise ConnectTimeout()
 
@@ -135,15 +135,11 @@ class Connection:
         """Release connection."""
         await self.connector.release(self)
 
-    @property
-    def timeouts(self) -> Timeouts:
-        return self.connector.timeouts
-
     def __del__(self) -> None:
         """Cleanup."""
         self.close(True)
 
-    def close(self, check_closing: bool=False) -> None:
+    def close(self, check_closing: bool = False) -> None:
         """Close connection if opened."""
         if self.writer:
             is_closing = getattr(self.writer, 'is_closing',

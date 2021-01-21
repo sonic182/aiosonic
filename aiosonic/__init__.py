@@ -1,8 +1,10 @@
 """Main module."""
 
 import re
+import asyncio
 from asyncio import get_event_loop, wait_for
 from codecs import lookup
+from datetime import datetime, timedelta
 from functools import partial
 from gzip import decompress as gzip_decompress
 from http import cookies
@@ -10,6 +12,7 @@ from io import IOBase
 from json import dumps, loads
 from os.path import basename
 from random import randint
+import sys
 from ssl import SSLContext
 from typing import (
     Any,
@@ -26,6 +29,7 @@ from urllib.parse import ParseResult, urlencode, urlparse
 from zlib import decompress as zlib_decompress
 
 import chardet
+from async_timeout import timeout as async_timeout
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -137,7 +141,7 @@ class HttpResponse:
       * **raw_headers** (List[Tuple[bytes, bytes]]): headers as raw format
     """
 
-    def __init__(self):
+    def __init__(self, timeouts: Timeouts = None):
         self.headers = HttpHeaders()
         self.cookies = None
         self.raw_headers = []
@@ -147,6 +151,9 @@ class HttpResponse:
         self.chunked = False
         self.compressed = b''
         self.chunks_readed = False
+        self._timeouts = timeouts or Timeouts()
+        self._read_end_timestamp = datetime.now() + timedelta(
+            seconds=self._timeouts.request_timeout)
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
@@ -241,18 +248,38 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
-        while True and not self.chunks_readed:
-            chunk_size = int((await
-                              self.connection.reader.readline()).rstrip(), 16)
-            if not chunk_size:
-                # read last CRLF
-                await self.connection.reader.readline()
-                # free connection
-                await self.connection.release()
-                break
-            chunk = await self.connection.reader.readexactly(chunk_size + 2)
-            yield chunk[:-2]
+        if not self.connection:
+            raise ConnectionError('not connection present')
+
+        timeleft = (self._read_end_timestamp - datetime.now()).total_seconds()
+        try:
+            async with async_timeout(timeleft):
+                while True and not self.chunks_readed:
+                    chunk_size = int((await self.connection.reader.readline())
+                                     .rstrip(), 16)
+                    if not chunk_size:
+                        # read last CRLF
+                        await self.connection.reader.readline()
+                        # free connection
+                        await self.connection.release()
+                        break
+                    chunk = await self.connection.reader.readexactly(
+                            chunk_size + 2)
+                    yield chunk[:-2]
+        except TimeoutException:
+            print('raaaiseed')
+            raise RequestTimeout()
         self.chunks_readed = True
+
+    def __del__(self):
+        # clean it
+        if self.chunked and not self.chunks_readed:
+            loop = None
+            if sys.version_info >= (3, 7):
+                loop = asyncio.get_running_loop()
+            else:
+                loop = asyncio.get_event_loop()
+            loop.create_task(self.connection.release())
 
 
 def _get_header_data(url: ParseResult,
@@ -416,6 +443,7 @@ async def _do_request(urlparsed: ParseResult,
                       http2: bool = False) -> HttpResponse:
     """Something."""
     async with (await connector.acquire(urlparsed)) as connection:
+        timeouts = timeouts or connector.timeouts
         await connection.connect(urlparsed, verify, ssl, timeouts, http2)
         to_send = headers_data(connection=connection)
 
@@ -433,20 +461,19 @@ async def _do_request(urlparsed: ParseResult,
             else:
                 connection.writer.write(body)
 
-        response = HttpResponse()
+        response = HttpResponse(timeouts=timeouts)
 
         # get response code and version
         try:
-            response._set_response_initial(await wait_for(
-                connection.reader.readline(),
-                (timeouts or connector.timeouts).sock_read))
+            response._set_response_initial(
+                await wait_for(
+                    connection.reader.readline(), timeouts.sock_read))
         except TimeoutException:
             raise ReadTimeout()
 
-        res_data = None
         # reading headers
-
-        await response._set_response_headers(_parse_headers_iterator(connection))
+        await response._set_response_headers(
+            _parse_headers_iterator(connection))
 
         size = response.headers.get('content-length')
         chunked = response.headers.get('transfer-encoding', '') == 'chunked'
@@ -460,7 +487,7 @@ async def _do_request(urlparsed: ParseResult,
             connection.block_until_read_chunks()
             response.chunked = True
 
-        if keepalive:
+        if keepalive or chunked:
             connection.keep_alive()
             response._set_connection(connection)
         return response
