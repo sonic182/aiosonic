@@ -267,7 +267,6 @@ class HttpResponse:
                             chunk_size + 2)
                     yield chunk[:-2]
         except TimeoutException:
-            print('raaaiseed')
             raise RequestTimeout()
         self.chunks_readed = True
 
