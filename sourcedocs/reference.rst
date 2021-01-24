@@ -6,8 +6,8 @@ Reference
 TODO: get better this page
 
 
-Client
-======
+Connector and Client Client
+===========================
 
 .. autoclass:: aiosonic.connectors.TCPConnector
 |
@@ -38,6 +38,11 @@ Classes
 .. autoclass:: aiosonic.HttpResponse
    :members:
 |
+
+
+Tiemout Class
+=============
+
 .. autoclass:: aiosonic.timeout.Timeouts
    :members:
 |

@@ -97,7 +97,7 @@ Specifying an iterator as the request body, it will make the request transfer ma
            print(json.dumps(await response.json(), indent=10))
 
 
-asyncio.run(main())
+    asyncio.run(main())
 
 
 Cookies handling
