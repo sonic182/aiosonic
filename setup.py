@@ -2,6 +2,7 @@
 
 import re
 from setuptools import setup
+from Cython.Build import cythonize
 
 
 RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.\w]+)')
@@ -69,6 +70,7 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     setup_requires=['pytest-runner'],
+    ext_modules = cythonize("aiosonic/*.pyx"),
     install_requires=requirements('./requirements.txt'),
     extras_require={
         'test': add_marks(

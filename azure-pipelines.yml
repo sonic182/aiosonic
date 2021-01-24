@@ -59,6 +59,7 @@ steps:
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
       pip install -e ".[test]"
+      python setup.py build_ext --inplace
       pytest --cov=aiosonic --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
     timeoutInMinutes: 5
     displayName: 'Run tests'

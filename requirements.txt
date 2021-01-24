@@ -6,6 +6,8 @@
 #
 chardet==3.0.4
     # via -r requirements.in
+cython==0.29.21
+    # via -r requirements.in
 h2==4.0.0
     # via -r requirements.in
 hpack==4.0.0
