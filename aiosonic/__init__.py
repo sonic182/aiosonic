@@ -29,7 +29,6 @@ from urllib.parse import ParseResult, urlencode, urlparse
 from zlib import decompress as zlib_decompress
 
 import chardet
-from async_timeout import timeout as async_timeout
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -251,23 +250,18 @@ class HttpResponse:
         if not self.connection:
             raise ConnectionError('not connection present')
 
-        timeleft = (self._read_end_timestamp - datetime.now()).total_seconds()
-        try:
-            async with async_timeout(timeleft):
-                while True and not self.chunks_readed:
-                    chunk_size = int((await self.connection.reader.readline())
-                                     .rstrip(), 16)
-                    if not chunk_size:
-                        # read last CRLF
-                        await self.connection.reader.readline()
-                        # free connection
-                        await self.connection.release()
-                        break
-                    chunk = await self.connection.reader.readexactly(
-                            chunk_size + 2)
-                    yield chunk[:-2]
-        except TimeoutException:
-            raise RequestTimeout()
+        while True and not self.chunks_readed:
+            chunk_size = int((await self.connection.reader.readline())
+                             .rstrip(), 16)
+            if not chunk_size:
+                # read last CRLF
+                await self.connection.reader.readline()
+                # free connection
+                await self.connection.release()
+                break
+            chunk = await self.connection.reader.readexactly(
+                    chunk_size + 2)
+            yield chunk[:-2]
         self.chunks_readed = True
 
     def __del__(self):
