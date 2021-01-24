@@ -140,7 +140,7 @@ class HttpResponse:
       * **raw_headers** (List[Tuple[bytes, bytes]]): headers as raw format
     """
 
-    def __init__(self, timeouts: Timeouts = None):
+    def __init__(self):
         self.headers = HttpHeaders()
         self.cookies = None
         self.raw_headers = []
@@ -150,9 +150,6 @@ class HttpResponse:
         self.chunked = False
         self.compressed = b''
         self.chunks_readed = False
-        self._timeouts = timeouts or Timeouts()
-        self._read_end_timestamp = datetime.now() + timedelta(
-            seconds=self._timeouts.request_timeout)
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
