@@ -4,7 +4,6 @@ import re
 import asyncio
 from asyncio import get_event_loop, wait_for
 from codecs import lookup
-from datetime import datetime, timedelta
 from functools import partial
 from gzip import decompress as gzip_decompress
 from http import cookies
