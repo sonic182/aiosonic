@@ -4,51 +4,128 @@
 #
 #    pip-compile test-requirements.in
 #
-aiohttp==3.7.3            # via -r test-requirements.in, pytest-aiohttp
-asgiref==3.3.1            # via django
-async-timeout==3.0.1      # via aiohttp
-attrs==20.3.0             # via aiohttp, pytest, pytest-mypy
-certifi==2020.11.8        # via httpx, requests
-chardet==3.0.4            # via aiohttp, requests
-click==7.1.2              # via uvicorn
-coverage==5.3             # via coveralls, pytest-cov
-coveralls==2.2.0          # via -r test-requirements.in
-django==3.1.3             # via -r test-requirements.in
-docopt==0.6.2             # via coveralls
-filelock==3.0.12          # via pytest-mypy
-h11==0.11.0               # via httpcore, uvicorn
-httpcore==0.12.2          # via httpx
-httpx==0.16.1             # via -r test-requirements.in
-idna==2.10                # via requests, rfc3986, yarl
-importlib-metadata==2.0.0  # via pluggy, pytest
-iniconfig==1.1.1          # via pytest
-multidict==5.0.2          # via aiohttp, yarl
-mypy-extensions==0.4.3    # via mypy
-mypy==0.790               # via pytest-mypy
-packaging==20.4           # via pytest, pytest-sugar
-pluggy==0.13.1            # via pytest
-py==1.9.0                 # via pytest
-pyparsing==2.4.7          # via packaging
-pytest-aiohttp==0.3.0     # via -r test-requirements.in
-pytest-asyncio==0.14.0    # via -r test-requirements.in
-pytest-cov==2.10.1        # via -r test-requirements.in
-pytest-django==4.1.0      # via -r test-requirements.in
-pytest-mock==3.3.1        # via -r test-requirements.in
-pytest-mypy==0.8.0        # via -r test-requirements.in
-pytest-sugar==0.9.4       # via -r test-requirements.in
-pytest-timeout==1.4.2     # via -r test-requirements.in
-pytest==6.1.2             # via -r test-requirements.in, pytest-aiohttp, pytest-asyncio, pytest-cov, pytest-django, pytest-mock, pytest-mypy, pytest-sugar, pytest-timeout
-pytz==2020.4              # via django
-requests==2.25.0          # via coveralls
-rfc3986[idna2008]==1.4.0  # via httpx
-six==1.15.0               # via packaging
-sniffio==1.2.0            # via httpcore, httpx
-sqlparse==0.4.1           # via django
-termcolor==1.1.0          # via pytest-sugar
-toml==0.10.2              # via pytest
-typed-ast==1.4.1          # via mypy
-typing-extensions==3.7.4.3  # via aiohttp, mypy, uvicorn, yarl
-urllib3==1.26.2           # via requests
-uvicorn==0.12.2           # via -r test-requirements.in
-yarl==1.6.3               # via aiohttp
-zipp==3.4.0               # via importlib-metadata
+aiohttp==3.7.3
+    # via
+    #   -r test-requirements.in
+    #   pytest-aiohttp
+asgiref==3.3.1
+    # via django
+async-timeout==3.0.1
+    # via aiohttp
+attrs==20.3.0
+    # via
+    #   aiohttp
+    #   pytest
+    #   pytest-mypy
+certifi==2020.11.8
+    # via
+    #   httpx
+    #   requests
+chardet==3.0.4
+    # via
+    #   aiohttp
+    #   requests
+click==7.1.2
+    # via uvicorn
+coverage==5.3
+    # via
+    #   coveralls
+    #   pytest-cov
+coveralls==2.2.0
+    # via -r test-requirements.in
+django==3.1.3
+    # via -r test-requirements.in
+docopt==0.6.2
+    # via coveralls
+filelock==3.0.12
+    # via pytest-mypy
+h11==0.11.0
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==0.12.2
+    # via httpx
+httpx==0.16.1
+    # via -r test-requirements.in
+idna==2.10
+    # via
+    #   requests
+    #   rfc3986
+    #   yarl
+iniconfig==1.1.1
+    # via pytest
+multidict==5.0.2
+    # via
+    #   aiohttp
+    #   yarl
+mypy-extensions==0.4.3
+    # via mypy
+mypy==0.790
+    # via pytest-mypy
+packaging==20.4
+    # via
+    #   pytest
+    #   pytest-sugar
+pluggy==0.13.1
+    # via pytest
+py==1.9.0
+    # via pytest
+pyparsing==2.4.7
+    # via packaging
+pytest-aiohttp==0.3.0
+    # via -r test-requirements.in
+pytest-asyncio==0.14.0
+    # via -r test-requirements.in
+pytest-cov==2.10.1
+    # via -r test-requirements.in
+pytest-django==4.1.0
+    # via -r test-requirements.in
+pytest-mock==3.3.1
+    # via -r test-requirements.in
+pytest-mypy==0.8.0
+    # via -r test-requirements.in
+pytest-sugar==0.9.4
+    # via -r test-requirements.in
+pytest-timeout==1.4.2
+    # via -r test-requirements.in
+pytest==6.2.1
+    # via
+    #   -r test-requirements.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
+    #   pytest-cov
+    #   pytest-django
+    #   pytest-mock
+    #   pytest-mypy
+    #   pytest-sugar
+    #   pytest-timeout
+pytz==2020.4
+    # via django
+requests==2.25.0
+    # via coveralls
+rfc3986[idna2008]==1.4.0
+    # via httpx
+six==1.15.0
+    # via packaging
+sniffio==1.2.0
+    # via
+    #   httpcore
+    #   httpx
+sqlparse==0.4.1
+    # via django
+termcolor==1.1.0
+    # via pytest-sugar
+toml==0.10.2
+    # via pytest
+typed-ast==1.4.1
+    # via mypy
+typing-extensions==3.7.4.3
+    # via
+    #   aiohttp
+    #   mypy
+urllib3==1.26.2
+    # via requests
+uvicorn==0.12.2
+    # via -r test-requirements.in
+yarl==1.6.3
+    # via aiohttp
