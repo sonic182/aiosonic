@@ -7,6 +7,7 @@ python:
 install:
   - pip install -r requirements.txt
   - pip install -e .[test]
+  - python setup.py build_ext --inplace
 script:
   - pytest --cov=aiosonic
 after_success:
