@@ -31,6 +31,7 @@ Requirements
 ============
 
 - Python>=3.6
+- PyPy >=3.6
 
 Install
 =======
