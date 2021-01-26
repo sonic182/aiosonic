@@ -59,7 +59,7 @@ steps:
       pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
       pip install -e ".[test]"
-      pytest --cov=aiosonic --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html
+      pytest --cov=aiosonic --doctest-modules --junitxml=junit/test-results.xml --cov-report=xml --cov-report=html --mypy --mypy-ignore-missing-imports
     timeoutInMinutes: 5
     displayName: 'Run tests'
 

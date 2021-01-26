@@ -27,7 +27,11 @@ def version():
 env_marker = (
     "sys_platform != 'win32'"
     " and sys_platform != 'cygwin'"
-    " and platform_python_implementation != 'pypy'"
+    " and platform_python_implementation != 'PyPy'"
+)
+
+pypy_marker = (
+    "platform_python_implementation != 'PyPy'"
 )
 
 
@@ -62,11 +66,13 @@ setup(
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
-        'Topic :: Software Development',
+        'Topic :: Internet :: WWW/HTTP',
+        'Operating System :: OS Independent',
         'License :: OSI Approved :: MIT License',
-
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        "Programming Language :: Python :: Implementation :: PyPy",
     ],
     setup_requires=['pytest-runner'],
     install_requires=requirements('./requirements.txt'),
@@ -76,6 +82,10 @@ setup(
             {
                 'uvloop': ' ;' + env_marker,
                 'httptools': ' ;' + env_marker,
+                'mypy': ' ;' + pypy_marker,
+                'mypy-extensions': ' ;' + pypy_marker,
+                'pytest-mypy': ' ;' + pypy_marker,
+                'typed-ast': ' ;' + pypy_marker,
             }
         )
     }
