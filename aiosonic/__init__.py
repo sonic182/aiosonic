@@ -450,7 +450,7 @@ async def _do_request(urlparsed: ParseResult,
             else:
                 connection.writer.write(body)
 
-        response = HttpResponse(timeouts=timeouts)
+        response = HttpResponse()
 
         # get response code and version
         try:
