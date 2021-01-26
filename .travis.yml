@@ -9,6 +9,6 @@ install:
   - pip install -r requirements.txt
   - pip install -e .[test]
 script:
-  - pytest --cov=aiosonic
+  - pytest --cov=aiosonic --doctest-modules --mypy --mypy-ignore-missing-imports
 after_success:
   coveralls

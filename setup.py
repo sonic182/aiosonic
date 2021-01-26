@@ -27,7 +27,11 @@ def version():
 env_marker = (
     "sys_platform != 'win32'"
     " and sys_platform != 'cygwin'"
-    " and platform_python_implementation != 'pypy'"
+    " and platform_python_implementation != 'PyPy'"
+)
+
+pypy_marker = (
+    "platform_python_implementation != 'PyPy'"
 )
 
 
@@ -76,6 +80,10 @@ setup(
             {
                 'uvloop': ' ;' + env_marker,
                 'httptools': ' ;' + env_marker,
+                'mypy': ' ;' + pypy_marker,
+                'mypy-extensions': ' ;' + pypy_marker,
+                'pytest-mypy': ' ;' + pypy_marker,
+                'typed-ast': ' ;' + pypy_marker,
             }
         )
     }
