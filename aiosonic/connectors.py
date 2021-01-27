@@ -64,7 +64,7 @@ class TCPConnector:
         while True:
             if self.pool.is_all_free():
                 return True
-            asyncio_sleep(0.02)
+            asyncio_sleep(0.02)  # pragma: no cover
 
     async def cleanup(self):
         """Cleanup connector connections."""

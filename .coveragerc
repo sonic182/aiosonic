@@ -1,0 +1,3 @@
+[run]
+omit =
+    aiosonic/http2.py
