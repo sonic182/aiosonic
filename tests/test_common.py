@@ -1,6 +1,7 @@
 
 from aiosonic import HttpHeaders
 from aiosonic import HttpResponse
+from aiosonic import _add_header
 
 
 def test_headers_retrival():
@@ -21,3 +22,25 @@ def test_headers_parsing():
     parsing = HttpResponse()
     parsing._set_header(*HttpHeaders._clear_line(b'Expires: \r\n'))
     assert parsing.raw_headers == [('Expires', '')]
+
+
+def test_add_header():
+    """Test add header method."""
+    headers = HttpHeaders()
+    _add_header(headers, 'content-type', 'application/json')
+    assert headers == {'content-type': 'application/json'}
+
+
+def test_add_header_list():
+    """Test add header method into list."""
+    headers = []
+    _add_header(headers, 'content-type', 'application/json')
+    assert headers == [('content-type', 'application/json')]
+
+
+def test_add_header_list_replace():
+    """Test add header method into list with replace True."""
+    headers = []
+    _add_header(headers, 'foo', 'bar')
+    _add_header(headers, 'foo', 'baz', True)
+    assert headers == [('foo', 'baz')]

@@ -409,6 +409,30 @@ async def test_get_chunked_response(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
+async def test_get_chunked_response_and_not_read_it(app, aiohttp_server):
+    """Test get chunked response and not read it.
+
+    Also, trigger gc delete.
+    """
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d/chunked' % server.port
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url)
+        assert client.connector.pool.free_conns(), 24
+        del res
+        assert client.connector.pool.free_conns(), 25
+
+    connector = aiosonic.TCPConnector(pool_cls=CyclicQueuePool)
+    async with aiosonic.HTTPClient(connector) as client:
+        res = await client.get(url)
+        assert client.connector.pool.free_conns(), 24
+        del res
+        assert client.connector.pool.free_conns(), 25
+        await server.close()
+
+
+@pytest.mark.asyncio
 async def test_read_chunks_by_text_method(app, aiohttp_server):
     """Test read chunks by text method."""
     server = await aiohttp_server(app)

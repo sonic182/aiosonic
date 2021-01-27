@@ -26,6 +26,9 @@ class CyclicQueuePool:
         """Indicates if all pool is free."""
         return self.pool_size == self.pool.qsize()
 
+    def free_conns(self) -> int:
+        return self.pool.qsize()
+
     async def cleanup(self):
         """Get all conn and close them, this method let this pool unusable."""
         for _ in range(self.pool_size):
@@ -58,6 +61,9 @@ class SmartPool:
         """Release connection."""
         self.pool.add(conn)
         self.sem.release()
+
+    def free_conns(self) -> int:
+        return len(self.pool)
 
     def is_all_free(self):
         """Indicates if all pool is free."""

@@ -243,9 +243,6 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
-        if not self.connection:
-            raise ConnectionError('not connection present')
-
         while True and not self.chunks_readed:
             chunk_size = int((await self.connection.reader.readline())
                              .rstrip(), 16)
@@ -713,7 +710,7 @@ class HTTPClient:
         body: ParsedBodyType = b''
 
         if self.handle_cookies:
-            self._add_cookies_to_request(urlparsed.hostname, headers)
+            self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
         if method != 'GET' and data and not multipart:
             body = _setup_body_request(data, headers)
@@ -742,7 +739,7 @@ class HTTPClient:
                              or self.connector.timeouts).request_timeout)
 
                 if self.handle_cookies:
-                    self._save_new_cookies(urlparsed.hostname, response)
+                    self._save_new_cookies(str(urlparsed.hostname), response)
 
                 if follow and response.status_code in {301, 302}:
                     max_redirects -= 1
@@ -752,7 +749,7 @@ class HTTPClient:
 
                     if self.handle_cookies:
                         self._add_cookies_to_request(
-                            urlparsed.hostname, headers)
+                            str(urlparsed.hostname), headers)
 
                     parsed_full_url = _get_url_parsed(
                         response.headers['location'])

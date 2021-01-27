@@ -77,7 +77,8 @@ class Connection:
             if urlparsed.scheme == 'https':
                 ssl_context = ssl_context or ssl.create_default_context(
                     ssl.Purpose.SERVER_AUTH, )
-                if http2:  # flag will be removed when fully http2 support
+                # flag will be removed when fully http2 support
+                if http2:  # pragma: no cover
                     ssl_context.set_alpn_protocols(['h2', 'http/1.1'])
                 if not verify:
                     ssl_context.check_hostname = False
@@ -100,7 +101,7 @@ class Connection:
         if negotiated_protocol is None:
             negotiated_protocol = tls_conn.selected_npn_protocol()
 
-        if negotiated_protocol == 'h2':
+        if negotiated_protocol == 'h2':  # pragma: no cover
             self.h2conn = h2.connection.H2Connection()
             self.h2handler = Http2Handler(self)
 
@@ -128,7 +129,7 @@ class Connection:
 
         if not self.blocked:
             await self.release()
-            if self.h2handler:
+            if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 
     async def release(self) -> None:
@@ -149,5 +150,5 @@ class Connection:
 
     async def http2_request(self, headers: Dict[str, str],
                             body: Optional[ParsedBodyType]):
-        if self.h2handler:
+        if self.h2handler:  # pragma: no cover
             return await self.h2handler.request(headers, body)
