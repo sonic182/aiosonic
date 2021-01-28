@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] 2021-01-28
+### Fixed
+- Keep alive close when server say so
+
 ## [0.9.4] 2021-01-26
 ### Added
 - PyPy tests in travis
@@ -156,7 +160,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.4..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.5..HEAD
+[0.9.5]: https://github.com/sonic182/aiosonic/compare/0.9.4..0.9.5
 [0.9.4]: https://github.com/sonic182/aiosonic/compare/0.9.3..0.9.4
 [0.9.3]: https://github.com/sonic182/aiosonic/compare/0.9.2..0.9.3
 [0.9.2]: https://github.com/sonic182/aiosonic/compare/0.9.1..0.9.2
