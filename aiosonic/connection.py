@@ -124,7 +124,7 @@ class Connection:
         else:
             self.key = None
             self.h2conn = None
-            if self.writer:
+            if self.writer and not self.blocked:
                 self.close()
 
         if not self.blocked:
@@ -135,6 +135,13 @@ class Connection:
     async def release(self) -> None:
         """Release connection."""
         await self.connector.release(self)
+        # if keep False and still connected, close it.
+        if not self.keep and self.blocked:
+            self.blocked = False
+            self.close()
+
+        self.blocked = False
+        # ensure unlock conn
 
     def __del__(self) -> None:
         """Cleanup."""

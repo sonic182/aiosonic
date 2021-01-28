@@ -473,9 +473,12 @@ async def _do_request(urlparsed: ParseResult,
             connection.block_until_read_chunks()
             response.chunked = True
 
-        if keepalive or chunked:
+        if keepalive:
             connection.keep_alive()
             response._set_connection(connection)
+        else:
+            connection.keep = False
+
         return response
 
 
