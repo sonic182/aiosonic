@@ -135,13 +135,13 @@ class Connection:
     async def release(self) -> None:
         """Release connection."""
         await self.connector.release(self)
-        # if keep False and still connected, close it.
+        # if keep False and blocked (by latest chunked response), close it.
+        # server said to close it.
         if not self.keep and self.blocked:
             self.blocked = False
             self.close()
-
+        # ensure unblock conn object after read
         self.blocked = False
-        # ensure unlock conn
 
     def __del__(self) -> None:
         """Cleanup."""
