@@ -123,7 +123,7 @@ typing-extensions==3.7.4.3
     #   mypy
 urllib3==1.26.3
     # via requests
-uvicorn==0.13.3
+uvicorn==0.13.4
     # via -r test-requirements.in
 yarl==1.6.3
     # via aiohttp
