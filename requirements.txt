@@ -6,9 +6,9 @@
 #
 chardet<5.0.0
     # via -r requirements.in
-h2==4.0.0
+h2<=4.0.0
     # via -r requirements.in
-hpack==4.0.0
+# hpack==4.0.0
     # via h2
-hyperframe==6.0.0
+# hyperframe==6.0.0
     # via h2
