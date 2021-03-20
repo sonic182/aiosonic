@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.9.6] 2021-03-20
+### Changed
+- Better requirements.txt
+
 ## [0.9.5] 2021-01-28
 ### Fixed
 - Keep alive close when server say so
@@ -160,7 +165,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.5..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.6..HEAD
+[0.9.6]: https://github.com/sonic182/aiosonic/compare/0.9.5..0.9.6
 [0.9.5]: https://github.com/sonic182/aiosonic/compare/0.9.4..0.9.5
 [0.9.4]: https://github.com/sonic182/aiosonic/compare/0.9.3..0.9.4
 [0.9.3]: https://github.com/sonic182/aiosonic/compare/0.9.2..0.9.3
