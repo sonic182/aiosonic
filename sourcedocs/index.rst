@@ -55,7 +55,7 @@ Getting Started
   
   
   async def run():
-      client = aiosonic.HttpClient()
+      client = aiosonic.HTTPClient()
   
       # ##################
       # Sample get request
