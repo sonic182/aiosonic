@@ -102,9 +102,16 @@ async def test_json_parser(mocker):
     headers = HttpHeaders()
     _add_header(headers, 'Content-Type', 'application/json')
 
-    request = mocker.patch('aiosonic.HTTPClient.request')
+    # python<=3.7 compatible mock
+    async def mocked(*args, **kwargs):
+        mock = mocker.MagicMock()
+        mock(*args, **kwargs)
+        return mock
 
-    await HTTPClient().post('foo', json=[])
-    request.assert_called_once_with(
-        'foo', 'POST', headers, None, '[]', False, verify=True, ssl=None,
-        follow=False, timeouts=None, http2=False)
+    request = mocker.patch('aiosonic.HTTPClient.request', new=mocked)
+    instance = HTTPClient()
+
+    res = await instance.post('foo', json=[])
+    res.assert_called_once_with(
+        instance, 'foo', 'POST', headers, None, '[]', False, verify=True,
+        ssl=None, follow=False, timeouts=None, http2=False)
