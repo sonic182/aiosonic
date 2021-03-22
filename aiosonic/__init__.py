@@ -529,7 +529,7 @@ class HTTPClient:
         """Do post http request. """
         if not data and not json:
             TypeError('missing argument, either "json" or "data"')
-        if json:
+        if json is not None:
             data = json_serializer(json)
             headers = headers or HttpHeaders()
             _add_header(headers, 'Content-Type', 'application/json')
