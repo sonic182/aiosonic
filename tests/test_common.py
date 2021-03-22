@@ -1,4 +1,11 @@
 
+import pytest
+
+from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import HttpParsingError
+
+import aiosonic
+from aiosonic import HTTPClient 
 from aiosonic import HttpHeaders
 from aiosonic import HttpResponse
 from aiosonic import _add_header
@@ -44,3 +51,60 @@ def test_add_header_list_replace():
     _add_header(headers, 'foo', 'bar')
     _add_header(headers, 'foo', 'baz', True)
     assert headers == [('foo', 'baz')]
+
+
+def test_encoding_from_header():
+    """Test use encoder from header."""
+    response = HttpResponse()
+    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    response._set_header('content-type', 'text/html; charset=utf-8')
+    response.body = b'foo'
+    assert response._get_encoding() == 'utf-8'
+
+    response._set_header('content-type', 'application/json')
+    assert response._get_encoding() == 'utf-8'
+
+    response._set_header('content-type', 'text/html; charset=weirdencoding')
+    assert response._get_encoding() == 'ascii'
+
+
+def test_parse_response_line():
+    """Test parsing response line"""
+    response = HttpResponse()
+    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
+    assert response.status_code == 200
+
+
+def test_parse_response_line_with_empty_reason():
+    """Test parsing response line with empty reason-phrase"""
+    response = HttpResponse()
+    response._set_response_initial(b'HTTP/1.1 200 \r\n')
+    assert response.status_code == 200
+
+
+def test_parse_bad_response_line():
+    """Test parsing bad response line"""
+    with pytest.raises(HttpParsingError):
+        HttpResponse()._set_response_initial(b'foo bar baz')
+
+
+def test_handle_bad_chunk(mocker):
+    """Test handling chunks in chunked request"""
+    with pytest.raises(MissingWriterException):
+        conn = mocker.MagicMock()
+        conn.writer = None
+        aiosonic._handle_chunk(b'foo', conn)
+
+
+@pytest.mark.asyncio
+async def test_json_parser(mocker):
+    mock = mocker.patch('aiosonic.HTTPClient.request')
+    headers = HttpHeaders()
+    _add_header(headers, 'Content-Type', 'application/json')
+
+    request = mocker.patch('aiosonic.HTTPClient.request')
+
+    await HTTPClient().post('foo', json=[])
+    request.assert_called_once_with(
+        'foo', 'POST', headers, None, '[]', False, verify=True, ssl=None,
+        follow=False, timeouts=None, http2=False)

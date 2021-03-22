@@ -594,34 +594,6 @@ async def test_max_redirects(app, aiohttp_server):
         await server.close()
 
 
-def test_parse_response_line():
-    """Test parsing response line"""
-    response = HttpResponse()
-    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
-    assert response.status_code == 200
-
-
-def test_parse_response_line_with_empty_reason():
-    """Test parsing response line with empty reason-phrase"""
-    response = HttpResponse()
-    response._set_response_initial(b'HTTP/1.1 200 \r\n')
-    assert response.status_code == 200
-
-
-def test_parse_bad_response_line():
-    """Test parsing bad response line"""
-    with pytest.raises(HttpParsingError):
-        HttpResponse()._set_response_initial(b'foo bar baz')
-
-
-def test_handle_bad_chunk(mocker):
-    """Test handling chunks in chunked request"""
-    with pytest.raises(MissingWriterException):
-        conn = mocker.MagicMock()
-        conn.writer = None
-        aiosonic._handle_chunk(b'foo', conn)
-
-
 @pytest.mark.asyncio
 async def test_sending_chunks_with_error(mocker):
     """Sending bad chunck data type."""
@@ -670,21 +642,6 @@ async def test_request_multipart_value_error():
     async with aiosonic.HTTPClient() as client:
         with pytest.raises(ValueError):
             await client.post('foo', data=b'foo', multipart=True)
-
-
-def test_encoding_from_header():
-    """Test use encoder from header."""
-    response = HttpResponse()
-    response._set_response_initial(b'HTTP/1.1 200 OK\r\n')
-    response._set_header('content-type', 'text/html; charset=utf-8')
-    response.body = b'foo'
-    assert response._get_encoding() == 'utf-8'
-
-    response._set_header('content-type', 'application/json')
-    assert response._get_encoding() == 'utf-8'
-
-    response._set_header('content-type', 'text/html; charset=weirdencoding')
-    assert response._get_encoding() == 'ascii'
 
 
 @pytest.mark.asyncio
