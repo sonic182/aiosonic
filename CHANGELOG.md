@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.7] 2021-03-22
+### Fixed
+- json argument when false like value (empty lists) not being sent
 
 ## [0.9.6] 2021-03-20
 ### Changed
@@ -165,7 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.6..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.9.7..HEAD
+[0.9.7]: https://github.com/sonic182/aiosonic/compare/0.9.6..0.9.7
 [0.9.6]: https://github.com/sonic182/aiosonic/compare/0.9.5..0.9.6
 [0.9.5]: https://github.com/sonic182/aiosonic/compare/0.9.4..0.9.5
 [0.9.4]: https://github.com/sonic182/aiosonic/compare/0.9.3..0.9.4
