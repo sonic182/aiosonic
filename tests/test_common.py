@@ -98,7 +98,6 @@ def test_handle_bad_chunk(mocker):
 
 @pytest.mark.asyncio
 async def test_json_parser(mocker):
-    mock = mocker.patch('aiosonic.HTTPClient.request')
     headers = HttpHeaders()
     _add_header(headers, 'Content-Type', 'application/json')
 
@@ -108,7 +107,7 @@ async def test_json_parser(mocker):
         mock(*args, **kwargs)
         return mock
 
-    request = mocker.patch('aiosonic.HTTPClient.request', new=mocked)
+    mocker.patch('aiosonic.HTTPClient.request', new=mocked)
     instance = HTTPClient()
 
     res = await instance.post('foo', json=[])
