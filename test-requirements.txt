@@ -82,7 +82,7 @@ pytest-django==4.1.0
     # via -r test-requirements.in
 pytest-mock==3.5.1
     # via -r test-requirements.in
-pytest-mypy==0.8.0
+pytest-mypy==0.8.1
     # via -r test-requirements.in
 pytest-sugar==0.9.4
     # via -r test-requirements.in
