@@ -81,23 +81,23 @@ Specifying an iterator as the request body, it will make the request transfer ma
 
 .. code-block::  python
 
-   import aiosonic
-   import asyncio
-   import json
-
-
-   async def main():
-       async def data():
-           yield b'foo'
-           yield b'bar'
-
-       async with aiosonic.HTTPClient() as client:
-           url = 'https://postman-echo.com/post'
-           response = await client.post(url, data=data())
-           print(json.dumps(await response.json(), indent=10))
-
-
-    asyncio.run(main())
+ import aiosonic
+ import asyncio
+ import json
+ 
+ 
+ async def main():
+     async def data():
+         yield b'foo'
+         yield b'bar'
+ 
+     async with aiosonic.HTTPClient() as client:
+         url = 'https://postman-echo.com/post'
+         response = await client.post(url, data=data())
+         print(json.dumps(await response.json(), indent=10))
+ 
+ 
+ asyncio.run(main())
 
 
 Cookies handling
@@ -107,20 +107,46 @@ Adding `handle_cookies=True` to the client, it will save response cookies and se
 
 .. code-block::  python
 
-    import aiosonic
-    import asyncio
-    from urllib.parse import urlencode
-    
-    
-    async def main():
-        async with aiosonic.HTTPClient(handle_cookies=True) as client:
-            cookies = {'foo1': 'bar1', 'foo2': 'bar2'}
-            url = 'https://postman-echo.com/cookies/set'
-            # server will respond those cookies
-            response = await client.get(url, params=cookies, follow=True)
-            # client keep cookies in "cookies_map"
-            print(client.cookies_map['postman-echo.com'])
-            print(await response.text())
-    
-    
-    asyncio.run(main())
+ import aiosonic
+ import asyncio
+ 
+ 
+ async def main():
+     async with aiosonic.HTTPClient(handle_cookies=True) as client:
+         cookies = {'foo1': 'bar1', 'foo2': 'bar2'}
+         url = 'https://postman-echo.com/cookies/set'
+         # server will respond those cookies
+         response = await client.get(url, params=cookies, follow=True)
+         # client keep cookies in "cookies_map"
+         print(client.cookies_map['postman-echo.com'])
+         print(await response.text())
+ 
+ 
+ asyncio.run(main())
+
+
+Use custom DNS
+================
+
+Install `aiodns` in your dependencies and use AsyncResolver
+
+.. code-block::  python
+
+ import aiosonic
+ import asyncio
+ from aiosonic.resolver import AsyncResolver
+ 
+ 
+ async def main():
+     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
+     connector = aiosonic.TCPConnector(resolver=resolver)
+ 
+     async with aiosonic.HTTPClient(connector=connector) as client:
+         data = {'foo1': 'bar1', 'foo2': 'bar2'}
+         url = 'https://postman-echo.com/post'
+         # server will respond those cookies
+         response = await client.post(url, json=data)
+         # client keep cookies in "cookies_map"
+         print(await response.text())
+ 
+ asyncio.run(main())
