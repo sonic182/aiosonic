@@ -531,7 +531,7 @@ async def test_cache(app, aiohttp_server):
 
             await client.get(url, headers={'Accept-Encoding': 'gzip, deflate, br'})
         assert len(_get_url_parsed.cache) == 512
-        assert next(iter(_get_url_parsed.cache)) == url.replace('/519', '/8')
+        assert next(iter(_get_url_parsed.cache.cache)) == url.replace('/519', '/8')
         await server.close()
 
 

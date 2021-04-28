@@ -2,7 +2,7 @@
 
 import ssl
 from ssl import SSLContext
-from asyncio import wait_for, open_connection
+from asyncio import open_connection
 from asyncio import StreamReader
 from asyncio import StreamWriter
 from typing import Dict
@@ -13,14 +13,11 @@ import h2.connection
 import h2.events
 
 # from concurrent import futures (unused)
-from aiosonic.exceptions import ConnectTimeout
 from aiosonic.exceptions import HttpParsingError
-from aiosonic.exceptions import TimeoutException
 from aiosonic.timeout import Timeouts
 from aiosonic.connectors import TCPConnector
 from aiosonic.http2 import Http2Handler
 
-from aiosonic.types import ParamsType
 from aiosonic.types import ParsedBodyType
 
 
@@ -41,20 +38,18 @@ class Connection:
 
     async def connect(self,
                       urlparsed: ParseResult,
+                      dns_info: dict,
                       verify: bool,
                       ssl_context: SSLContext,
                       timeouts: Timeouts,
                       http2: bool = False) -> None:
         """Connet with timeout."""
-        try:
-            await wait_for(self._connect(
-                urlparsed, verify, ssl_context, http2
-            ), timeout=timeouts.sock_connect)
-        except TimeoutException:
-            raise ConnectTimeout()
+        await self._connect(
+            urlparsed, verify, ssl_context, dns_info, http2
+        )
 
     async def _connect(self, urlparsed: ParseResult, verify: bool,
-                       ssl_context: SSLContext, http2: bool) -> None:
+                       ssl_context: SSLContext, dns_info, http2: bool) -> None:
         """Get reader and writer."""
         if not urlparsed.hostname:
             raise HttpParsingError('missing hostname')
@@ -71,6 +66,9 @@ class Connection:
             def is_closing():
                 return True  # noqa
 
+        dns_info_copy = dns_info.copy()
+        dns_info_copy['server_hostname'] = dns_info_copy.pop('hostname')
+
         if not (self.key and key == self.key and not is_closing()):
             self.close()
 
@@ -83,10 +81,13 @@ class Connection:
                 if not verify:
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
+            else:
+                del dns_info_copy['server_hostname']
             port = urlparsed.port or (443
                                       if urlparsed.scheme == 'https' else 80)
+            dns_info_copy['port'] = port
             self.reader, self.writer = await open_connection(
-                urlparsed.hostname, port, ssl=ssl_context)
+                **dns_info_copy, ssl=ssl_context)
 
             self.temp_key = key
             await self._connection_made()
