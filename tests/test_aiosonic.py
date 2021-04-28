@@ -3,23 +3,19 @@ import ssl
 from urllib.parse import urlparse
 
 import pytest
+
 import aiosonic
-from aiosonic import _get_url_parsed
-from aiosonic import HttpResponse
-from aiosonic.connectors import TCPConnector
+from aiosonic import HttpResponse, _get_url_parsed
 from aiosonic.connection import Connection
-from aiosonic.exceptions import ConnectTimeout
-from aiosonic.exceptions import ReadTimeout
-from aiosonic.exceptions import RequestTimeout
-from aiosonic.exceptions import MaxRedirects
-from aiosonic.exceptions import HttpParsingError
-from aiosonic.exceptions import MissingWriterException
-from aiosonic.exceptions import MissingEvent
-from aiosonic.exceptions import ConnectionPoolAcquireTimeout
+from aiosonic.connectors import TCPConnector
+from aiosonic.exceptions import (ConnectionPoolAcquireTimeout, ConnectTimeout,
+                                 HttpParsingError, MaxRedirects, MissingEvent,
+                                 MissingWriterException, ReadTimeout,
+                                 RequestTimeout)
 from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool
+from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
-
 
 skip_http2 = pytest.mark.skip(reason="WIP")
 
@@ -31,6 +27,23 @@ async def test_simple_get(app, aiohttp_server):
     url = 'http://localhost:%d' % server.port
 
     connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    async with aiosonic.HTTPClient(connector) as client:
+        res = await client.get(url)
+        assert res.status_code == 200
+        assert await res.content() == b'Hello, world'
+        assert await res.text() == 'Hello, world'
+        await server.close()
+
+
+@pytest.mark.asyncio
+async def test_simple_get_aiodns(app, aiohttp_server):
+    """Test simple get with aiodns"""
+    resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
+
+    server = await aiohttp_server(app)
+    url = 'http://localhost:%d' % server.port
+
+    connector = aiosonic.TCPConnector(resolver=resolver)
     async with aiosonic.HTTPClient(connector) as client:
         res = await client.get(url)
         assert res.status_code == 200
