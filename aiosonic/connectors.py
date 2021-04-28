@@ -29,6 +29,8 @@ class TCPConnector:
         * **connection_cls**: connection class to be used. default: :class:`aiosonic.connection.Connection`
         * **pool_cls**: pool class to be used. default: :class:`aiosonic.pools.SmartPool`
         * **resolver**: resolver to be used. default: :class:`aiosonic.resolver.DefaultResolver`
+        * **ttl_dns_cache**: ttl in milliseconds for dns cache. default: `10000` 10 seconds
+        * **use_dns_cache**: Flag to indicate usage of dns cache. default: `True`
 
     """
 
