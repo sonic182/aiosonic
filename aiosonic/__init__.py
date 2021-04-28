@@ -428,9 +428,9 @@ async def _do_request(urlparsed: ParseResult,
                       timeouts: Optional[Timeouts],
                       http2: bool = False) -> HttpResponse:
     """Something."""
-    async with (await connector.acquire(urlparsed)) as connection:
-        timeouts = timeouts or connector.timeouts
-        await connection.connect(urlparsed, verify, ssl, timeouts, http2)
+    timeouts = timeouts or connector.timeouts
+    args = urlparsed, verify, ssl, timeouts, http2
+    async with (await connector.acquire(*args)) as connection:
         to_send = headers_data(connection=connection)
 
         if connection.h2conn:

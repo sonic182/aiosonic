@@ -1,23 +1,70 @@
 """Utils."""
+import functools
 from typing import Callable
+from datetime import datetime, timedelta
 
 
-def cache_decorator(size: int=512) -> Callable:
+class ExpirableCache(object):
+    """aiosonic.utils.ExpirableCache class.
+
+    Class used for custom cache decorator, dummy expirable cache based
+    on dict structure.
+
+    Params:
+        * **size**: max items in dict.
+        * **timeout**: Timeout in milliseconds, if it is None,
+            there is no timeout.
+    """
+
+    def __init__(self, size=512, timeout=None):
+        self.cache = {}
+        self.timeout = timeout
+        self.size = size
+
+    def set(self, key, data):
+        if self.timeout:
+            expire_at = datetime.utcnow() + timedelta(
+                milliseconds=self.timeout)
+            self.cache[key] = {
+                'value': data,
+                'expire_at': expire_at
+            }
+        else:
+            self.cache[key] = data
+
+        if len(self.cache) > self.size:
+            self.cache.pop(next(iter(self.cache)))
+
+    def get(self, key):
+        data = self.cache.get(key)
+        if self.timeout and data:
+            if datetime.utcnow() > data['expire_at']:
+                del self.cache[key]
+                data = None
+            return data['value']
+        return data
+
+    def __len__(self):
+        return len(self.cache)
+
+
+def cache_decorator(size: int=512, timeout: int = None) -> Callable:
     """Dummy cache decorator."""
-    _cache = {}
+    cache = ExpirableCache(size, timeout)
 
     def decorator(func):
-        def _wrapper(key):
-            if key in _cache:
-                return _cache[key]
+        def _wrapper(*args):
+            key = '-'.join(list(args))
+            data = cache.get(key)
+            if data:
+                return data
 
-            _cache[key] = res = func(key)
+            res = func(key)
 
-            if len(_cache) > size:
-                _cache.pop(next(iter(_cache)))
+            cache.set(key, data)
             return res
 
-        _wrapper.cache = _cache
+        _wrapper.cache = cache
         return _wrapper
 
     return decorator

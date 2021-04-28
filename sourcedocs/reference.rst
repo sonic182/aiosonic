@@ -55,3 +55,24 @@ Pool Classes
 |
 .. autoclass:: aiosonic.pools.CyclicQueuePool
    :members:
+
+
+DNS Resolver
+============
+
+For custom dns servers, you sould install `aiodns` package and use Async resolver as follow
+
+.. code-block::  python
+
+  from aiosonic.resolver import AsyncResolver
+
+  resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
+  conn = aiosonic.TCPConnector(resolver=resolver)
+
+Then, pass connector to aiosonic HTTPClient instance.
+
+.. autoclass:: aiosonic.resolver.AsyncResolver
+   :members:
+|
+.. autoclass:: aiosonic.resolver.ThreadedResolver
+   :members:

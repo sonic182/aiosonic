@@ -4,6 +4,8 @@
 #
 #    pip-compile test-requirements.in
 #
+aiodns==2.0.0
+    # via -r test-requirements.in
 aiohttp==3.7.3
     # via
     #   -r test-requirements.in
@@ -21,6 +23,8 @@ certifi==2020.12.5
     # via
     #   httpx
     #   requests
+cffi==1.14.5
+    # via pycares
 chardet==3.0.4
     # via
     #   aiohttp
@@ -70,6 +74,10 @@ pluggy==0.13.1
     # via pytest
 py==1.10.0
     # via pytest
+pycares==3.1.1
+    # via aiodns
+pycparser==2.20
+    # via cffi
 pyparsing==2.4.7
     # via packaging
 pytest-aiohttp==0.3.0
