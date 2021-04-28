@@ -36,8 +36,11 @@ async def test_simple_get(app, aiohttp_server):
 
 
 @pytest.mark.asyncio
-async def test_simple_get_aiodns(app, aiohttp_server):
+async def test_simple_get_aiodns(app, aiohttp_server, mocker):
     """Test simple get with aiodns"""
+    async def foo(*args):
+        return mocker.MagicMock(addresses=['127.0.0.1'])
+    mock = mocker.patch('aiodns.DNSResolver.gethostbyname', new=foo)
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
 
     server = await aiohttp_server(app)
