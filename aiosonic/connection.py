@@ -41,7 +41,6 @@ class Connection:
                       dns_info: dict,
                       verify: bool,
                       ssl_context: SSLContext,
-                      timeouts: Timeouts,
                       http2: bool = False) -> None:
         """Connet with timeout."""
         await self._connect(

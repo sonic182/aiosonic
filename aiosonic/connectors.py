@@ -53,29 +53,34 @@ class TCPConnector:
 
     async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2):
         """Acquire connection."""
+        if not urlparsed.hostname:
+            raise HttpParsingError('missing hostname')
+
         # Faster without timeout
         if not self.timeouts.pool_acquire:
             conn = await self.pool.acquire(urlparsed)
-
-            if not urlparsed.hostname:
-                raise HttpParsingError('missing hostname')
-
-            dns_info = await self.__resolve_dns(
-                urlparsed.hostname, urlparsed.port)
-
-            try:
-                await wait_for(conn.connect(
-                    urlparsed, dns_info, verify, ssl, http2
-                ), timeout=timeouts.sock_connect)
-            except TimeoutException:
-                raise ConnectTimeout()
-            return conn
+            return await self.after_acquire(
+                urlparsed, conn, verify, ssl, timeouts, http2)
 
         try:
-            return await wait_for(self.pool.acquire(urlparsed),
+            conn = await wait_for(self.pool.acquire(urlparsed),
                                   self.timeouts.pool_acquire)
+            return await self.after_acquire(
+                urlparsed, conn, verify, ssl, timeouts, http2)
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
+
+    async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
+        dns_info = await self.__resolve_dns(
+            urlparsed.hostname, urlparsed.port)
+
+        try:
+            await wait_for(conn.connect(
+                urlparsed, dns_info, verify, ssl, http2
+            ), timeout=timeouts.sock_connect)
+        except TimeoutException:
+            raise ConnectTimeout()
+        return conn
 
     async def release(self, conn):
         """Release connection."""

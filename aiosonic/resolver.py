@@ -1,8 +1,9 @@
 # copied from aiohttp
 
-from abc import ABC, abstractmethod
 import asyncio
 import socket
+import sys
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type, Union
 
 __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
@@ -15,6 +16,13 @@ except ImportError:  # pragma: no cover
     aiodns = None
 
 aiodns_default = False
+
+
+def get_loop():
+    if sys.version_info >= (3, 7):
+        return asyncio.get_running_loop()
+    else:
+        return asyncio.get_event_loop()
 
 
 class AbstractResolver(ABC):
@@ -35,7 +43,7 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self) -> None:
-        self._loop = asyncio.get_running_loop()
+        self._loop = get_loop()
 
     async def resolve(
         self, hostname: str, port: int = 0, family: int = socket.AF_INET
@@ -84,7 +92,7 @@ class AsyncResolver(AbstractResolver):
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = asyncio.get_running_loop()
+        self._loop = get_loop()
         self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
     async def resolve(
