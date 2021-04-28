@@ -96,7 +96,7 @@ pytest-sugar==0.9.4
     # via -r test-requirements.in
 pytest-timeout==1.4.2
     # via -r test-requirements.in
-pytest==6.2.2
+pytest==6.2.3
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
