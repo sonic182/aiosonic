@@ -10,7 +10,7 @@ aiohttp==3.7.3
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
-asgiref==3.3.1
+asgiref==3.3.4
     # via django
 async-timeout==3.0.1
     # via aiohttp
@@ -37,7 +37,7 @@ coverage==5.4
     #   pytest-cov
 coveralls==3.0.0
     # via -r test-requirements.in
-django==3.1.5
+django==3.2.1
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
