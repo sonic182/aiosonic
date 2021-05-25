@@ -35,7 +35,7 @@ coverage==5.4
     # via
     #   coveralls
     #   pytest-cov
-coveralls==3.0.0
+coveralls==3.1.0
     # via -r test-requirements.in
 django==3.1.5
     # via -r test-requirements.in
