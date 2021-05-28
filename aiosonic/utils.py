@@ -41,7 +41,8 @@ class ExpirableCache(object):
             if datetime.utcnow() > data['expire_at']:
                 del self.cache[key]
                 data = None
-            return data['value']
+            else:
+                return data['value']
         return data
 
     def __len__(self):
