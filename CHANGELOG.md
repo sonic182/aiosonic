@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] 2021-05-29
+### Fixed
+- Cache should not return value after expired [#258](https://github.com/sonic182/aiosonic/pull/258) (thanks to @difeid)
+
 ## [0.10.0] 2021-04-29
 ### Added
 - dns resolvers
@@ -172,7 +176,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.10.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.10.1..HEAD
+[0.10.1]: https://github.com/sonic182/aiosonic/compare/0.10.0..0.10.1
 [0.10.0]: https://github.com/sonic182/aiosonic/compare/0.9.7..0.10.0
 [0.9.7]: https://github.com/sonic182/aiosonic/compare/0.9.6..0.9.7
 [0.9.6]: https://github.com/sonic182/aiosonic/compare/0.9.5..0.9.6
