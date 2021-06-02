@@ -10,8 +10,10 @@ aiohttp==3.7.3
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
-asgiref==3.3.1
-    # via django
+asgiref==3.3.4
+    # via
+    #   django
+    #   uvicorn
 async-timeout==3.0.1
     # via aiohttp
 attrs==20.3.0
@@ -131,7 +133,7 @@ typing-extensions==3.7.4.3
     #   mypy
 urllib3==1.26.3
     # via requests
-uvicorn==0.13.3
+uvicorn==0.14.0
     # via -r test-requirements.in
 yarl==1.6.3
     # via aiohttp
