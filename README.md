@@ -1,5 +1,6 @@
 
 [![Build Status](https://travis-ci.org/sonic182/aiosonic.svg?branch=master)](https://travis-ci.org/sonic182/aiosonic)
+![github status](https://github.com/sonic182/aiosonic/actions/workflows/python.yml/badge.svg)
 [![Azure Build Status](https://dev.azure.com/johander-182/aiosonic/_apis/build/status/sonic182.aiosonic?branchName=master)](https://dev.azure.com/johander-182/aiosonic/_build/latest?definitionId=1&branchName=master)
 [![Coverage Status](https://coveralls.io/repos/github/sonic182/aiosonic/badge.svg?branch=master)](https://coveralls.io/github/sonic182/aiosonic?branch=master)
 [![PyPI version](https://badge.fury.io/py/aiosonic.svg)](https://badge.fury.io/py/aiosonic)
