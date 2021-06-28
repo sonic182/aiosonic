@@ -268,6 +268,14 @@ class HttpResponse:
             loop.create_task(self.connection.release())
 
 
+def _get_hostname(hostname_arg, port):
+    hostname = hostname_arg.encode('idna').decode()
+
+    if port not in [80, 443]:
+        hostname += ':' + str(port)
+    return hostname
+
+
 def _get_header_data(url: ParseResult,
                      connection: Connection,
                      method: str,
@@ -288,10 +296,7 @@ def _get_header_data(url: ParseResult,
     get_base = f'{uppercase_method} {path} HTTP/1.1{_NEW_LINE}'
 
     port = url.port or (443 if url.scheme == 'https' else 80)
-    hostname = str(url.hostname)
-
-    if port != 80:
-        hostname += ':' + str(port)
+    hostname = _get_hostname(url.hostname, port)
 
     headers_base = []
     if http2conn:
