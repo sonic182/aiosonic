@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.11.0] 2021-06-28
 ### Fixed
 - Parsing url with idna encoding (Internationalizing Domain Names in Applications), for non ascii urls
 
@@ -178,7 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.10.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.0..HEAD
+[0.11.0]: https://github.com/sonic182/aiosonic/compare/0.10.1..0.11.0
 [0.10.1]: https://github.com/sonic182/aiosonic/compare/0.10.0..0.10.1
 [0.10.0]: https://github.com/sonic182/aiosonic/compare/0.9.7..0.10.0
 [0.9.7]: https://github.com/sonic182/aiosonic/compare/0.9.6..0.9.7
