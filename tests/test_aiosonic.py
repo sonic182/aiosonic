@@ -655,7 +655,7 @@ async def test_connection_error(mocker):
     async with aiosonic.HTTPClient() as client:
 
         with pytest.raises(ConnectionError):
-            await client.get('foo')
+            await client.get('http://foo')
 
 
 @pytest.mark.asyncio

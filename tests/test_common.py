@@ -114,3 +114,10 @@ async def test_json_parser(mocker):
     res.assert_called_once_with(
         instance, 'foo', 'POST', headers, None, '[]', False, verify=True,
         ssl=None, follow=False, timeouts=None, http2=False)
+
+
+def test_hostname_parse():
+    """Test hostname encoding"""
+    hostname = 'gnosisespaña.es'
+    port = 443
+    assert aiosonic._get_hostname(hostname, port) == 'xn--gnosisespaa-beb.es'
