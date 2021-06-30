@@ -1,7 +1,9 @@
 """Main module."""
 
-import re
 import asyncio
+import logging
+import re
+import sys
 from asyncio import get_event_loop, wait_for
 from codecs import lookup
 from functools import partial
@@ -11,44 +13,25 @@ from io import IOBase
 from json import dumps, loads
 from os.path import basename
 from random import randint
-import sys
 from ssl import SSLContext
-from typing import (
-    Any,
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import (Any, AsyncIterator, Callable, Dict, Iterator, List,
+                    Optional, Tuple, Union)
 from urllib.parse import ParseResult, urlencode, urlparse
 from zlib import decompress as zlib_decompress
 
 import chardet
+
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import (
-    ConnectTimeout,
-    HttpParsingError,
-    MaxRedirects,
-    MissingWriterException,
-    ReadTimeout,
-    RequestTimeout,
-    TimeoutException,
-)
+from aiosonic.exceptions import (ConnectTimeout, HttpParsingError,
+                                 MaxRedirects, MissingWriterException,
+                                 ReadTimeout, RequestTimeout, TimeoutException)
 from aiosonic.timeout import Timeouts
-from aiosonic.utils import cache_decorator
+# TYPES
+from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
+from aiosonic.utils import cache_decorator, get_debug_logger
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
-
-# TYPES
-from aiosonic.types import ParamsType
-from aiosonic.types import DataType
-from aiosonic.types import BodyType
-from aiosonic.types import ParsedBodyType
 
 try:
     import cchardet as chardet
@@ -64,6 +47,7 @@ _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = '\r\n'
 _COMPRESSED_OPTIONS = set([b'gzip', b'deflate'])
+dlogger = get_debug_logger()
 
 
 # Functions with cache
@@ -144,18 +128,19 @@ class HttpResponse:
         self.cookies = None
         self.raw_headers = []
         self.body = b''
-        self.response_initial = None
+        self.response_initial = {}
         self.connection = None
         self.chunked = False
         self.compressed = b''
         self.chunks_readed = False
+        self.request_meta = {}
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
         res = re.match(_HTTP_RESPONSE_STATUS_LINE,
                        data.decode().rstrip('\r\n'))
         if not res:
-            raise HttpParsingError('response line parsing error')
+            raise HttpParsingError(f'response line parsing error: {data}')
         self.response_initial = res.groupdict()
 
     def _set_header(self, key: str, val: str):
@@ -171,6 +156,21 @@ class HttpResponse:
             # set cookies in response
             if header_tuple[0].lower() == 'set-cookie':
                 self._update_cookies(header_tuple)
+
+        if dlogger.level == logging.DEBUG:
+
+            def logparse(data):
+                return _NEW_LINE.join([
+                    f'{key}={value}'
+                    for key, value
+                    in data
+                ])
+
+            info = {**self.response_initial, **self.request_meta}.items()
+            to_log_info = [[key, val] for key, val in info]
+            meta_log = logparse(to_log_info)
+            headers_log = logparse(self.raw_headers)
+            dlogger.debug(meta_log + _NEW_LINE + 'Headers:' + _NEW_LINE * 2 + headers_log + '---')  # noqa
 
     def _update_cookies(self, header_tuple):
         """Update jar of cookies."""
@@ -253,7 +253,7 @@ class HttpResponse:
                 await self.connection.release()
                 break
             chunk = await self.connection.reader.readexactly(
-                    chunk_size + 2)
+                chunk_size + 2)
             yield chunk[:-2]
         self.chunks_readed = True
 
@@ -267,6 +267,9 @@ class HttpResponse:
                 loop = asyncio.get_event_loop()
             loop.create_task(self.connection.release())
 
+    def _set_request_meta(self, urlparsed: ParseResult):
+        self.request_meta = {'from_path': urlparsed.path or '/'}
+
 
 def _get_hostname(hostname_arg, port):
     hostname = hostname_arg.encode('idna').decode()
@@ -276,13 +279,14 @@ def _get_hostname(hostname_arg, port):
     return hostname
 
 
-def _get_header_data(url: ParseResult,
-                     connection: Connection,
-                     method: str,
-                     headers: HeadersType = None,
-                     params: ParamsType = None,
-                     multipart: bool = None,
-                     boundary: str = None) -> Union[bytes, HeadersType]:
+def _prepare_request_headers(
+        url: ParseResult,
+        connection: Connection,
+        method: str,
+        headers: HeadersType = None,
+        params: ParamsType = None,
+        multipart: bool = None,
+        boundary: str = None) -> Union[bytes, HeadersType]:
     """Prepare get data."""
     path = url.path or '/'
     if url.query:
@@ -326,6 +330,10 @@ def _get_header_data(url: ParseResult,
 
     for key, data in _headers_iterator(headers_base):
         get_base += f'{key}: {data}{_NEW_LINE}'
+
+    # log request headers
+    if dlogger.level == logging.DEBUG:
+        dlogger.debug(get_base + '---')
     return (get_base + _NEW_LINE).encode()
 
 
@@ -453,6 +461,7 @@ async def _do_request(urlparsed: ParseResult,
                 connection.writer.write(body)
 
         response = HttpResponse()
+        response._set_request_meta(urlparsed)
 
         # get response code and version
         try:
@@ -732,7 +741,7 @@ class HTTPClient:
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
         while True:
-            headers_data = partial(_get_header_data,
+            headers_data = partial(_prepare_request_headers,
                                    url=urlparsed,
                                    method=method,
                                    headers=headers,
