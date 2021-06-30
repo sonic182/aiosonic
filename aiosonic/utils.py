@@ -1,7 +1,8 @@
 """Utils."""
 import functools
-from typing import Callable
+import logging
 from datetime import datetime, timedelta
+from typing import Callable
 
 
 class ExpirableCache(object):
@@ -69,3 +70,11 @@ def cache_decorator(size: int=512, timeout: int = None) -> Callable:
         return _wrapper
 
     return decorator
+
+
+def get_debug_logger():
+    """Get debug logger."""
+    logger = logging.getLogger('aiosonic')
+    # logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+    return logger

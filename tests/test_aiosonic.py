@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import ssl
 from urllib.parse import urlparse
 
@@ -18,6 +19,9 @@ from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
 
 skip_http2 = pytest.mark.skip(reason="WIP")
+# setup debug logger
+logging.getLogger('aiosonic').setLevel(logging.DEBUG)
+
 
 
 @pytest.mark.asyncio
