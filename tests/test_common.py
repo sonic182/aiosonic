@@ -1,14 +1,9 @@
 
 import pytest
 
-from aiosonic.exceptions import MissingWriterException
-from aiosonic.exceptions import HttpParsingError
-
 import aiosonic
-from aiosonic import HTTPClient 
-from aiosonic import HttpHeaders
-from aiosonic import HttpResponse
-from aiosonic import _add_header
+from aiosonic import HTTPClient, HttpHeaders, HttpResponse, _add_header
+from aiosonic.exceptions import HttpParsingError, MissingWriterException
 
 
 def test_headers_retrival():

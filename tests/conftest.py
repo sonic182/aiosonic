@@ -1,21 +1,20 @@
 """Fixtures and more."""
 
 import asyncio
-from datetime import datetime
-from datetime import timedelta
-import random
 import gzip
-from urllib.error import URLError
-from urllib.request import urlopen
-from http.client import RemoteDisconnected
+import random
 import ssl
 import subprocess
-from time import sleep
 import zlib
+from datetime import datetime, timedelta
+from http.client import RemoteDisconnected
+from time import sleep
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import aiohttp
-from aiohttp import web
 import pytest
+from aiohttp import web
 
 
 async def hello(request):

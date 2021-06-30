@@ -8,6 +8,7 @@ pytest-aiohttp
 pytest-asyncio
 pytest-cov
 pytest-django
+pytest-isort
 pytest-mock
 pytest-mypy
 pytest-sugar

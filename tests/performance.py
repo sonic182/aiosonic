@@ -1,24 +1,19 @@
 """Performance test."""
 
 import asyncio
-from concurrent import futures
-from datetime import datetime
-from datetime import timedelta
 import json
 import random
-from time import sleep
-
-from urllib.request import urlopen
-from urllib.error import URLError
-
+from concurrent import futures
+from datetime import datetime, timedelta
 from multiprocessing import Process
-
-from uvicorn.main import Server
-from uvicorn.main import Config
+from time import sleep
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import aiohttp
 import httpx
 import requests
+from uvicorn.main import Config, Server
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
