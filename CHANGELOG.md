@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] 2021-06-30
+### Added
+- dummy debug log for some debugging
+
 ## [0.11.0] 2021-06-28
 ### Fixed
 - Parsing url with idna encoding (Internationalizing Domain Names in Applications), for non ascii urls
@@ -180,7 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.1..HEAD
+[0.11.1]: https://github.com/sonic182/aiosonic/compare/0.11.0..0.11.1
 [0.11.0]: https://github.com/sonic182/aiosonic/compare/0.10.1..0.11.0
 [0.10.1]: https://github.com/sonic182/aiosonic/compare/0.10.0..0.10.1
 [0.10.0]: https://github.com/sonic182/aiosonic/compare/0.9.7..0.10.0
