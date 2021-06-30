@@ -70,7 +70,8 @@ Concurrent Requests
 
            assert all([res.status_code in [200, 301] for res in responses])
 
-   asyncio.run(main())
+   loop = asyncio.get_event_loop()
+   loo.run_until_complete(main())
 
 
 Chunked Requests
@@ -97,7 +98,8 @@ Specifying an iterator as the request body, it will make the request transfer ma
          print(json.dumps(await response.json(), indent=10))
  
  
- asyncio.run(main())
+ loop = asyncio.get_event_loop()
+ loop.run_until_complete(main())
 
 
 Cookies handling
@@ -122,7 +124,8 @@ Adding `handle_cookies=True` to the client, it will save response cookies and se
          print(await response.text())
  
  
- asyncio.run(main())
+ loop = asyncio.get_event_loop()
+ loop.run_until_complete(main())
 
 
 Use custom DNS
@@ -149,4 +152,32 @@ Install `aiodns` in your dependencies and use AsyncResolver
          # client keep cookies in "cookies_map"
          print(await response.text())
  
- asyncio.run(main())
+ loop = asyncio.get_event_loop()
+ loop.run_until_complete(main())
+
+
+Debug log
+=========
+
+Configure aiosonic logger at debug level to see some logging
+
+.. code-block::  python
+
+ import asyncio
+ import aiosonic
+ import json
+ import logging
+ 
+ 
+ async def run():
+     # setup debug level at log
+     logger = logging.getLogger('aiosonic')
+     logger.setLevel(logging.DEBUG)
+
+     async with aiosonic.HTTPClient() as client:
+       response = await client.get('https://www.google.com/')
+       assert response.status_code == 200
+       assert 'Google' in (await response.text())
+
+ loop = asyncio.get_event_loop()
+ loop.run_until_complete(run())
