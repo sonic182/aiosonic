@@ -20,7 +20,7 @@ def requirements(filename):
 
 def version():
     data = read_file("./aiosonic/version.py")
-    return re.findall(r"VERSION = '([a-z0-9.]*)'", data)[0]
+    return re.findall(r"VERSION = \"([a-z0-9.]*)\"", data)[0]
 
 
 # copied form uvicorn, mark to not install uvloop in windows
