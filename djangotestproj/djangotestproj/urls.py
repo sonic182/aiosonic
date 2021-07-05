@@ -20,5 +20,5 @@ from djangotestproj.djangotestproj import views
 
 urlpatterns = [
     # path('admin/', admin.site.urls),
-    path('post_file', views.upload_file),
+    path("post_file", views.upload_file),
 ]

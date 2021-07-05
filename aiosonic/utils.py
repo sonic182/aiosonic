@@ -24,12 +24,8 @@ class ExpirableCache(object):
 
     def set(self, key, data):
         if self.timeout:
-            expire_at = datetime.utcnow() + timedelta(
-                milliseconds=self.timeout)
-            self.cache[key] = {
-                'value': data,
-                'expire_at': expire_at
-            }
+            expire_at = datetime.utcnow() + timedelta(milliseconds=self.timeout)
+            self.cache[key] = {"value": data, "expire_at": expire_at}
         else:
             self.cache[key] = data
 
@@ -39,24 +35,24 @@ class ExpirableCache(object):
     def get(self, key):
         data = self.cache.get(key)
         if self.timeout and data:
-            if datetime.utcnow() > data['expire_at']:
+            if datetime.utcnow() > data["expire_at"]:
                 del self.cache[key]
                 data = None
             else:
-                return data['value']
+                return data["value"]
         return data
 
     def __len__(self):
         return len(self.cache)
 
 
-def cache_decorator(size: int=512, timeout: int = None) -> Callable:
+def cache_decorator(size: int = 512, timeout: int = None) -> Callable:
     """Dummy cache decorator."""
     cache = ExpirableCache(size, timeout)
 
     def decorator(func):
         def _wrapper(*args):
-            key = '-'.join(list(args))
+            key = "-".join(list(args))
             data = cache.get(key)
             if data:
                 return data
@@ -74,7 +70,7 @@ def cache_decorator(size: int=512, timeout: int = None) -> Callable:
 
 def get_debug_logger():
     """Get debug logger."""
-    logger = logging.getLogger('aiosonic')
+    logger = logging.getLogger("aiosonic")
     # logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler())
     return logger

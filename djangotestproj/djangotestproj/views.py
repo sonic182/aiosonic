@@ -14,11 +14,13 @@ class UploadFileForm(forms.Form):
 @csrf_exempt
 def upload_file(request: HttpRequest):
     """Sample upload file."""
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
             return HttpResponse(
-                content=form.cleaned_data[
-                    'foo'].read() + b'-' + request.POST['field1'].encode())
+                content=form.cleaned_data["foo"].read()
+                + b"-"
+                + request.POST["field1"].encode()
+            )
         return HttpResponse(content=form.errors)
-    return HttpResponse(content='ko')
+    return HttpResponse(content="ko")

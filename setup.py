@@ -4,7 +4,7 @@ import re
 from setuptools import setup
 
 
-RGX = re.compile(r'([\w-]+[<>=]{1}=[\d.\w]+)')
+RGX = re.compile(r"([\w-]+[<>=]{1}=[\d.\w]+)")
 
 
 def read_file(filename):
@@ -19,7 +19,7 @@ def requirements(filename):
 
 
 def version():
-    data = read_file('./aiosonic/version.py')
+    data = read_file("./aiosonic/version.py")
     return re.findall(r"VERSION = '([a-z0-9.]*)'", data)[0]
 
 
@@ -30,9 +30,7 @@ env_marker = (
     " and platform_python_implementation != 'PyPy'"
 )
 
-pypy_marker = (
-    "platform_python_implementation != 'PyPy'"
-)
+pypy_marker = "platform_python_implementation != 'PyPy'"
 
 
 def add_marks(dependencies, marks):
@@ -41,6 +39,7 @@ def add_marks(dependencies, marks):
     Example:
         uvloop==0.12.0 -> uvloop==0.12.0 ; sys_platform != 'win32'...
     """
+
     def _map_func(dependency):
         for item, marker in marks.items():
             if item in dependency:
@@ -51,42 +50,42 @@ def add_marks(dependencies, marks):
 
 
 setup(
-    name='aiosonic',
+    name="aiosonic",
     version=version(),
-    description='Async http client',
-    author='Johanderson Mogollon',
-    author_email='johanderson@mogollon.com.ve',
-    long_description=read_file('README.md'),
-    long_description_content_type='text/markdown',
-    license='MIT',
+    description="Async http client",
+    author="Johanderson Mogollon",
+    author_email="johanderson@mogollon.com.ve",
+    long_description=read_file("README.md"),
+    long_description_content_type="text/markdown",
+    license="MIT",
     packages=[
-        'aiosonic',
-        'aiosonic_utils',
+        "aiosonic",
+        "aiosonic_utils",
     ],
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Topic :: Internet :: WWW/HTTP',
-        'Operating System :: OS Independent',
-        'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
+        "Development Status :: 5 - Production/Stable",
+        "Intended Audience :: Developers",
+        "Topic :: Internet :: WWW/HTTP",
+        "Operating System :: OS Independent",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
-    setup_requires=['pytest-runner'],
-    install_requires=requirements('./requirements.txt'),
+    setup_requires=["pytest-runner"],
+    install_requires=requirements("./requirements.txt"),
     extras_require={
-        'test': add_marks(
-            requirements('./test-requirements.txt'),
+        "test": add_marks(
+            requirements("./test-requirements.txt"),
             {
-                'uvloop': ' ;' + env_marker,
-                'httptools': ' ;' + env_marker,
-                'mypy': ' ;' + pypy_marker,
-                'mypy-extensions': ' ;' + pypy_marker,
-                'pytest-mypy': ' ;' + pypy_marker,
-                'typed-ast': ' ;' + pypy_marker,
-            }
+                "uvloop": " ;" + env_marker,
+                "httptools": " ;" + env_marker,
+                "mypy": " ;" + pypy_marker,
+                "mypy-extensions": " ;" + pypy_marker,
+                "pytest-mypy": " ;" + pypy_marker,
+                "typed-ast": " ;" + pypy_marker,
+            },
         )
-    }
+    },
 )

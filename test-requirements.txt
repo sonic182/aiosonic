@@ -10,9 +10,11 @@ aiohttp==3.7.4.post0
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
-anyio==3.2.0
+anyio==3.2.1
     # via httpcore
-asgiref==3.3.4
+appdirs==1.4.4
+    # via black
+asgiref==3.4.1
     # via
     #   django
     #   uvicorn
@@ -23,6 +25,8 @@ attrs==21.2.0
     #   aiohttp
     #   pytest
     #   pytest-mypy
+black==21.6b0
+    # via pytest-black
 certifi==2021.5.30
     # via
     #   httpx
@@ -34,14 +38,16 @@ chardet==4.0.0
     #   aiohttp
     #   requests
 click==8.0.1
-    # via uvicorn
+    # via
+    #   black
+    #   uvicorn
 coverage==5.5
     # via
     #   coveralls
     #   pytest-cov
 coveralls==3.1.0
     # via -r test-requirements.in
-django==3.2.4
+django==3.2.5
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
@@ -70,13 +76,17 @@ multidict==5.1.0
     #   aiohttp
     #   yarl
 mypy-extensions==0.4.3
-    # via mypy
-mypy==0.902
+    # via
+    #   black
+    #   mypy
+mypy==0.910
     # via pytest-mypy
-packaging==20.9
+packaging==21.0
     # via
     #   pytest
     #   pytest-sugar
+pathspec==0.8.1
+    # via black
 pluggy==0.13.1
     # via pytest
 py==1.10.0
@@ -85,15 +95,21 @@ pycares==4.0.0
     # via aiodns
 pycparser==2.20
     # via cffi
+pyflakes==2.3.1
+    # via pytest-flakes
 pyparsing==2.4.7
     # via packaging
 pytest-aiohttp==0.3.0
     # via -r test-requirements.in
 pytest-asyncio==0.15.1
     # via -r test-requirements.in
+pytest-black==0.3.12
+    # via -r test-requirements.in
 pytest-cov==2.12.1
     # via -r test-requirements.in
 pytest-django==4.4.0
+    # via -r test-requirements.in
+pytest-flakes==4.0.3
     # via -r test-requirements.in
 pytest-isort==2.0.0
     # via -r test-requirements.in
@@ -110,14 +126,18 @@ pytest==6.2.4
     #   -r test-requirements.in
     #   pytest-aiohttp
     #   pytest-asyncio
+    #   pytest-black
     #   pytest-cov
     #   pytest-django
+    #   pytest-flakes
     #   pytest-mock
     #   pytest-mypy
     #   pytest-sugar
     #   pytest-timeout
 pytz==2021.1
     # via django
+regex==2021.7.5
+    # via black
 requests==2.25.1
     # via coveralls
 rfc3986[idna2008]==1.5.0
@@ -133,14 +153,16 @@ termcolor==1.1.0
     # via pytest-sugar
 toml==0.10.2
     # via
+    #   black
     #   mypy
     #   pytest
+    #   pytest-black
     #   pytest-cov
 typing-extensions==3.10.0.0
     # via
     #   aiohttp
     #   mypy
-urllib3==1.26.5
+urllib3==1.26.6
     # via requests
 uvicorn==0.14.0
     # via -r test-requirements.in
