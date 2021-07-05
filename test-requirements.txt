@@ -69,8 +69,6 @@ idna==2.10
     #   yarl
 iniconfig==1.1.1
     # via pytest
-isort==5.9.1
-    # via pytest-isort
 multidict==5.1.0
     # via
     #   aiohttp
@@ -95,8 +93,6 @@ pycares==4.0.0
     # via aiodns
 pycparser==2.20
     # via cffi
-pyflakes==2.3.1
-    # via pytest-flakes
 pyparsing==2.4.7
     # via packaging
 pytest-aiohttp==0.3.0
@@ -108,10 +104,6 @@ pytest-black==0.3.12
 pytest-cov==2.12.1
     # via -r test-requirements.in
 pytest-django==4.4.0
-    # via -r test-requirements.in
-pytest-flakes==4.0.3
-    # via -r test-requirements.in
-pytest-isort==2.0.0
     # via -r test-requirements.in
 pytest-mock==3.6.1
     # via -r test-requirements.in
@@ -129,7 +121,6 @@ pytest==6.2.4
     #   pytest-black
     #   pytest-cov
     #   pytest-django
-    #   pytest-flakes
     #   pytest-mock
     #   pytest-mypy
     #   pytest-sugar

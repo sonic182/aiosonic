@@ -15,7 +15,6 @@ from os.path import basename
 from random import randint
 from ssl import SSLContext
 from typing import (
-    Any,
     AsyncIterator,
     Callable,
     Dict,
@@ -59,11 +58,9 @@ _HTTP_RESPONSE_STATUS_LINE = re.compile(
     r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)"
 )
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
-_CACHE: Dict[str, Any] = {}
 _LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = "\r\n"
-_COMPRESSED_OPTIONS = set([b"gzip", b"deflate"])
 dlogger = get_debug_logger()
 
 
@@ -274,11 +271,12 @@ class HttpResponse:
         # clean it
         if self.chunked and not self.chunks_readed:
             loop = None
-            if sys.version_info >= (3, 7):
-                loop = asyncio.get_running_loop()
-            else:
-                loop = asyncio.get_event_loop()
-            loop.create_task(self.connection.release())
+            if self.connection:
+                if sys.version_info >= (3, 7):
+                    loop = asyncio.get_running_loop()
+                else:
+                    loop = asyncio.get_event_loop()
+                loop.create_task(self.connection.release())
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}

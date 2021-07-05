@@ -9,8 +9,6 @@ pytest-asyncio
 pytest-black
 pytest-cov
 pytest-django
-pytest-flakes
-pytest-isort
 pytest-mock
 pytest-mypy
 pytest-sugar
