@@ -7,6 +7,7 @@ from asyncio import Queue
 
 class CyclicQueuePool:
     """Cyclic queue pool of connections."""
+
     def __init__(self, connector, pool_size, connection_cls):
         self.pool_size = pool_size
         self.pool = Queue(pool_size)
@@ -38,6 +39,7 @@ class CyclicQueuePool:
 
 class SmartPool:
     """Pool which utilizes alive connections."""
+
     def __init__(self, connector, pool_size, connection_cls):
         self.pool_size = pool_size
         self.pool = set()
@@ -50,7 +52,7 @@ class SmartPool:
         """Acquire connection."""
         await self.sem.acquire()
         if urlparsed:
-            key = f'{urlparsed.hostname}-{urlparsed.port}'
+            key = f"{urlparsed.hostname}-{urlparsed.port}"
             for item in self.pool:
                 if item.key == key:
                     self.pool.remove(item)

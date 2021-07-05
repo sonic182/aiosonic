@@ -10,8 +10,12 @@ from urllib.parse import ParseResult
 from hyperframe.frame import SettingsFrame
 
 # from concurrent import futures (unused)
-from aiosonic.exceptions import (ConnectionPoolAcquireTimeout, ConnectTimeout,
-                                 HttpParsingError, TimeoutException)
+from aiosonic.exceptions import (
+    ConnectionPoolAcquireTimeout,
+    ConnectTimeout,
+    HttpParsingError,
+    TimeoutException,
+)
 from aiosonic.pools import SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
@@ -34,15 +38,18 @@ class TCPConnector:
 
     """
 
-    def __init__(self,
-                 pool_size: int = 25,
-                 timeouts: Timeouts = None,
-                 connection_cls=None,
-                 pool_cls=None,
-                 resolver=None,
-                 ttl_dns_cache=10000,
-                 use_dns_cache=True):
+    def __init__(
+        self,
+        pool_size: int = 25,
+        timeouts: Timeouts = None,
+        connection_cls=None,
+        pool_cls=None,
+        resolver=None,
+        ttl_dns_cache=10000,
+        use_dns_cache=True,
+    ):
         from aiosonic.connection import Connection  # avoid circular dependency
+
         self.pool_size = pool_size
         connection_cls = connection_cls or Connection
         pool_cls = pool_cls or SmartPool
@@ -56,30 +63,33 @@ class TCPConnector:
     async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2):
         """Acquire connection."""
         if not urlparsed.hostname:
-            raise HttpParsingError('missing hostname')
+            raise HttpParsingError("missing hostname")
 
         # Faster without timeout
         if not self.timeouts.pool_acquire:
             conn = await self.pool.acquire(urlparsed)
             return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2)
+                urlparsed, conn, verify, ssl, timeouts, http2
+            )
 
         try:
-            conn = await wait_for(self.pool.acquire(urlparsed),
-                                  self.timeouts.pool_acquire)
+            conn = await wait_for(
+                self.pool.acquire(urlparsed), self.timeouts.pool_acquire
+            )
             return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2)
+                urlparsed, conn, verify, ssl, timeouts, http2
+            )
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
-        dns_info = await self.__resolve_dns(
-            urlparsed.hostname, urlparsed.port)
+        dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
 
         try:
-            await wait_for(conn.connect(
-                urlparsed, dns_info, verify, ssl, http2
-            ), timeout=timeouts.sock_connect)
+            await wait_for(
+                conn.connect(urlparsed, dns_info, verify, ssl, http2),
+                timeout=timeouts.sock_connect,
+            )
         except TimeoutException:
             raise ConnectTimeout()
         return conn
@@ -102,7 +112,7 @@ class TCPConnector:
         await self.pool.cleanup()
 
     async def __resolve_dns(self, host: str, port: int):
-        key = f'{host}-{port}'
+        key = f"{host}-{port}"
         dns_data = self.cache.get(key)
         if not dns_data:
             dns_data = await self.resolver.resolve(host, port)

@@ -1,4 +1,3 @@
-
 from collections.abc import MutableMapping
 from collections.abc import Mapping
 
@@ -26,6 +25,7 @@ class CaseInsensitiveDict(MutableMapping):
     operations are given keys that have equal ``.lower()``s, the
     behavior is undefined.
     """
+
     def __init__(self, data=None, **kwargs):
         self._store = dict()
         if data is None:
@@ -51,11 +51,7 @@ class CaseInsensitiveDict(MutableMapping):
 
     def lower_items(self):
         """Like iteritems(), but with all lowercase keys."""
-        return (
-            (lowerkey, keyval[1])
-            for (lowerkey, keyval)
-            in self._store.items()
-        )
+        return ((lowerkey, keyval[1]) for (lowerkey, keyval) in self._store.items())
 
     def __eq__(self, other):
         if isinstance(other, Mapping):
@@ -67,7 +63,7 @@ class CaseInsensitiveDict(MutableMapping):
 
     # Copy is required
     def copy(self):
-         return CaseInsensitiveDict(self._store.values())
+        return CaseInsensitiveDict(self._store.values())
 
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
+        return "%s(%r)" % (self.__class__.__name__, dict(self.items()))
