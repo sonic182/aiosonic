@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.2] 2021-07-09
+### Added
+- More debug logging, http2 module
+
+### Fixed
+- Some fixes when sizing windows in http2
+- Refactor a lot of files with black
+
 ## [0.11.1] 2021-06-30
 ### Added
 - dummy debug log for some debugging
@@ -184,7 +192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.2..HEAD
+[0.11.2]: https://github.com/sonic182/aiosonic/compare/0.11.1..0.11.2
 [0.11.1]: https://github.com/sonic182/aiosonic/compare/0.11.0..0.11.1
 [0.11.0]: https://github.com/sonic182/aiosonic/compare/0.10.1..0.11.0
 [0.10.1]: https://github.com/sonic182/aiosonic/compare/0.10.0..0.10.1
