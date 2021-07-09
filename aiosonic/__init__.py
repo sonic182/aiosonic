@@ -63,6 +63,8 @@ _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = "\r\n"
 dlogger = get_debug_logger()
 
+REPLACEABLE_HEADERS = {'host', 'user-agent'}
+
 
 # Functions with cache
 @cache_decorator(_LRU_CACHE_SIZE)
@@ -103,14 +105,15 @@ def _headers_iterator(headers: HeadersType):
 def _add_headers(headers: HeadersType, headers_to_add: HeadersType):
     """Safe add multiple headers."""
     for key, data in _headers_iterator(headers_to_add):
-        _add_header(headers, key, data)
+        replace = key.lower() in  REPLACEABLE_HEADERS
+        _add_header(headers, key, data, replace)
 
 
 def _add_header(headers: HeadersType, key: str, value: str, replace=False):
     """Safe add header method."""
     if isinstance(headers, List):
         if replace:
-            included = [item for item in headers if item[0] == key]
+            included = [item for item in headers if item[0].lower() == key.lower()]
             if included:
                 headers.remove(included[0])
         headers.append((key, value))
@@ -559,7 +562,7 @@ class HTTPClient:
         method: str,
         data: DataType = None,
         headers: HeadersType = None,
-        json: dict = None,
+        json: Union[dict, list] = None,
         params: ParamsType = None,
         json_serializer=dumps,
         multipart: bool = False,
@@ -619,7 +622,7 @@ class HTTPClient:
         url: str,
         data: DataType = None,
         headers: HeadersType = None,
-        json: dict = None,
+        json: Union[dict, list] = None,
         params: ParamsType = None,
         json_serializer=dumps,
         multipart: bool = False,
@@ -651,7 +654,7 @@ class HTTPClient:
         url: str,
         data: DataType = None,
         headers: HeadersType = None,
-        json: dict = None,
+        json: Union[dict, list] = None,
         params: ParamsType = None,
         json_serializer=dumps,
         multipart: bool = False,
@@ -683,7 +686,7 @@ class HTTPClient:
         url: str,
         data: DataType = None,
         headers: HeadersType = None,
-        json: dict = None,
+        json: Union[dict, list] = None,
         params: ParamsType = None,
         json_serializer=dumps,
         multipart: bool = False,
@@ -715,7 +718,7 @@ class HTTPClient:
         url: str,
         data: DataType = b"",
         headers: HeadersType = None,
-        json: dict = None,
+        json: Union[dict, list] = None,
         params: ParamsType = None,
         json_serializer=dumps,
         multipart: bool = False,
