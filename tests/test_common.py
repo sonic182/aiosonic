@@ -49,8 +49,8 @@ def test_add_header_list_replace():
 
 def test_add_header_replace():
     """Test add header method into list with replace True."""
-    headers = [('User-Agent', 'aiosonic')]
-    _add_headers(headers, [('user-agent', 'wathever')])
+    headers = [("User-Agent", "aiosonic")]
+    _add_headers(headers, [("user-agent", "wathever")])
     assert headers == [("user-agent", "wathever")]
 
 
