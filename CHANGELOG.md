@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.3] 2021-07-10
+### Fixed
+- Check server not alive because reading wrong response, retrying call
+
 ## [0.11.2] 2021-07-09
 ### Added
 - More debug logging, http2 module
@@ -192,7 +196,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.2..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.3..HEAD
+[0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.2..0.11.3
 [0.11.2]: https://github.com/sonic182/aiosonic/compare/0.11.1..0.11.2
 [0.11.1]: https://github.com/sonic182/aiosonic/compare/0.11.0..0.11.1
 [0.11.0]: https://github.com/sonic182/aiosonic/compare/0.10.1..0.11.0
