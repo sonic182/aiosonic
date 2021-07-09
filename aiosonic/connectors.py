@@ -3,7 +3,7 @@ import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
 from ssl import SSLContext
-from typing import Coroutine
+from typing import Coroutine, TYPE_CHECKING
 from urllib.parse import ParseResult
 
 # import h2.connection (unused)
@@ -20,6 +20,9 @@ from aiosonic.pools import SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
 from aiosonic.utils import ExpirableCache
+
+if TYPE_CHECKING:
+    from aiosonic.connection import Connection
 
 
 class TCPConnector:
@@ -60,7 +63,9 @@ class TCPConnector:
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
-    async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2):
+    async def acquire(
+        self, urlparsed: ParseResult, verify, ssl, timeouts, http2
+    ) -> "Connection":
         """Acquire connection."""
         if not urlparsed.hostname:
             raise HttpParsingError("missing hostname")

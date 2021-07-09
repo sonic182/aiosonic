@@ -156,8 +156,7 @@ class HttpResponse:
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
         res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip("\r\n"))
-        if not res:
-            raise HttpParsingError(f"response line parsing error: {data}")
+        assert res
         self.response_initial = res.groupdict()
 
     def _set_header(self, key: str, val: str):
@@ -493,9 +492,12 @@ async def _do_request(
 
         # get response code and version
         try:
-            response._set_response_initial(
-                await wait_for(connection.reader.readline(), timeouts.sock_read)
-            )
+            line = await wait_for(connection.reader.readuntil(), timeouts.sock_read)
+            if not line:
+                raise HttpParsingError(f"response line parsing error: {line}")
+            response._set_response_initial(line)
+        except asyncio.IncompleteReadError as exc:
+            raise HttpParsingError(f"response line parsing error: {exc.partial}")
         except TimeoutException:
             raise ReadTimeout()
 
