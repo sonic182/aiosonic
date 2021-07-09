@@ -37,6 +37,7 @@ from aiosonic.exceptions import (
     MaxRedirects,
     MissingWriterException,
     ReadTimeout,
+    ConnectionDisconnected,
     RequestTimeout,
     TimeoutException,
 )
@@ -466,6 +467,7 @@ async def _do_request(
     ssl: Optional[SSLContext],
     timeouts: Optional[Timeouts],
     http2: bool = False,
+    times: int = 0
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -497,7 +499,9 @@ async def _do_request(
                 raise HttpParsingError(f"response line parsing error: {line}")
             response._set_response_initial(line)
         except asyncio.IncompleteReadError as exc:
-            raise HttpParsingError(f"response line parsing error: {exc.partial}")
+            connection.keep = False
+            raise ConnectionDisconnected(times)
+            # raise HttpParsingError(f"response line parsing error: {exc.partial}")
         except TimeoutException:
             raise ReadTimeout()
 
@@ -798,7 +802,8 @@ class HTTPClient:
         max_redirects = 30
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
-        while True:
+        reconnect_times = 3
+        while reconnect_times > 0:
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -846,10 +851,13 @@ class HTTPClient:
                         )
                 else:
                     return response
+            except ConnectionDisconnected:
+                reconnect_times -= 1
             except ConnectTimeout:
                 raise
             except TimeoutException:
                 raise RequestTimeout()
+        raise ConnectionDisconnected("retried 3 times unsuccessfully")
 
     async def wait_requests(self, timeout: int = 30):
         """Wait until all pending requests are done.

@@ -19,6 +19,7 @@ from aiosonic.connectors import TCPConnector
 from aiosonic.http2 import Http2Handler
 
 from aiosonic.types import ParsedBodyType
+from aiosonic.tcp_helpers import keepalive_flags
 
 
 class Connection:
@@ -73,6 +74,8 @@ class Connection:
 
         dns_info_copy = dns_info.copy()
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
+        dns_info_copy['flags'] = dns_info_copy['flags'] | keepalive_flags()
+
 
         if not (self.key and key == self.key and not is_closing()):
             self.close()
@@ -91,6 +94,7 @@ class Connection:
                 del dns_info_copy["server_hostname"]
             port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
             dns_info_copy["port"] = port
+
             self.reader, self.writer = await open_connection(
                 **dns_info_copy, ssl=ssl_context
             )

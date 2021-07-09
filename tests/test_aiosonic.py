@@ -291,6 +291,27 @@ async def test_delete_2(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(4)
+async def test_get_keepalive(http_serv):
+    """Test keepalive."""
+    url = f"{http_serv}/keepalive"
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url)
+        assert res.status_code == 200
+        assert await res.text() == "1"
+
+        await asyncio.sleep(2.1)
+
+        res = await client.get(url)
+
+        # check that sending data to closed socket doesn't send anything
+        # counter doesn't get increased
+        assert res.status_code == 200
+        assert await res.text() == "2"
+
+
+@pytest.mark.asyncio
 async def test_post_multipart_to_django(live_server):
     """Test post multipart."""
     url = live_server.url + "/post_file"
