@@ -83,12 +83,6 @@ def test_parse_response_line_with_empty_reason():
     assert response.status_code == 200
 
 
-def test_parse_bad_response_line():
-    """Test parsing bad response line"""
-    with pytest.raises(HttpParsingError):
-        HttpResponse()._set_response_initial(b"foo bar baz")
-
-
 def test_handle_bad_chunk(mocker):
     """Test handling chunks in chunked request"""
     with pytest.raises(MissingWriterException):
