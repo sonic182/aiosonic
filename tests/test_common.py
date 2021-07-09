@@ -1,7 +1,7 @@
 import pytest
 
 import aiosonic
-from aiosonic import HTTPClient, HttpHeaders, HttpResponse, _add_header
+from aiosonic import HTTPClient, HttpHeaders, HttpResponse, _add_header, _add_headers
 from aiosonic.exceptions import HttpParsingError, MissingWriterException
 
 
@@ -45,6 +45,13 @@ def test_add_header_list_replace():
     _add_header(headers, "foo", "bar")
     _add_header(headers, "foo", "baz", True)
     assert headers == [("foo", "baz")]
+
+
+def test_add_header_replace():
+    """Test add header method into list with replace True."""
+    headers = [("User-Agent", "aiosonic")]
+    _add_headers(headers, [("user-agent", "wathever")])
+    assert headers == [("user-agent", "wathever")]
 
 
 def test_encoding_from_header():
@@ -105,7 +112,7 @@ async def test_json_parser(mocker):
     instance = HTTPClient()
 
     res = await instance.post("foo", json=[])
-    res.assert_called_once_with(
+    res.assert_called_once_with(  # type: ignore
         instance,
         "foo",
         "POST",

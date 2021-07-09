@@ -24,7 +24,6 @@ from aiosonic.pools import CyclicQueuePool
 from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
 
-skip_http2 = pytest.mark.skip(reason="WIP")
 # setup debug logger
 logging.getLogger("aiosonic").setLevel(logging.DEBUG)
 
@@ -67,7 +66,6 @@ async def test_simple_get_aiodns(app, aiohttp_server, mocker):
 
 
 @pytest.mark.asyncio
-@skip_http2
 @pytest.mark.timeout(15)
 async def test_get_python(http2_serv):
     """Test simple get."""
@@ -90,7 +88,6 @@ async def test_get_python(http2_serv):
 
 
 @pytest.mark.asyncio
-@skip_http2
 @pytest.mark.timeout(15)
 async def test_get_http2(http2_serv):
     """Test simple get to node http2 server."""
@@ -104,7 +101,6 @@ async def test_get_http2(http2_serv):
 
 
 @pytest.mark.asyncio
-@skip_http2
 @pytest.mark.timeout(15)
 async def test_method_lower(http2_serv):
     """Test simple get to node http2 server."""
@@ -137,9 +133,11 @@ async def test_keep_alive_smart_pool(app, aiohttp_server):
     connector = TCPConnector(pool_size=2, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
 
+        res = None
         for _ in range(5):
             res = await client.get(url)
         async with await connector.pool.acquire(urlparsed) as connection:
+            assert res
             assert res.status_code == 200
             assert await res.text() == "Hello, world"
             assert connection.counter == 5
@@ -278,6 +276,18 @@ async def test_delete(app, aiohttp_server):
         assert res.status_code == 200
         assert await res.text() == "deleted"
         await server.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(15)
+async def test_delete_2(http_serv):
+    """Test delete."""
+    url = f"{http_serv}/delete"
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.delete(url)
+        assert res.status_code == 200
+        assert await res.text() == "deleted"
 
 
 @pytest.mark.asyncio
@@ -694,8 +704,7 @@ class WrongEvent:
 
 
 @pytest.mark.asyncio
-@skip_http2
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(5)
 async def test_http2_wrong_event(mocker):
     """Test json response parsing."""
     mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda x: None)
@@ -757,7 +766,7 @@ async def test_wait_connections_busy_timeout(mocker):
 @pytest.mark.timeout(15)
 async def test_get_image(http2_serv):
     """Test get image."""
-    url = http2_serv + "sample.png"
+    url = f"{http2_serv}/sample.png"
 
     async with aiosonic.HTTPClient() as client:
         res = await client.get(url, verify=False)
@@ -771,7 +780,7 @@ async def test_get_image(http2_serv):
 @pytest.mark.timeout(15)
 async def test_get_image_chunked(http2_serv):
     """Test get image chunked."""
-    url = http2_serv + "sample.png"
+    url = f"{http2_serv}/sample.png"
 
     async with aiosonic.HTTPClient() as client:
         res = await client.get(url, verify=False)
