@@ -3,6 +3,7 @@
 import asyncio
 import gzip
 import random
+import shlex
 import ssl
 import subprocess
 import zlib
@@ -164,13 +165,21 @@ def http2_serv():
     """Sample aiohttp app."""
     port = __get_sample_port(3000, 4000)
 
-    proc = subprocess.Popen(
-        f"node tests/app.js {port}",
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        shell=True,
-    )
-    url = f"https://localhost:{port}/"
+    proc = subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
+    url = f"https://localhost:{port}"
+
+    __check_server(port)
+    yield url
+    proc.terminate()
+
+
+@pytest.fixture(scope="session")
+def http_serv():
+    """Sample aiohttp app."""
+    port = __get_sample_port(3000, 4000)
+
+    proc = subprocess.Popen(shlex.split(f"node tests/http1.mjs {port}"))
+    url = f"http://localhost:{port}"
 
     __check_server(port)
     yield url

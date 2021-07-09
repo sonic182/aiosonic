@@ -73,6 +73,6 @@ class SmartPool:
 
     async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""
-        for count in range(self.pool_size):
+        for _ in range(self.pool_size):
             conn = await self.acquire()
             conn.close()

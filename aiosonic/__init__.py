@@ -323,7 +323,7 @@ def _prepare_request_headers(
                 ":authority": hostname.split(":")[0],
                 ":scheme": "https",
                 ":path": path,
-                "user-agent": f"aioload/{VERSION}",
+                "user-agent": f"aiosonic/{VERSION}",
             },
         )
     else:
@@ -332,7 +332,7 @@ def _prepare_request_headers(
             {
                 "HOST": hostname,
                 "Connection": "keep-alive",
-                "User-Agent": f"aioload/{VERSION}",
+                "User-Agent": f"aiosonic/{VERSION}",
             },
         )
 
@@ -544,7 +544,9 @@ class HTTPClient:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, *_args, **_kwargs):
+    async def __aexit__(self, _exc_type, exc, _tb):  # type: ignore
+        if exc:
+            raise exc
         await self.shutdown()
 
     async def shutdown(self):
