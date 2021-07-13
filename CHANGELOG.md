@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] 2021-07-14
+### Added
+- http2 POST method, tested just that method for now, it is alpha/beta, just need more tests and other methods.
+
+### Fixed
+- Not overwrite headers bug [#270](https://github.com/sonic182/aiosonic/issues/270) fixed in [#272](https://github.com/sonic182/aiosonic/pull/272)
+
 ## [0.11.3] 2021-07-10
 ### Fixed
 - Check server not alive because reading wrong response, retrying call
@@ -196,7 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.11.3..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.12.0..HEAD
+[0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.3..0.12.0
 [0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.2..0.11.3
 [0.11.2]: https://github.com/sonic182/aiosonic/compare/0.11.1..0.11.2
 [0.11.1]: https://github.com/sonic182/aiosonic/compare/0.11.0..0.11.1
