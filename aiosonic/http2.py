@@ -167,11 +167,12 @@ class Http2Handler(object):
         body = request["body"]
         headers = request["headers"]
         self.h2conn.send_headers(
-            stream_id, headers,  # , end_stream=True if body else False
+            stream_id,
+            headers,  # , end_stream=True if body else False
         )
         to_split = self.h2conn.local_flow_control_window(stream_id)
 
         for chunk in chunks(body, to_split):
             self.h2conn.send_data(stream_id, chunk)
 
-        request['data_sent'] = True
+        request["data_sent"] = True

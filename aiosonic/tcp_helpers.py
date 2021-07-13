@@ -19,7 +19,7 @@ if hasattr(socket, "SO_KEEPALIVE"):
 
 else:
 
-    def tcp_keepalive(sock: socket.socket) -> None:   # pragma: no cover
+    def tcp_keepalive(sock: socket.socket) -> None:  # pragma: no cover
         pass
 
     def keepalive_flags():
