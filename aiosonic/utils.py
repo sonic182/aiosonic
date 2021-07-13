@@ -1,5 +1,5 @@
 """Utils."""
-import functools
+from functools import lru_cache
 import logging
 from datetime import datetime, timedelta
 from typing import Callable
@@ -68,6 +68,7 @@ def cache_decorator(size: int = 512, timeout: int = None) -> Callable:
     return decorator
 
 
+@lru_cache()
 def get_debug_logger():
     """Get debug logger."""
     logger = logging.getLogger("aiosonic")

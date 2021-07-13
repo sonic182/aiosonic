@@ -1,6 +1,7 @@
 """Main module."""
 
 import asyncio
+from copy import deepcopy
 import logging
 import re
 import sys
@@ -64,7 +65,7 @@ _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = "\r\n"
 dlogger = get_debug_logger()
 
-REPLACEABLE_HEADERS = {'host', 'user-agent'}
+REPLACEABLE_HEADERS = {"host", "user-agent"}
 
 
 # Functions with cache
@@ -106,7 +107,7 @@ def _headers_iterator(headers: HeadersType):
 def _add_headers(headers: HeadersType, headers_to_add: HeadersType):
     """Safe add multiple headers."""
     for key, data in _headers_iterator(headers_to_add):
-        replace = key.lower() in  REPLACEABLE_HEADERS
+        replace = key.lower() in REPLACEABLE_HEADERS
         _add_header(headers, key, data, replace)
 
 
@@ -467,7 +468,7 @@ async def _do_request(
     ssl: Optional[SSLContext],
     timeouts: Optional[Timeouts],
     http2: bool = False,
-    times: int = 0
+    times: int = 0,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -583,7 +584,7 @@ class HTTPClient:
             TypeError('missing argument, either "json" or "data"')
         if json is not None:
             data = json_serializer(json)
-            headers = headers or HttpHeaders()
+            headers = deepcopy(headers) if headers else HttpHeaders()
             _add_header(headers, "Content-Type", "application/json")
         return await self.request(
             url,
@@ -785,7 +786,7 @@ class HTTPClient:
         urlparsed = _get_url_parsed(url)
 
         boundary = None
-        headers = headers or []
+        headers = deepcopy(headers) if headers else []
         body: ParsedBodyType = b""
 
         if self.handle_cookies:

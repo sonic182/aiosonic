@@ -7,21 +7,38 @@ const key = readFileSync('tests/files/certs/server.key');
 
 var myArgs = process.argv.slice(2);
 
-const server = createSecureServer(
-  { cert, key, allowHTTP1: true },
-  onRequest
-).listen(myArgs[0], "0.0.0.0");
-
 function onRequest(req, res) {
   // Detects if it is a HTTPS request or HTTP/2
   const { socket: { alpnProtocol } } = req.httpVersion === '2.0' ?
     req.stream.session : req;
 
-  if (req.url == '/sample.png') {
+  switch(req.url) {
+    case '/sample.png':
     streamFile("sample.png", res);
-  } else {
+    break;
+
+    case '/posted':
+      let data = ''
+      let headers = {}
+      stream.on('headers', (headers) => {
+        console.log("--- headers");
+        console.log(headers);
+      });
+      req.on('data', (chunk) => {
+        console.log(`--- Received chunk: ${chunk}`)
+        data += chunk
+      })
+      req.on('end', () => {
+        console.log("--- end chunk")
+        res.writeHead(200, { 'content-type': 'text/plain' });
+        res.end('Hello World')
+      })
+    break;
+
+    default:
     res.writeHead(200, { 'content-type': 'text/plain' });
     res.end('Hello World')
+    break;
   }
 }
 
@@ -43,4 +60,10 @@ function streamFile(filename, res) {
     res.end(err);
   });
 }
+
+
+createSecureServer(
+  { cert, key, allowHTTP1: true },
+  onRequest
+).listen(myArgs[0], "0.0.0.0");
 console.log(`server listen on port ${myArgs[0]}`);

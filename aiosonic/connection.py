@@ -1,25 +1,24 @@
 """Connection stuffs."""
 
 import ssl
+from asyncio import StreamReader, StreamWriter, open_connection
+from socket import socket
 from ssl import SSLContext
-from asyncio import open_connection
-from asyncio import StreamReader
-from asyncio import StreamWriter
-from typing import Dict
-from typing import Optional
+from typing import Dict, Optional
 from urllib.parse import ParseResult
 
+import h2.config
 import h2.connection
 import h2.events
 
+from aiosonic.connectors import TCPConnector
+
 # from concurrent import futures (unused)
 from aiosonic.exceptions import HttpParsingError
-from aiosonic.timeout import Timeouts
-from aiosonic.connectors import TCPConnector
 from aiosonic.http2 import Http2Handler
-
-from aiosonic.types import ParsedBodyType
 from aiosonic.tcp_helpers import keepalive_flags
+from aiosonic.timeout import Timeouts
+from aiosonic.types import ParsedBodyType
 
 
 class Connection:
@@ -74,8 +73,7 @@ class Connection:
 
         dns_info_copy = dns_info.copy()
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
-        dns_info_copy['flags'] = dns_info_copy['flags'] | keepalive_flags()
-
+        dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
         if not (self.key and key == self.key and not is_closing()):
             self.close()
@@ -84,9 +82,10 @@ class Connection:
                 ssl_context = ssl_context or ssl.create_default_context(
                     ssl.Purpose.SERVER_AUTH,
                 )
+
                 # flag will be removed when fully http2 support
                 if http2:  # pragma: no cover
-                    ssl_context.set_alpn_protocols(["h2", "http/1.1"])
+                    ssl_context = _get_http2_ssl_context()
                 if not verify:
                     ssl_context.check_hostname = False
                     ssl_context.verify_mode = ssl.CERT_NONE
@@ -113,7 +112,8 @@ class Connection:
             negotiated_protocol = tls_conn.selected_npn_protocol()
 
         if negotiated_protocol == "h2":  # pragma: no cover
-            self.h2conn = h2.connection.H2Connection()
+            config = h2.config.H2Configuration()
+            self.h2conn = h2.connection.H2Connection(config=config)
             self.h2handler = Http2Handler(self)
 
     def keep_alive(self) -> None:
@@ -172,3 +172,40 @@ class Connection:
     ):
         if self.h2handler:  # pragma: no cover
             return await self.h2handler.request(headers, body)
+
+
+def _get_http2_ssl_context():
+    """
+    This function creates an SSLContext object that is suitably configured for
+    HTTP/2. If you're working with Python TLS directly, you'll want to do the
+    exact same setup as this function does.
+    """
+    # Get the basic context from the standard library.
+    ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+
+    # RFC 7540 Section 9.2: Implementations of HTTP/2 MUST use TLS version 1.2
+    # or higher. Disable TLS 1.1 and lower.
+    ctx.options |= (
+        ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
+    )
+
+    # RFC 7540 Section 9.2.1: A deployment of HTTP/2 over TLS 1.2 MUST disable
+    # compression.
+    ctx.options |= ssl.OP_NO_COMPRESSION
+
+    # RFC 7540 Section 9.2.2: "deployments of HTTP/2 that use TLS 1.2 MUST
+    # support TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". In practice, the
+    # blocklist defined in this section allows only the AES GCM and ChaCha20
+    # cipher suites with ephemeral key negotiation.
+    ctx.set_ciphers("ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20")
+
+    # We want to negotiate using NPN and ALPN. ALPN is mandatory, but NPN may
+    # be absent, so allow that. This setup allows for negotiation of HTTP/1.1.
+    ctx.set_alpn_protocols(["h2", "http/1.1"])
+
+    try:
+        ctx.set_npn_protocols(["h2", "http/1.1"])
+    except NotImplementedError:
+        pass
+
+    return ctx

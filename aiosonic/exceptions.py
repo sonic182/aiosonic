@@ -43,7 +43,8 @@ class MaxRedirects(Exception):
 
 # Reconnect
 class ConnectionDisconnected(Exception):
-        pass
+    pass
+
 
 # HTTP2
 class MissingEvent(Exception):
