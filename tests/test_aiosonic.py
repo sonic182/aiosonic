@@ -89,6 +89,24 @@ async def test_get_python(http2_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(15)
+async def test_post_http2(http2_serv):
+    """Test simple post."""
+    url = f"{http2_serv}/post"
+
+    # connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    connector = TCPConnector()
+    async with aiosonic.HTTPClient(connector) as client:
+        res = await client.post(
+            url,
+            json={"foo": "bar"},
+            verify=False,
+            http2=True,
+        )
+        assert "Hello World" in await res.text()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(15)
 async def test_get_http2(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv

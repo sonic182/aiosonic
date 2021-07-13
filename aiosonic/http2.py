@@ -35,7 +35,6 @@ class Http2Handler(object):
         # h2conn.update_settings({SettingsFrame.HEADER_TABLE_SIZE: 4096})
         self.writer.write(h2conn.data_to_send())
         self.reader_task = loop.create_task(self.reader_t())
-        self.writer_task = loop.create_task(self.writer_t())
 
     @property
     def writer(self):
@@ -55,19 +54,24 @@ class Http2Handler(object):
     def cleanup(self):
         """Cleanup."""
         self.reader_task.cancel()
-        self.writer_task.cancel()
 
     async def request(
         self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]
     ):
         from aiosonic import HttpResponse
 
+        body = body or b""
+
         stream_id = self.h2conn.get_next_available_stream_id()
         headers_param = headers.items() if isinstance(headers, dict) else headers
-        self.h2conn.send_headers(stream_id, headers_param, end_stream=True)
 
         future: Awaitable[bytes] = asyncio.Future()
-        self.requests[stream_id] = {"body": b"", "headers": None, "future": future}
+        self.requests[stream_id] = {
+            "body": body,
+            "headers": headers_param,
+            "future": future,
+            "data_sent": False,
+        }
         await future
         res = self.requests[stream_id].copy()
         del self.requests[stream_id]
@@ -86,27 +90,29 @@ class Http2Handler(object):
 
     async def reader_t(self):
         """Reader task."""
-        read_size = 16000
+        read_size = 16 * 1024
 
         while True:
-            data = await asyncio.wait_for(self.reader.read(read_size), 3)
+            data = await asyncio.wait_for(self.reader.read(read_size), 2)
             events = self.h2conn.receive_data(data)
 
             if events:
                 dlogger.debug(("received events", events))
                 try:
-                    self.handle_events(events)
+                    await self.handle_events(events)
                 except Exception:
-                    dlogger.debug('--- Some Exception!', exc_info=True)
+                    dlogger.debug("--- Some Exception!", exc_info=True)
                     raise
+                else:
+                    await self.check_to_write()
 
-    def handle_events(self, events):
+    async def handle_events(self, events):
         """Handle http2 events."""
         h2conn = self.h2conn
 
         for event in events:
             if isinstance(event, h2.events.StreamEnded):
-                dlogger.debug(f'--- exit stream, id: {event.stream_id}')
+                dlogger.debug(f"--- exit stream, id: {event.stream_id}")
                 self.requests[event.stream_id]["future"].set_result(
                     self.requests[event.stream_id]["body"]
                 )
@@ -121,34 +127,51 @@ class Http2Handler(object):
                     h2conn.increment_flow_control_window(
                         event.flow_controlled_length, event.stream_id
                     )
-                dlogger.info(f'Flow increment: {event.flow_controlled_length}')
+                dlogger.info(f"Flow increment: {event.flow_controlled_length}")
                 if event.flow_controlled_length:
                     h2conn.increment_flow_control_window(event.flow_controlled_length)
             elif isinstance(event, h2.events.ResponseReceived):
                 self.requests[event.stream_id]["headers"] = event.headers
+            elif isinstance(event, h2.events.SettingsAcknowledged):
+                for stream_id, req in self.requests.items():
+                    if not req["data_sent"]:
+                        await self.send_body(stream_id)
             elif isinstance(
                 event,
                 (
                     h2.events.WindowUpdated,
                     h2.events.PingReceived,
                     h2.events.RemoteSettingsChanged,
-                    h2.events.SettingsAcknowledged,
                 ),
             ):
                 pass
             else:
                 raise MissingEvent(f"another event {event.__class__.__name__}")
 
-    async def writer_t(self):
+    async def check_to_write(self):
         """Writer task."""
         h2conn = self.h2conn
+        data_to_send = h2conn.data_to_send()
 
-        while True:
-            data_to_send = h2conn.data_to_send()
+        if data_to_send:
+            dlogger.debug(("writing data", data_to_send))
+            self.writer.write(data_to_send)
 
-            if data_to_send:
-                dlogger.debug(("writing data", data_to_send))
-                self.writer.write(data_to_send)
-            else:
-                dlogger.debug("stop writing data")
-                await asyncio.sleep(0.2)
+    async def send_body(self, stream_id):
+        def chunks(lst, n):
+            """Yield successive n-sized chunks from lst."""
+            for i in range(0, len(lst), n):
+                yield lst[i : i + n]
+
+        request = self.requests[stream_id]
+        body = request["body"]
+        headers = request["headers"]
+        self.h2conn.send_headers(
+            stream_id, headers,  # , end_stream=True if body else False
+        )
+        to_split = self.h2conn.local_flow_control_window(stream_id)
+
+        for chunk in chunks(body, to_split):
+            self.h2conn.send_data(stream_id, chunk)
+
+        request['data_sent'] = True
