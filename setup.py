@@ -2,9 +2,7 @@
 
 import re
 from setuptools import setup
-
-
-RGX = re.compile(r"([\w-]+[<>=]{1}=[\d.\w]+)")
+from pkg_resources import parse_requirements
 
 
 def read_file(filename):
@@ -15,7 +13,7 @@ def read_file(filename):
 
 def requirements(filename):
     """Parse requirements from file."""
-    return re.findall(RGX, read_file(filename)) or []
+    return [str(r) for r in parse_requirements(read_file(filename))]
 
 
 def version():
