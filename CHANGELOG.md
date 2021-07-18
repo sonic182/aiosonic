@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] 2021-07-14
+### Added
+- onecache package instead of utils cache class.
+
+### Fixed
+- setup.py requirements reading
+
 ## [0.12.0] 2021-07-14
 ### Added
 - http2 POST method, tested just that method for now, it is alpha/beta, just need more tests and other methods.
@@ -203,8 +210,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.12.0..HEAD
-[0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.3..0.12.0
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.13.0..HEAD
+[0.13.0]: https://github.com/sonic182/aiosonic/compare/0.12.0..0.13.0
+[0.12.0]: https://github.com/sonic182/aiosonic/compare/0.11.3..0.12.0
 [0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.2..0.11.3
 [0.11.2]: https://github.com/sonic182/aiosonic/compare/0.11.1..0.11.2
 [0.11.1]: https://github.com/sonic182/aiosonic/compare/0.11.0..0.11.1
