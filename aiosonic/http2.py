@@ -1,15 +1,11 @@
 import asyncio
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Awaitable, Optional
 
 import h2.events
 
-from typing import Awaitable
-
 from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParsedBodyType
-
 from aiosonic.utils import get_debug_logger
-
 
 dlogger = get_debug_logger()
 

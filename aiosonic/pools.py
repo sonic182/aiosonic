@@ -1,8 +1,7 @@
 """Pools module."""
 
+from asyncio import Queue, Semaphore
 from urllib.parse import ParseResult
-from asyncio import Semaphore
-from asyncio import Queue
 
 
 class CyclicQueuePool:

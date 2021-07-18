@@ -1,9 +1,4 @@
-from typing import Union
-from typing import Dict
-from typing import Sequence
-from typing import Tuple
-from typing import AsyncIterator
-from typing import Iterator
+from typing import AsyncIterator, Dict, Iterator, Sequence, Tuple, Union
 
 # TYPES
 ParamsType = Union[

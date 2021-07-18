@@ -1,12 +1,12 @@
 """Main module."""
 
 import asyncio
-from copy import deepcopy
 import logging
 import re
 import sys
 from asyncio import get_event_loop, wait_for
 from codecs import lookup
+from copy import deepcopy
 from functools import partial
 from gzip import decompress as gzip_decompress
 from http import cookies
@@ -15,30 +15,22 @@ from json import dumps, loads
 from os.path import basename
 from random import randint
 from ssl import SSLContext
-from typing import (
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urlparse
 from zlib import decompress as zlib_decompress
 
 import chardet
+from onecache import CacheDecorator
 
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
+    ConnectionDisconnected,
     ConnectTimeout,
     HttpParsingError,
     MaxRedirects,
     MissingWriterException,
     ReadTimeout,
-    ConnectionDisconnected,
     RequestTimeout,
     TimeoutException,
 )
@@ -46,7 +38,7 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import cache_decorator, get_debug_logger
+from aiosonic.utils import get_debug_logger
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -69,11 +61,11 @@ REPLACEABLE_HEADERS = {"host", "user-agent"}
 
 
 # Functions with cache
-@cache_decorator(_LRU_CACHE_SIZE)
+@CacheDecorator(_LRU_CACHE_SIZE)
 def _get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
-    With cache_decorator for the sake of speed.
+    With CacheDecorator for the sake of speed.
     """
     return urlparse(url)
 

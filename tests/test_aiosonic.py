@@ -528,7 +528,6 @@ async def test_read_chunks_by_text_method(app, aiohttp_server):
         assert res.connection
         assert res.status_code == 200
         assert await res.text() == "foobar"
-        assert await res.text() == "foobar"  # cached body in response object
         await server.close()
 
 
@@ -601,21 +600,6 @@ async def test_close_connection(app, aiohttp_server):
             assert res.status_code == 200
             assert not connection.keep
             assert await res.text() == "close"
-
-
-@pytest.mark.asyncio
-async def test_cache(app, aiohttp_server):
-    """Test simple get."""
-    server = await aiohttp_server(app)
-    async with aiosonic.HTTPClient() as client:
-
-        for time in range(520):
-            url = "http://localhost:%d/%d" % (server.port, time)
-
-            await client.get(url, headers={"Accept-Encoding": "gzip, deflate, br"})
-        assert len(_get_url_parsed.cache) == 512
-        assert next(iter(_get_url_parsed.cache.cache)) == url.replace("/519", "/8")
-        await server.close()
 
 
 @pytest.mark.asyncio
