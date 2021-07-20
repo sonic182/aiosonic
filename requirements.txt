@@ -12,5 +12,5 @@ hpack==4.0.0
     # via h2
 hyperframe==6.0.1
     # via h2
-onecache==0.1.0
+onecache==0.3.0
     # via -r requirements.in
