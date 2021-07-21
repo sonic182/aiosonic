@@ -45,7 +45,7 @@ coverage==5.5
     # via
     #   coveralls
     #   pytest-cov
-coveralls==3.1.0
+coveralls==3.2.0
     # via -r test-requirements.in
 django==3.2.5
     # via -r test-requirements.in
@@ -73,12 +73,12 @@ multidict==5.1.0
     # via
     #   aiohttp
     #   yarl
+mypy==0.910
+    # via pytest-mypy
 mypy-extensions==0.4.3
     # via
     #   black
     #   mypy
-mypy==0.910
-    # via pytest-mypy
 packaging==21.0
     # via
     #   pytest
@@ -95,6 +95,18 @@ pycparser==2.20
     # via cffi
 pyparsing==2.4.7
     # via packaging
+pytest==6.2.4
+    # via
+    #   -r test-requirements.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
+    #   pytest-black
+    #   pytest-cov
+    #   pytest-django
+    #   pytest-mock
+    #   pytest-mypy
+    #   pytest-sugar
+    #   pytest-timeout
 pytest-aiohttp==0.3.0
     # via -r test-requirements.in
 pytest-asyncio==0.15.1
@@ -113,18 +125,6 @@ pytest-sugar==0.9.4
     # via -r test-requirements.in
 pytest-timeout==1.4.2
     # via -r test-requirements.in
-pytest==6.2.4
-    # via
-    #   -r test-requirements.in
-    #   pytest-aiohttp
-    #   pytest-asyncio
-    #   pytest-black
-    #   pytest-cov
-    #   pytest-django
-    #   pytest-mock
-    #   pytest-mypy
-    #   pytest-sugar
-    #   pytest-timeout
 pytz==2021.1
     # via django
 regex==2021.7.5
