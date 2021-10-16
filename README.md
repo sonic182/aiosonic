@@ -19,17 +19,19 @@ There is a performance script in tests folder which shows very nice numbers
 » python tests/performance.py
 doing tests...
 {
- "aiosonic": "1000 requests in 110.03 ms",
- "aiosonic cyclic": "1000 requests in 332.10 ms",
- "aiohttp": "1000 requests in 427.31 ms",
- "requests": "1000 requests in 4915.04 ms",
- "httpx": "1000 requests in 638.04 ms"
+ "aiosonic": "1000 requests in 182.03 ms",
+ "aiosonic cyclic": "1000 requests in 370.55 ms",
+ "aiohttp": "1000 requests in 367.66 ms",
+ "requests": "1000 requests in 4613.77 ms",
+ "httpx": "1000 requests in 812.41 ms"
 }
-aiosonic is 288.36% faster than aiohttp
-aiosonic is 4367.04% faster than requests
-aiosonic is 201.83% faster than aiosonic cyclic
-aiosonic is 479.89% faster than httpx
+aiosonic is 101.97% faster than aiohttp
+aiosonic is 2434.55% faster than requests
+aiosonic is 103.56% faster than aiosonic cyclic
+aiosonic is 346.29% faster than httpx
 ```
+
+This is a *very basic, dummy test*, machine dependant. If you look for performance, test and compare your code with this and other packages like aiohttp.
 
 You can perform this test by installing all test dependencies with `pip install -e ".[test]"` and doing `python tests/performance.py` in your own machine
 
@@ -49,7 +51,8 @@ You can perform this test by installing all test dependencies with `pip install 
 * Automatic Decompression
 * Follow Redirects
 * Fully type annotated.
-* 100% test coverage.
+* 100% test coverage (Sometimes not).
+* HTTP2 (BETA) when using the correct flag
 
 # Installation
 
@@ -118,7 +121,8 @@ if __name__ == '__main__':
 
 * HTTP2
   * [x] Get
-  * [ ] Request with data sending
+  * [x] Request with data sending
+  * [ ] Do a aiosonic release with stable http2
 * Better documentation
 * International Domains and URLs (idna + cache)
 * Requests using a http proxy
