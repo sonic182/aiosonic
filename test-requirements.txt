@@ -140,7 +140,7 @@ sniffio==1.2.0
     #   anyio
     #   httpcore
     #   httpx
-sqlparse==0.4.1
+sqlparse==0.4.2
     # via django
 termcolor==1.1.0
     # via pytest-sugar
