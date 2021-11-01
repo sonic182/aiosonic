@@ -6,10 +6,12 @@
 #
 aiodns==3.0.0
     # via -r test-requirements.in
-aiohttp==3.7.4.post0
+aiohttp==3.8.0
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
+aiosignal==1.2.0
+    # via aiohttp
 anyio==3.2.1
     # via httpcore
 appdirs==1.4.4
@@ -18,7 +20,7 @@ asgiref==3.4.1
     # via
     #   django
     #   uvicorn
-async-timeout==3.0.1
+async-timeout==4.0.0a3
     # via aiohttp
 attrs==21.2.0
     # via
@@ -34,11 +36,11 @@ certifi==2021.5.30
 cffi==1.14.5
     # via pycares
 chardet==4.0.0
+    # via requests
+charset-normalizer==2.0.7
     # via
     #   aiohttp
-    #   requests
-charset-normalizer==2.0.7
-    # via httpx
+    #   httpx
 click==8.0.1
     # via
     #   black
@@ -55,6 +57,10 @@ docopt==0.6.2
     # via coveralls
 filelock==3.0.12
     # via pytest-mypy
+frozenlist==1.2.0
+    # via
+    #   aiohttp
+    #   aiosignal
 h11==0.12.0
     # via
     #   httpcore
@@ -153,7 +159,7 @@ toml==0.10.2
     #   pytest-cov
 typing-extensions==3.10.0.0
     # via
-    #   aiohttp
+    #   async-timeout
     #   mypy
 urllib3==1.26.6
     # via requests
