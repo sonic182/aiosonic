@@ -778,7 +778,7 @@ class HTTPClient:
         urlparsed = _get_url_parsed(url)
 
         boundary = None
-        headers = HttpHeaders(headers) if headers else []
+        headers = HttpHeaders(deepcopy(headers)) if headers else []
         body: ParsedBodyType = b""
 
         if self.handle_cookies:
