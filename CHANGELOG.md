@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.13.1] 2021-07-14
+### Fixed
+- Fix case sensitive header usage, for "Content-Type" header (thanks to @skyoo2003) in #302
+
 ## [0.13.0] 2021-07-14
 ### Added
 - onecache package instead of utils cache class.
@@ -210,7 +215,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.13.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.13.1..HEAD
+[0.13.1]: https://github.com/sonic182/aiosonic/compare/0.13.0..0.13.1
 [0.13.0]: https://github.com/sonic182/aiosonic/compare/0.12.0..0.13.0
 [0.12.0]: https://github.com/sonic182/aiosonic/compare/0.11.3..0.12.0
 [0.11.3]: https://github.com/sonic182/aiosonic/compare/0.11.2..0.11.3
