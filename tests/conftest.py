@@ -168,7 +168,7 @@ def http2_serv():
     proc = subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
     url = f"https://localhost:{port}"
 
-    __check_server(port)
+    check_port(port)
     yield url
     proc.terminate()
 
@@ -181,26 +181,42 @@ def http_serv():
     proc = subprocess.Popen(shlex.split(f"node tests/http1.mjs {port}"))
     url = f"http://localhost:{port}"
 
-    __check_server(port)
+    check_port(port)
     yield url
     proc.terminate()
 
 
-def __is_port_in_use(port):
+@pytest.fixture(scope="session")
+def proxy_serv():
+    """Sample aiohttp app."""
+    port = __get_sample_port(8000, 9000)
+    auth = "user:password"
+    command = f"proxy --basic-auth {auth} --hostname 127.0.0.1 --port {port}"
+    proc = subprocess.Popen(shlex.split(command))
+    url = f"http://127.0.0.1:{port}"
+
+    check_port(port, "127.0.0.1")
+    yield (url, auth)
+    proc.terminate()
+
+
+def __is_port_in_use(address, port):
+    import socket
+
+    s = socket.socket()
     try:
-        urlopen(f"http://localhost:{port}/").getcode()
+        s.connect((address, port))
         return True
-    except URLError as err:
-        if isinstance(err.reason, ConnectionRefusedError):
-            return False
-    except RemoteDisconnected:
-        return True
+    except socket.error:
+        return False
+    finally:
+        s.close()
 
 
 def __get_sample_port(_from, to):
     port = random.randint(_from, to)
     max_wait = datetime.utcnow() + timedelta(seconds=3)
-    while __is_port_in_use(port):
+    while __is_port_in_use("localhost", port):
         sleep(0.2)
         port = random.randint(_from, to)
         if datetime.utcnow() > max_wait:
@@ -208,9 +224,10 @@ def __get_sample_port(_from, to):
     return port
 
 
-def __check_server(port):
-    max_wait = datetime.utcnow() + timedelta(seconds=10)
-    while not __is_port_in_use(port):
+def check_port(port, hostname="localhost", timeout_seconds=10):
+    """Check port if it is listening something."""
+    max_wait = datetime.utcnow() + timedelta(seconds=timeout_seconds)
+    while not __is_port_in_use(hostname, port):
         sleep(0.2)
         if datetime.utcnow() > max_wait:
-            raise Exception("cannot run node http2 server")
+            raise Exception(f"port {port} never got active.")

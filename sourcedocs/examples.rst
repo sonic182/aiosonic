@@ -156,6 +156,32 @@ Install `aiodns` in your dependencies and use AsyncResolver
  loop.run_until_complete(main())
 
 
+Use a Proxy Server
+==================
+
+Just use Proxy class.
+
+You can install `proxy.py <https://github.com/abhinavsingh/proxy.py>`_ and use it as a proxy demo.
+
+.. code-block::  python
+
+  import asyncio
+  
+  from aiosonic import HTTPClient, Proxy
+  
+  
+  async def main():
+      client = HTTPClient(proxy=Proxy("http://localhost:8899"))
+  
+      res = await client.get("https://www.google.com/")
+      print(res)
+      print(await res.text())
+      assert res.status_code == 200
+  
+  
+  asyncio.run(main())
+
+
 Debug log
 =========
 

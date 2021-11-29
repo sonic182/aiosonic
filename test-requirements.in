@@ -3,6 +3,7 @@ aiohttp
 coveralls
 django
 httpx
+proxy.py
 pytest
 pytest-aiohttp
 pytest-asyncio

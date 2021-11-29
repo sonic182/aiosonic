@@ -34,6 +34,7 @@ from aiosonic.exceptions import (
     RequestTimeout,
     TimeoutException,
 )
+from aiosonic.proxy import Proxy
 from aiosonic.timeout import Timeouts
 
 # TYPES
@@ -286,6 +287,13 @@ def _get_hostname(hostname_arg, port):
     return hostname
 
 
+def _get_path(url: ParseResult, proxy: Proxy = None):
+    if proxy is None:
+        return url.path or "/"
+    else:
+        return f"{url.scheme}://{url.netloc}{url.path}"
+
+
 def _prepare_request_headers(
     url: ParseResult,
     connection: Connection,
@@ -294,9 +302,10 @@ def _prepare_request_headers(
     params: ParamsType = None,
     multipart: bool = None,
     boundary: str = None,
+    proxy: Proxy = None,
 ) -> Union[bytes, HeadersType]:
     """Prepare get data."""
-    path = url.path or "/"
+    path = _get_path(url, proxy)
     if url.query:
         path += "?" + url.query
     http2conn = connection.h2conn
@@ -330,6 +339,10 @@ def _prepare_request_headers(
                 "Connection": "keep-alive",
                 "User-Agent": f"aiosonic/{VERSION}",
             },
+        )
+    if proxy and proxy.auth:
+        _add_headers(
+            headers_base, {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"}
         )
 
     if multipart:
@@ -426,7 +439,12 @@ async def _send_multipart(
             to_write = (
                 "Content-Disposition: form-data; "
                 + 'name="%s"; filename="%s"%s%s'
-                % (key, basename(val.name), _NEW_LINE, _NEW_LINE)
+                % (
+                    key,
+                    basename(val.name),
+                    _NEW_LINE,
+                    _NEW_LINE,
+                )
             )
             to_send += to_write.encode()
 
@@ -460,11 +478,16 @@ async def _do_request(
     ssl: Optional[SSLContext],
     timeouts: Optional[Timeouts],
     http2: bool = False,
-    times: int = 0,
+    proxy: Proxy = None,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
-    args = urlparsed, verify, ssl, timeouts, http2
+    url_connect = urlparsed
+
+    if proxy:
+        url_connect = _get_url_parsed(proxy.host)
+
+    args = url_connect, verify, ssl, timeouts, http2
     async with (await connector.acquire(*args)) as connection:
         to_send = headers_data(connection=connection)
 
@@ -493,7 +516,7 @@ async def _do_request(
             response._set_response_initial(line)
         except asyncio.IncompleteReadError as exc:
             connection.keep = False
-            raise ConnectionDisconnected(times)
+            raise ConnectionDisconnected()
             # raise HttpParsingError(f"response line parsing error: {exc.partial}")
         except TimeoutException:
             raise ReadTimeout()
@@ -535,13 +558,18 @@ class HTTPClient:
     """
 
     def __init__(
-        self, connector: TCPConnector = None, handle_cookies=False, verify_ssl=True
+        self,
+        connector: TCPConnector = None,
+        handle_cookies=False,
+        verify_ssl=True,
+        proxy: Proxy = None,
     ):
         """Initialize client options."""
         self.connector = connector or TCPConnector()
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl
+        self.proxy = proxy
 
     async def __aenter__(self):
         return self
@@ -805,6 +833,7 @@ class HTTPClient:
                 params=params,
                 multipart=multipart,
                 boundary=boundary,
+                proxy=self.proxy,
             )
             try:
                 response = await wait_for(
@@ -817,6 +846,7 @@ class HTTPClient:
                         ssl,
                         timeouts,
                         http2,
+                        self.proxy,
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
