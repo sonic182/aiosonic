@@ -89,6 +89,8 @@ pathspec==0.8.1
     # via black
 pluggy==0.13.1
     # via pytest
+proxy.py==2.3.1
+    # via -r test-requirements.in
 py==1.10.0
     # via pytest
 pycares==4.0.0
@@ -97,8 +99,6 @@ pycparser==2.20
     # via cffi
 pyparsing==2.4.7
     # via packaging
-pyproxy==0.1.6
-    # via -r test-requirements.in
 pytest==6.2.4
     # via
     #   -r test-requirements.in
@@ -153,12 +153,11 @@ toml==0.10.2
     #   pytest
     #   pytest-black
     #   pytest-cov
-tornado==6.1
-    # via pyproxy
-typing-extensions==3.10.0.0
+typing-extensions==3.7.4.3
     # via
     #   aiohttp
     #   mypy
+    #   proxy.py
 urllib3==1.26.6
     # via requests
 uvicorn==0.14.0
