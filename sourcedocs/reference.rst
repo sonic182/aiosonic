@@ -76,3 +76,10 @@ Then, pass connector to aiosonic HTTPClient instance.
 |
 .. autoclass:: aiosonic.resolver.ThreadedResolver
    :members:
+
+
+Proxy Support
+=============
+
+.. autoclass:: aiosonic.proxy.Proxy
+   :members:

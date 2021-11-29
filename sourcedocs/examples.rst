@@ -171,6 +171,7 @@ You can install `proxy.py <https://github.com/abhinavsingh/proxy.py>`_ and use i
   
   
   async def main():
+      # Proxy class accepts `auth` argument in the format `user:password`
       client = HTTPClient(proxy=Proxy("http://localhost:8899"))
   
       res = await client.get("https://www.google.com/")

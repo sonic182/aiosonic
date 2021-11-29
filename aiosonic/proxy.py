@@ -4,13 +4,14 @@ from base64 import b64encode
 
 
 class Proxy:
-    def __init__(self, host: str, auth: str = None):
-        """Proxy class.
+    """Proxy class.
 
-        Args:
-            * host (str): proxy server where to connect
-            * auth (str): auth data in format `user:password`
-        """
+    Args:
+        * host (str): proxy server where to connect
+        * auth (str): auth data in the format of `user:password`
+    """
+
+    def __init__(self, host: str, auth: str = None):
         self.host = host
         self.auth = None
         if auth:
