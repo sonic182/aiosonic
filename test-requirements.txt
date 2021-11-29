@@ -43,7 +43,7 @@ click==8.0.1
     # via
     #   black
     #   uvicorn
-coverage==5.5
+coverage[toml]==5.5
     # via
     #   coveralls
     #   pytest-cov
@@ -117,7 +117,7 @@ pytest-asyncio==0.15.1
     # via -r test-requirements.in
 pytest-black==0.3.12
     # via -r test-requirements.in
-pytest-cov==2.12.1
+pytest-cov==3.0.0
     # via -r test-requirements.in
 pytest-django==4.4.0
     # via -r test-requirements.in
@@ -149,10 +149,10 @@ termcolor==1.1.0
 toml==0.10.2
     # via
     #   black
+    #   coverage
     #   mypy
     #   pytest
     #   pytest-black
-    #   pytest-cov
 typing-extensions==3.7.4.3
     # via
     #   aiohttp
