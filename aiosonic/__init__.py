@@ -341,7 +341,9 @@ def _prepare_request_headers(
             },
         )
     if proxy and proxy.auth:
-        _add_headers(headers_base, {"Proxy-Authorization": proxy.auth.decode()})
+        _add_headers(
+            headers_base, {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"}
+        )
 
     if multipart:
         _add_header(
@@ -844,7 +846,7 @@ class HTTPClient:
                         ssl,
                         timeouts,
                         http2,
-                        self.proxy
+                        self.proxy,
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
