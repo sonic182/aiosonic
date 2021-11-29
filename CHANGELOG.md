@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] 2021-11-29
+### Added
+- Basic Proxy support, with basic auth
 
 ## [0.13.1] 2021-07-14
 ### Fixed
@@ -215,7 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.13.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.14.0..HEAD
+[0.14.0]: https://github.com/sonic182/aiosonic/compare/0.13.1..0.14.0
 [0.13.1]: https://github.com/sonic182/aiosonic/compare/0.13.0..0.13.1
 [0.13.0]: https://github.com/sonic182/aiosonic/compare/0.12.0..0.13.0
 [0.12.0]: https://github.com/sonic182/aiosonic/compare/0.11.3..0.12.0
