@@ -125,8 +125,8 @@ if __name__ == '__main__':
   * [ ] Do a aiosonic release with stable http2
 * Better documentation
 * International Domains and URLs (idna + cache)
-* Requests using a http proxy
 * Basic/Digest Authentication
+* [x] Requests using a http proxy
 * [x] Sessions with Cookie Persistence
 * [x] Elegant Key/Value Cookies
 
