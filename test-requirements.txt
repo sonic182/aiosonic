@@ -49,7 +49,7 @@ coverage==5.5
     #   pytest-cov
 coveralls==3.2.0
     # via -r test-requirements.in
-django==3.2.5
+django==4.0
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
@@ -129,8 +129,6 @@ pytest-sugar==0.9.4
     # via -r test-requirements.in
 pytest-timeout==1.4.2
     # via -r test-requirements.in
-pytz==2021.1
-    # via django
 regex==2021.7.5
     # via black
 requests==2.25.1
