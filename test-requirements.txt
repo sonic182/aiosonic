@@ -127,7 +127,7 @@ pytest-mypy==0.8.1
     # via -r test-requirements.in
 pytest-sugar==0.9.4
     # via -r test-requirements.in
-pytest-timeout==1.4.2
+pytest-timeout==2.0.2
     # via -r test-requirements.in
 pytz==2021.1
     # via django
