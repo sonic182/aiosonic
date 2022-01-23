@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import pytest
 
 import aiosonic
-from aiosonic import HttpResponse, _get_url_parsed
+from aiosonic import HttpResponse
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (

@@ -1,8 +1,9 @@
 import pytest
 
 import aiosonic
-from aiosonic import HTTPClient, HttpHeaders, HttpResponse, _add_header, _add_headers
-from aiosonic.exceptions import HttpParsingError, MissingWriterException
+from aiosonic import HTTPClient, HttpHeaders, HttpResponse
+from aiosonic.http_parser import add_header, add_headers
+from aiosonic.exceptions import MissingWriterException
 
 
 def test_headers_retrival():
@@ -28,29 +29,29 @@ def test_headers_parsing():
 def test_add_header():
     """Test add header method."""
     headers = HttpHeaders()
-    _add_header(headers, "content-type", "application/json")
+    add_header(headers, "content-type", "application/json")
     assert headers == {"content-type": "application/json"}
 
 
 def test_add_header_list():
     """Test add header method into list."""
     headers = []
-    _add_header(headers, "content-type", "application/json")
+    add_header(headers, "content-type", "application/json")
     assert headers == [("content-type", "application/json")]
 
 
 def test_add_header_list_replace():
     """Test add header method into list with replace True."""
     headers = []
-    _add_header(headers, "foo", "bar")
-    _add_header(headers, "foo", "baz", True)
+    add_header(headers, "foo", "bar")
+    add_header(headers, "foo", "baz", True)
     assert headers == [("foo", "baz")]
 
 
 def test_add_header_replace():
     """Test add header method into list with replace True."""
     headers = [("User-Agent", "aiosonic")]
-    _add_headers(headers, [("user-agent", "wathever")])
+    add_headers(headers, [("user-agent", "wathever")])
     assert headers == [("user-agent", "wathever")]
 
 
@@ -94,7 +95,7 @@ def test_handle_bad_chunk(mocker):
 @pytest.mark.asyncio
 async def test_json_parser(mocker):
     headers = HttpHeaders()
-    _add_header(headers, "Content-Type", "application/json")
+    add_header(headers, "Content-Type", "application/json")
 
     # python<=3.7 compatible mock
     async def mocked(*args, **kwargs):

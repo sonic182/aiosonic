@@ -204,7 +204,8 @@ def _get_http2_ssl_context():
     ctx.set_alpn_protocols(["h2", "http/1.1"])
 
     try:
-        ctx.set_npn_protocols(["h2", "http/1.1"])
+        if hasattr(ctx, '_set_npn_protocols'):
+            ctx.set_npn_protocols(["h2", "http/1.1"])
     except NotImplementedError:
         pass
 

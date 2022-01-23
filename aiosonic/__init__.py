@@ -16,12 +16,12 @@ from os.path import basename
 from random import randint
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
-from urllib.parse import ParseResult, urlencode, urlparse
+from urllib.parse import ParseResult, urlencode
 from zlib import decompress as zlib_decompress
 
 import chardet
-from onecache import CacheDecorator
 
+from aiosonic import http_parser
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -53,22 +53,11 @@ _HTTP_RESPONSE_STATUS_LINE = re.compile(
     r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)"
 )
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
-_LRU_CACHE_SIZE = 512
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = "\r\n"
 dlogger = get_debug_logger()
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
-
-
-# Functions with cache
-@CacheDecorator(_LRU_CACHE_SIZE)
-def _get_url_parsed(url: str) -> ParseResult:
-    """Get url parsed.
-
-    With CacheDecorator for the sake of speed.
-    """
-    return urlparse(url)
 
 
 # Classes
@@ -89,40 +78,6 @@ class HttpHeaders(CaseInsensitiveDict):
 
 #: Headers
 HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
-
-
-def _headers_iterator(headers: HeadersType):
-    iterator = headers if isinstance(headers, List) else headers.items()
-    for key, data in iterator:
-        yield key, data
-
-
-def _add_headers(headers: HeadersType, headers_to_add: HeadersType):
-    """Safe add multiple headers."""
-    for key, data in _headers_iterator(headers_to_add):
-        replace = key.lower() in REPLACEABLE_HEADERS
-        _add_header(headers, key, data, replace)
-
-
-def _add_header(headers: HeadersType, key: str, value: str, replace=False):
-    """Safe add header method."""
-    if isinstance(headers, List):
-        if replace:
-            included = [item for item in headers if item[0].lower() == key.lower()]
-            if included:
-                headers.remove(included[0])
-        headers.append((key, value))
-    else:
-        headers[key] = value
-
-
-async def _parse_headers_iterator(connection: Connection):
-    """Transform loop to iterator."""
-    while True:
-        res_data = await connection.reader.readline()
-        if b": " not in res_data and b":" not in res_data:
-            break
-        yield res_data
 
 
 class HttpResponse:
@@ -255,6 +210,8 @@ class HttpResponse:
         while True and not self.chunks_readed:
             chunk_size = int((await self.connection.reader.readline()).rstrip(), 16)
             if not chunk_size:
+                assert self.connection
+                assert self.connection.reader
                 # read last CRLF
                 await self.connection.reader.readline()
                 # free connection
@@ -321,7 +278,7 @@ def _prepare_request_headers(
 
     headers_base = []
     if http2conn:
-        _add_headers(
+        http_parser.add_headers(
             headers_base,
             {
                 ":method": method,
@@ -332,7 +289,7 @@ def _prepare_request_headers(
             },
         )
     else:
-        _add_headers(
+        http_parser.add_headers(
             headers_base,
             {
                 "HOST": hostname,
@@ -346,17 +303,17 @@ def _prepare_request_headers(
         )
 
     if multipart:
-        _add_header(
+        http_parser.add_header(
             headers_base, "Content-Type", f'multipart/form-data; boundary="{boundary}"'
         )
 
     if headers:
-        _add_headers(headers_base, headers)
+        http_parser.add_headers(headers_base, headers)
 
     if http2conn:
         return headers_base
 
-    for key, data in _headers_iterator(headers_base):
+    for key, data in http_parser.headers_iterator(headers_base):
         get_base += f"{key}: {data}{_NEW_LINE}"
 
     # log request headers
@@ -369,7 +326,7 @@ def _setup_body_request(data: DataType, headers: HeadersType) -> ParsedBodyType:
     """Get body to be sent."""
 
     if isinstance(data, (AsyncIterator, Iterator)):
-        _add_header(headers, "Transfer-Encoding", "chunked")
+        http_parser.add_header(headers, "Transfer-Encoding", "chunked")
         return data
     else:
         body: BodyType = b""
@@ -383,10 +340,10 @@ def _setup_body_request(data: DataType, headers: HeadersType) -> ParsedBodyType:
             content_type = "text/plain"
 
         if "content-type" not in headers:
-            _add_header(headers, "Content-Type", content_type)
+            http_parser.add_header(headers, "Content-Type", content_type)
 
         body = body.encode() if isinstance(body, str) else body
-        _add_header(headers, "Content-Length", str(len(body)))
+        http_parser.add_header(headers, "Content-Length", str(len(body)))
         return body
 
 
@@ -465,7 +422,7 @@ async def _send_multipart(
 
     # write --boundary-- for finish
     to_send += (f"--{boundary}--").encode()
-    _add_header(headers, "Content-Length", str(len(to_send)))
+    http_parser.add_header(headers, "Content-Length", str(len(to_send)))
     return to_send
 
 
@@ -522,7 +479,9 @@ async def _do_request(
             raise ReadTimeout()
 
         # reading headers
-        await response._set_response_headers(_parse_headers_iterator(connection))
+        await response._set_response_headers(
+            http_parser.parse_headers_iterator(connection)
+        )
 
         size = response.headers.get("content-length")
         chunked = response.headers.get("transfer-encoding", "") == "chunked"
@@ -605,7 +564,7 @@ class HTTPClient:
         if json is not None:
             data = json_serializer(json)
             headers = deepcopy(headers) if headers else HttpHeaders()
-            _add_header(headers, "Content-Type", "application/json")
+            http_parser.add_header(headers, "Content-Type", "application/json")
         return await self.request(
             url,
             method,
@@ -803,7 +762,7 @@ class HTTPClient:
             * **follow**: parameter to indicate whether to follow redirects
             * **http2**: flag to indicate whether to use http2 (experimental)
         """
-        urlparsed = _get_url_parsed(url)
+        urlparsed = http_parser.get_url_parsed(url)
 
         boundary = None
         headers = HttpHeaders(deepcopy(headers)) if headers else []
@@ -863,13 +822,15 @@ class HTTPClient:
                     if self.handle_cookies:
                         self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
-                    parsed_full_url = _get_url_parsed(response.headers["location"])
+                    parsed_full_url = http_parser.get_url_parsed(
+                        response.headers["location"]
+                    )
 
                     # if full url, will have scheme
                     if parsed_full_url.scheme:
                         urlparsed = parsed_full_url
                     else:
-                        urlparsed = _get_url_parsed(
+                        urlparsed = http_parser.get_url_parsed(
                             url.replace(urlparsed.path, response.headers["location"])
                         )
                 else:
@@ -902,7 +863,7 @@ class HTTPClient:
         ):
             cookies_str = host_cookies.output(header="Cookie:")
             for cookie_data in cookies_str.split("\r\n"):
-                _add_header(headers, *cookie_data.split(": ", 1))
+                http_parser.add_header(headers, *cookie_data.split(": ", 1))
 
     def _save_new_cookies(self, host: str, response: HttpResponse):
         """Save new cookies in map."""

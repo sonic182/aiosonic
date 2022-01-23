@@ -2,12 +2,10 @@
 import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
-from ssl import SSLContext
 from typing import TYPE_CHECKING, Coroutine
 from urllib.parse import ParseResult
 
 # import h2.connection (unused)
-from hyperframe.frame import SettingsFrame
 from onecache import ExpirableCache
 
 # from concurrent import futures (unused)
