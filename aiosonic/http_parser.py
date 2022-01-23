@@ -25,6 +25,7 @@ def get_url_parsed(url: str) -> ParseResult:
 async def parse_headers_iterator(connection: Connection):
     """Transform loop to iterator."""
     while True:
+        # StreamReader already buffers data reading so it is efficient.
         res_data = await connection.reader.readline()
         if b": " not in res_data and b":" not in res_data:
             break

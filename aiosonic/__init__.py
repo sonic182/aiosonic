@@ -210,8 +210,6 @@ class HttpResponse:
         while True and not self.chunks_readed:
             chunk_size = int((await self.connection.reader.readline()).rstrip(), 16)
             if not chunk_size:
-                assert self.connection
-                assert self.connection.reader
                 # read last CRLF
                 await self.connection.reader.readline()
                 # free connection
@@ -298,7 +296,7 @@ def _prepare_request_headers(
             },
         )
     if proxy and proxy.auth:
-        _add_headers(
+        http_parser.add_headers(
             headers_base, {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"}
         )
 
@@ -320,31 +318,6 @@ def _prepare_request_headers(
     if dlogger.level == logging.DEBUG:
         dlogger.debug(get_base + "---")
     return (get_base + _NEW_LINE).encode()
-
-
-def _setup_body_request(data: DataType, headers: HeadersType) -> ParsedBodyType:
-    """Get body to be sent."""
-
-    if isinstance(data, (AsyncIterator, Iterator)):
-        http_parser.add_header(headers, "Transfer-Encoding", "chunked")
-        return data
-    else:
-        body: BodyType = b""
-        content_type = None
-
-        if isinstance(data, (Dict, tuple)):
-            body = urlencode(data)
-            content_type = "application/x-www-form-urlencoded"
-        else:
-            body = data
-            content_type = "text/plain"
-
-        if "content-type" not in headers:
-            http_parser.add_header(headers, "Content-Type", content_type)
-
-        body = body.encode() if isinstance(body, str) else body
-        http_parser.add_header(headers, "Content-Length", str(len(body)))
-        return body
 
 
 def _handle_chunk(chunk: bytes, connection: Connection):
@@ -442,7 +415,7 @@ async def _do_request(
     url_connect = urlparsed
 
     if proxy:
-        url_connect = _get_url_parsed(proxy.host)
+        url_connect = http_parser.get_url_parsed(proxy.host)
 
     args = url_connect, verify, ssl, timeouts, http2
     async with (await connector.acquire(*args)) as connection:
@@ -772,7 +745,7 @@ class HTTPClient:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
         if method != "GET" and data and not multipart:
-            body = _setup_body_request(data, headers)
+            body = http_parser.setup_body_request(data, headers)
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
