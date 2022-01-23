@@ -3,9 +3,12 @@
 import asyncio
 import json
 import random
+import shlex
+import subprocess
 from concurrent import futures
 from datetime import datetime, timedelta
 from multiprocessing import Process
+from shutil import which
 from time import sleep
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -25,6 +28,11 @@ try:
     uvloop.install()
 except Exception:
     pass
+
+
+def is_tool(name):
+    """Check whether `name` is on PATH and marked as executable."""
+    return which(name) is not None
 
 
 async def app(scope, receive, send):
@@ -48,7 +56,7 @@ async def app(scope, receive, send):
     )
 
 
-async def start_dummy_server(loop, port):
+async def start_dummy_server(port):
     """Start dummy server."""
     host = "0.0.0.0"
 
@@ -169,8 +177,11 @@ def do_tests(url):
 
 def start_server(port):
     """Start server."""
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(start_dummy_server(loop, port))
+    if is_tool("node"):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(start_dummy_server(port))
+    else:
+        subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
 
 
 def main():
