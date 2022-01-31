@@ -160,7 +160,7 @@ typing-extensions==3.7.4.3
     #   proxy.py
 urllib3==1.26.6
     # via requests
-uvicorn==0.14.0
+uvicorn==0.17.1
     # via -r test-requirements.in
 yarl==1.6.3
     # via aiohttp
