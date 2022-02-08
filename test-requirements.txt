@@ -113,7 +113,7 @@ pytest==6.2.4
     #   pytest-timeout
 pytest-aiohttp==0.3.0
     # via -r test-requirements.in
-pytest-asyncio==0.15.1
+pytest-asyncio==0.18.0
     # via -r test-requirements.in
 pytest-black==0.3.12
     # via -r test-requirements.in
