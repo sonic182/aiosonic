@@ -89,7 +89,7 @@ pathspec==0.8.1
     # via black
 pluggy==0.13.1
     # via pytest
-proxy.py==2.3.1
+proxy-py==2.3.1
     # via -r test-requirements.in
 py==1.10.0
     # via pytest
@@ -157,10 +157,10 @@ typing-extensions==3.7.4.3
     # via
     #   aiohttp
     #   mypy
-    #   proxy.py
+    #   proxy-py
 urllib3==1.26.6
     # via requests
-uvicorn==0.14.0
+uvicorn==0.17.5
     # via -r test-requirements.in
 yarl==1.6.3
     # via aiohttp
