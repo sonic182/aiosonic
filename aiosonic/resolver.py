@@ -43,12 +43,18 @@ class ThreadedResolver(AbstractResolver):
     """
 
     def __init__(self) -> None:
-        self._loop = get_loop()
+        self._loop = None
+
+    @property
+    def loop(self):
+        if not self._loop:
+            self._loop = get_loop()
+        return self._loop
 
     async def resolve(
         self, hostname: str, port: int = 0, family: int = socket.AF_INET
     ) -> List[Dict[str, Any]]:
-        infos = await self._loop.getaddrinfo(
+        infos = await self.loop.getaddrinfo(
             hostname,
             port,
             type=socket.SOCK_STREAM,
