@@ -3,8 +3,7 @@
 import asyncio
 import logging
 import re
-import sys
-from asyncio import get_event_loop, wait_for
+from asyncio import wait_for
 from codecs import lookup
 from copy import deepcopy
 from functools import partial
@@ -35,6 +34,7 @@ from aiosonic.exceptions import (
     TimeoutException,
 )
 from aiosonic.proxy import Proxy
+from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
 
 # TYPES
@@ -224,10 +224,7 @@ class HttpResponse:
         if self.chunked and not self.chunks_readed:
             loop = None
             if self.connection:
-                if sys.version_info >= (3, 7):
-                    loop = asyncio.get_running_loop()
-                else:
-                    loop = asyncio.get_event_loop()
+                loop = get_loop()
                 loop.create_task(self.connection.release())
 
     def _set_request_meta(self, urlparsed: ParseResult):
@@ -379,7 +376,7 @@ async def _send_multipart(
             to_send += to_write.encode()
 
             # read and write chunks
-            loop = get_event_loop()
+            loop = get_loop()
             while True:
                 data = await loop.run_in_executor(None, val.read, chunk_size)
                 if not data:
