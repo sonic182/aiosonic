@@ -34,7 +34,7 @@ requests==2.25.1
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.1.1
+sphinx==5.0.0
     # via -r sourcedocs/requirements.in
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
@@ -50,6 +50,3 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 urllib3==1.26.5
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
