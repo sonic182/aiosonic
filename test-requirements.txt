@@ -14,8 +14,10 @@ aiosignal==1.2.0
     # via aiohttp
 anyio==3.6.1
     # via httpcore
-asgiref==3.5.2
-    # via django
+asgiref==3.4.1
+    # via
+    #   -r test-requirements.in
+    #   django
 async-timeout==4.0.2
     # via aiohttp
 attrs==21.4.0
