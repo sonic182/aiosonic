@@ -1,7 +1,7 @@
 aiodns
 aiohttp
 coveralls
-django
+django<4.0.0
 httpx
 proxy.py
 pytest

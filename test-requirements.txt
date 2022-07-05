@@ -46,7 +46,7 @@ coverage[toml]==6.4.1
     #   pytest-cov
 coveralls==3.3.1
     # via -r test-requirements.in
-django==4.0.6
+django==3.2.14
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
@@ -134,6 +134,8 @@ pytest-sugar==0.9.4
     # via -r test-requirements.in
 pytest-timeout==2.1.0
     # via -r test-requirements.in
+pytz==2022.1
+    # via django
 requests==2.28.1
     # via coveralls
 rfc3986[idna2008]==1.5.0
