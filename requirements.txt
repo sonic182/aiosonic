@@ -6,7 +6,7 @@
 #
 chardet==4.0.0
     # via -r requirements.in
-h2==4.0.0
+h2==4.1.0
     # via -r requirements.in
 hpack==4.0.0
     # via h2
