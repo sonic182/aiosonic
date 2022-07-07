@@ -14,10 +14,6 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 
-test36:
-	echo "TEST PYTHON 3.6"
-	docker run -i --rm -v $(shell pwd):/app python:3.6 bash -l -c "$(DOCKER_CMD)"
-
 test37:
 	echo "TEST PYTHON 3.7"
 	docker run -i --rm -v $(shell pwd):/app python:3.7 bash -l -c "$(DOCKER_CMD)"
@@ -30,7 +26,7 @@ tes39:
 	echo "TEST PYTHON 3.9"
 	docker run -i --rm -v $(shell pwd):/app python:3.9 bash -l -c "$(DOCKER_CMD)"
 
-test: test36 test37 test38 test39
+test: test37 test38 test39
 	echo "OK"
 
 clear:

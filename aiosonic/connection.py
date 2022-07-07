@@ -61,15 +61,11 @@ class Connection:
 
         key = f"{urlparsed.hostname}-{urlparsed.port}"
 
-        if self.writer:
-            # python 3.6 doesn't have writer.is_closing
-            is_closing = getattr(
-                self.writer, "is_closing", self.writer._transport.is_closing
-            )  # type: ignore
-        else:
+        def is_closing():
+            return True  # noqa
 
-            def is_closing():
-                return True  # noqa
+        if self.writer:
+            is_closing = lambda: self.writer.is_closing  # type: ignore
 
         dns_info_copy = dns_info.copy()
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
@@ -91,7 +87,9 @@ class Connection:
                     ssl_context.verify_mode = ssl.CERT_NONE
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
+            port = urlparsed.port or (
+                443 if urlparsed.scheme == "https" else 80
+            )
             dns_info_copy["port"] = port
 
             self.reader, self.writer = await open_connection(
@@ -204,7 +202,7 @@ def _get_http2_ssl_context():
     ctx.set_alpn_protocols(["h2", "http/1.1"])
 
     try:
-        if hasattr(ctx, '_set_npn_protocols'):
+        if hasattr(ctx, "_set_npn_protocols"):
             ctx.set_npn_protocols(["h2", "http/1.1"])
     except NotImplementedError:
         pass
