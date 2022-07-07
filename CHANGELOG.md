@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.15.1] 2022-07-07
+### Changed
+- Removed some Python 3.6 code remaining
+
 ## [0.15.0] 2022-07-07
 ### Deprecated
 - Python 3.6 support dropped
@@ -226,7 +231,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.15.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.15.1..HEAD
+[0.15.1]: https://github.com/sonic182/aiosonic/compare/0.15.0..0.15.1
 [0.15.0]: https://github.com/sonic182/aiosonic/compare/0.14.1..0.15.0
 [0.14.1]: https://github.com/sonic182/aiosonic/compare/0.14.0..0.14.1
 [0.14.0]: https://github.com/sonic182/aiosonic/compare/0.13.1..0.14.0
