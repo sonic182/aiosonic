@@ -2,7 +2,6 @@
 
 import asyncio
 import socket
-import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Type, Union
 
@@ -19,17 +18,16 @@ aiodns_default = False
 
 
 def get_loop():
-    if sys.version_info >= (3, 7):
-        return asyncio.get_running_loop()
-    else:
-        return asyncio.get_event_loop()
+    return asyncio.get_running_loop()
 
 
 class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
+    async def resolve(
+        self, host: str, port: int, family: int
+    ) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -132,4 +130,6 @@ class AsyncResolver(AbstractResolver):
 
 
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
-DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver
+DefaultResolver: _DefaultType = (
+    AsyncResolver if aiodns_default else ThreadedResolver
+)
