@@ -161,12 +161,10 @@ tomli==2.0.1
     #   mypy
     #   pytest
 typing-extensions==4.3.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 urllib3==1.26.9
     # via requests
-uvicorn==0.18.2
+uvicorn==0.18.3
     # via -r test-requirements.in
 yarl==1.7.2
     # via aiohttp
