@@ -6,7 +6,7 @@
 #
 aiodns==3.0.0
     # via -r test-requirements.in
-aiohttp==3.8.1
+aiohttp==3.8.3
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
@@ -161,9 +161,7 @@ tomli==2.0.1
     #   mypy
     #   pytest
 typing-extensions==4.3.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 urllib3==1.26.9
     # via requests
 uvicorn==0.18.2
