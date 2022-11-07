@@ -133,7 +133,7 @@ pytest-mock==3.8.2
     # via -r test-requirements.in
 pytest-mypy==0.9.1
     # via -r test-requirements.in
-pytest-sugar==0.9.4
+pytest-sugar==0.9.6
     # via -r test-requirements.in
 pytest-timeout==2.1.0
     # via -r test-requirements.in
@@ -155,15 +155,9 @@ termcolor==1.1.0
 toml==0.10.2
     # via pytest-black
 tomli==2.0.1
-    # via
-    #   black
-    #   coverage
-    #   mypy
-    #   pytest
+    # via pytest
 typing-extensions==4.3.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 urllib3==1.26.9
     # via requests
 uvicorn==0.18.2
