@@ -2,7 +2,7 @@ aiodns
 aiohttp
 coveralls
 django<4.0.0
-asgiref<3.5.0
+asgiref<3.7.0
 click<8.1.0
 httpx
 proxy.py
