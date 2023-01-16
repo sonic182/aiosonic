@@ -97,15 +97,13 @@ pluggy==1.0.0
     # via pytest
 proxy-py==2.4.3
     # via -r test-requirements.in
-py==1.11.0
-    # via pytest
 pycares==4.2.1
     # via aiodns
 pycparser==2.21
     # via cffi
 pyparsing==3.0.9
     # via packaging
-pytest==7.1.2
+pytest==7.2.1
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
@@ -154,16 +152,8 @@ termcolor==1.1.0
     # via pytest-sugar
 toml==0.10.2
     # via pytest-black
-tomli==2.0.1
-    # via
-    #   black
-    #   coverage
-    #   mypy
-    #   pytest
 typing-extensions==4.3.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 urllib3==1.26.9
     # via requests
 uvicorn==0.18.2
