@@ -119,6 +119,8 @@ pycares==4.3.0
     # via aiodns
 pycparser==2.21
     # via cffi
+pyparsing==3.0.9
+    # via packaging
 pytest==7.2.2
     # via
     #   -r test-requirements.in
