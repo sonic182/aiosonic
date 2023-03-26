@@ -40,8 +40,7 @@ jobs:
       #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
-          # pytest --cov=aiosonic --doctest-modules
-          coverage run --source=aiosonic -m pytest --doctest-modules
+          coverage run --source=aiosonic setup.py test
 
       - name: Coveralls
         env:
