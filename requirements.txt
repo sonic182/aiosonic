@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
-chardet==4.0.0
+charset-normalizer==3.1.0
     # via -r requirements.in
 h2==4.1.0
     # via -r requirements.in
@@ -12,5 +12,5 @@ hpack==4.0.0
     # via h2
 hyperframe==6.0.1
     # via h2
-onecache==0.3.1
+onecache==0.4.1
     # via -r requirements.in
