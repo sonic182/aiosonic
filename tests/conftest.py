@@ -154,9 +154,7 @@ def app():
 def ssl_context():
     # python 3.5 compatibility
     context = ssl.SSLContext(getattr(ssl, "PROTOCOL_TLS_SERVER", ssl.PROTOCOL_TLS))
-    context.load_cert_chain(
-        "tests/files/certs/server.cert", "tests/files/certs/server.key"
-    )
+    context.load_cert_chain("tests/files/certs/server.cert", "tests/files/certs/server.key")
     return context
 
 

@@ -25,9 +25,7 @@ class AbstractResolver(ABC):
     """Abstract DNS resolver."""
 
     @abstractmethod
-    async def resolve(
-        self, host: str, port: int, family: int
-    ) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str, port: int, family: int) -> List[Dict[str, Any]]:
         """Return IP address for given hostname"""
 
     @abstractmethod
@@ -130,6 +128,4 @@ class AsyncResolver(AbstractResolver):
 
 
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
-DefaultResolver: _DefaultType = (
-    AsyncResolver if aiodns_default else ThreadedResolver
-)
+DefaultResolver: _DefaultType = AsyncResolver if aiodns_default else ThreadedResolver

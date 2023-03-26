@@ -61,9 +61,7 @@ class TCPConnector:
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
-    async def acquire(
-        self, urlparsed: ParseResult, verify, ssl, timeouts, http2
-    ) -> "Connection":
+    async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2) -> "Connection":
         """Acquire connection."""
         if not urlparsed.hostname:
             raise HttpParsingError("missing hostname")
@@ -71,17 +69,11 @@ class TCPConnector:
         # Faster without timeout
         if not self.timeouts.pool_acquire:
             conn = await self.pool.acquire(urlparsed)
-            return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2
-            )
+            return await self.after_acquire(urlparsed, conn, verify, ssl, timeouts, http2)
 
         try:
-            conn = await wait_for(
-                self.pool.acquire(urlparsed), self.timeouts.pool_acquire
-            )
-            return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2
-            )
+            conn = await wait_for(self.pool.acquire(urlparsed), self.timeouts.pool_acquire)
+            return await self.after_acquire(urlparsed, conn, verify, ssl, timeouts, http2)
         except TimeoutException:
             raise ConnectionPoolAcquireTimeout()
 

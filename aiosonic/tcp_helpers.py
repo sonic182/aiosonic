@@ -16,7 +16,6 @@ if hasattr(socket, "SO_KEEPALIVE"):
     def keepalive_flags() -> int:
         return socket.SOL_SOCKET | socket.SO_KEEPALIVE
 
-
 else:
 
     def tcp_keepalive(sock: socket.socket) -> None:  # pragma: no cover

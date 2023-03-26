@@ -1,8 +1,9 @@
 aiodns
 aiohttp
+asgiref<3.5.0
+black
 coveralls
 django<4.0.0
-asgiref<3.5.0
 click<8.1.0
 httpx
 proxy.py
@@ -17,3 +18,4 @@ pytest-mypy
 pytest-sugar
 pytest-timeout
 uvicorn
+-r requirements.txt

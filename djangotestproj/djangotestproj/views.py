@@ -18,9 +18,7 @@ def upload_file(request: HttpRequest):
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
             return HttpResponse(
-                content=form.cleaned_data["foo"].read()
-                + b"-"
-                + request.POST["field1"].encode()
+                content=form.cleaned_data["foo"].read() + b"-" + request.POST["field1"].encode()
             )
         return HttpResponse(content=form.errors)
     return HttpResponse(content="ko")

@@ -78,9 +78,7 @@ async def timeit_coro(func, *args, **kwargs):
 
 async def performance_aiohttp(url, concurrency):
     """Test aiohttp performance."""
-    async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(limit=concurrency)
-    ) as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=concurrency)) as session:
         return await timeit_coro(session.get, (url))
 
 
@@ -99,9 +97,7 @@ async def performance_httpx(url, concurrency, pool_cls=None):
 def timeit_requests(url, concurrency, repeat=1000):
     """Timeit requests."""
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(
-        pool_connections=concurrency, pool_maxsize=concurrency
-    )
+    adapter = requests.adapters.HTTPAdapter(pool_connections=concurrency, pool_maxsize=concurrency)
     session.mount("http://", adapter)
     with futures.ThreadPoolExecutor(concurrency) as executor:
         to_wait = []
@@ -130,9 +126,7 @@ def do_tests(url):
     res3 = timeit_requests(url, concurrency)
 
     # aiosonic cyclic
-    res4 = loop.run_until_complete(
-        performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool)
-    )
+    res4 = loop.run_until_complete(performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool))
 
     # httpx
     httpx_exc = False
@@ -157,9 +151,7 @@ def do_tests(url):
 
     print("aiosonic is %.2f%% faster than aiohttp" % (((res1 / res2) - 1) * 100))
     print("aiosonic is %.2f%% faster than requests" % (((res3 / res2) - 1) * 100))
-    print(
-        "aiosonic is %.2f%% faster than aiosonic cyclic" % (((res4 / res2) - 1) * 100)
-    )
+    print("aiosonic is %.2f%% faster than aiosonic cyclic" % (((res4 / res2) - 1) * 100))
 
     res = [
         ["aiohttp", res1],

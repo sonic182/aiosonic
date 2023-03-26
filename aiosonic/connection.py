@@ -87,14 +87,10 @@ class Connection:
                     ssl_context.verify_mode = ssl.CERT_NONE
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (
-                443 if urlparsed.scheme == "https" else 80
-            )
+            port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
             dns_info_copy["port"] = port
 
-            self.reader, self.writer = await open_connection(
-                **dns_info_copy, ssl=ssl_context
-            )
+            self.reader, self.writer = await open_connection(**dns_info_copy, ssl=ssl_context)
 
             self.temp_key = key
             await self._connection_made()
@@ -159,15 +155,11 @@ class Connection:
     def close(self, check_closing: bool = False) -> None:
         """Close connection if opened."""
         if self.writer:
-            is_closing = getattr(
-                self.writer, "is_closing", self.writer._transport.is_closing
-            )
+            is_closing = getattr(self.writer, "is_closing", self.writer._transport.is_closing)
             if not check_closing or is_closing():
                 self.writer.close()
 
-    async def http2_request(
-        self, headers: Dict[str, str], body: Optional[ParsedBodyType]
-    ):
+    async def http2_request(self, headers: Dict[str, str], body: Optional[ParsedBodyType]):
         if self.h2handler:  # pragma: no cover
             return await self.h2handler.request(headers, body)
 
@@ -183,9 +175,7 @@ def _get_http2_ssl_context():
 
     # RFC 7540 Section 9.2: Implementations of HTTP/2 MUST use TLS version 1.2
     # or higher. Disable TLS 1.1 and lower.
-    ctx.options |= (
-        ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
-    )
+    ctx.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
 
     # RFC 7540 Section 9.2.1: A deployment of HTTP/2 over TLS 1.2 MUST disable
     # compression.
