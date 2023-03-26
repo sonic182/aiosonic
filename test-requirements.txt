@@ -26,7 +26,9 @@ attrs==21.4.0
     #   pytest
     #   pytest-mypy
 black==22.6.0
-    # via pytest-black
+    # via
+    #   -r test-requirements.in
+    #   pytest-black
 certifi==2022.6.15
     # via
     #   httpcore
@@ -34,6 +36,8 @@ certifi==2022.6.15
     #   requests
 cffi==1.15.1
     # via pycares
+chardet==4.0.0
+    # via -r requirements.txt
 charset-normalizer==2.1.0
     # via
     #   aiohttp
@@ -63,10 +67,20 @@ h11==0.12.0
     # via
     #   httpcore
     #   uvicorn
+h2==4.1.0
+    # via -r requirements.txt
+hpack==4.0.0
+    # via
+    #   -r requirements.txt
+    #   h2
 httpcore==0.15.0
     # via httpx
 httpx==0.23.0
     # via -r test-requirements.in
+hyperframe==6.0.1
+    # via
+    #   -r requirements.txt
+    #   h2
 idna==3.3
     # via
     #   anyio
@@ -85,6 +99,8 @@ mypy-extensions==0.4.3
     # via
     #   black
     #   mypy
+onecache==0.3.1
+    # via -r requirements.txt
 packaging==21.3
     # via
     #   pytest

@@ -689,7 +689,7 @@ async def test_connection_error(mocker):
         return conn
 
     acquire = mocker.patch("aiosonic.TCPConnector.acquire", new=get_conn)
-    connector = mocker.MagicMock()
+    connector = mocker.MagicMock(conn_max_requests=100)
 
     async def connect(*args, **kwargs):
         return None, None

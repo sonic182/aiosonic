@@ -32,13 +32,13 @@ async def parse_headers_iterator(connection: Connection):
         yield res_data
 
 
-def headers_iterator(headers: 'HeadersType'):
+def headers_iterator(headers: "HeadersType"):
     iterator = headers if isinstance(headers, List) else headers.items()
     for key, data in iterator:
         yield key, data
 
 
-def add_header(headers: 'HeadersType', key: str, value: str, replace=False):
+def add_header(headers: "HeadersType", key: str, value: str, replace=False):
     """Safe add header method."""
     if isinstance(headers, List):
         if replace:
@@ -50,14 +50,14 @@ def add_header(headers: 'HeadersType', key: str, value: str, replace=False):
         headers[key] = value
 
 
-def add_headers(headers: 'HeadersType', headers_to_add: 'HeadersType'):
+def add_headers(headers: "HeadersType", headers_to_add: "HeadersType"):
     """Safe add multiple headers."""
     for key, data in headers_iterator(headers_to_add):
         replace = key.lower() in REPLACEABLE_HEADERS
         add_header(headers, key, data, replace)
 
 
-def setup_body_request(data: DataType, headers: 'HeadersType') -> ParsedBodyType:
+def setup_body_request(data: DataType, headers: "HeadersType") -> ParsedBodyType:
     """Get body to be sent."""
 
     if isinstance(data, (AsyncIterator, Iterator)):

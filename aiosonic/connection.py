@@ -2,7 +2,6 @@
 
 import ssl
 from asyncio import StreamReader, StreamWriter, open_connection
-from socket import socket
 from ssl import SSLContext
 from typing import Dict, Optional
 from urllib.parse import ParseResult
@@ -17,7 +16,6 @@ from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.http2 import Http2Handler
 from aiosonic.tcp_helpers import keepalive_flags
-from aiosonic.timeout import Timeouts
 from aiosonic.types import ParsedBodyType
 
 
@@ -32,6 +30,7 @@ class Connection:
         self.key = None
         self.blocked = False
         self.temp_key: Optional[str] = None
+        self.requests_count = 0
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
@@ -87,9 +86,7 @@ class Connection:
                     ssl_context.verify_mode = ssl.CERT_NONE
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (
-                443 if urlparsed.scheme == "https" else 80
-            )
+            port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
             dns_info_copy["port"] = port
 
             self.reader, self.writer = await open_connection(
@@ -144,9 +141,12 @@ class Connection:
     async def release(self) -> None:
         """Release connection."""
         await self.connector.release(self)
+        self.requests_count += 1
         # if keep False and blocked (by latest chunked response), close it.
         # server said to close it.
-        if not self.keep and self.blocked:
+        if self.requests_count >= self.connector.conn_max_requests or (
+            not self.keep and self.blocked
+        ):
             self.blocked = False
             self.close()
         # ensure unblock conn object after read

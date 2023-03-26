@@ -36,7 +36,7 @@ class TCPConnector:
         * **resolver**: resolver to be used. default: :class:`aiosonic.resolver.DefaultResolver`
         * **ttl_dns_cache**: ttl in milliseconds for dns cache. default: `10000` 10 seconds
         * **use_dns_cache**: Flag to indicate usage of dns cache. default: `True`
-
+        * **conn_max_requests**: Max requests allowed for a connection. default: `100`
     """
 
     def __init__(
@@ -48,6 +48,7 @@ class TCPConnector:
         resolver=None,
         ttl_dns_cache=10000,
         use_dns_cache=True,
+        conn_max_requests=100,
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
@@ -58,6 +59,7 @@ class TCPConnector:
         self.timeouts = timeouts or Timeouts()
         self.resolver = resolver or DefaultResolver()
         self.use_dns_cache = use_dns_cache
+        self.conn_max_requests = conn_max_requests
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 

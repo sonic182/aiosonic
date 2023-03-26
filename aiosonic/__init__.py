@@ -14,7 +14,16 @@ from json import dumps, loads
 from os.path import basename
 from random import randint
 from ssl import SSLContext
-from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import (
+    AsyncIterator,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+)
 from urllib.parse import ParseResult, urlencode
 from zlib import decompress as zlib_decompress
 
@@ -294,12 +303,15 @@ def _prepare_request_headers(
         )
     if proxy and proxy.auth:
         http_parser.add_headers(
-            headers_base, {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"}
+            headers_base,
+            {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"},
         )
 
     if multipart:
         http_parser.add_header(
-            headers_base, "Content-Type", f'multipart/form-data; boundary="{boundary}"'
+            headers_base,
+            "Content-Type",
+            f'multipart/form-data; boundary="{boundary}"',
         )
 
     if headers:
@@ -746,7 +758,7 @@ class HTTPClient:
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
-            boundary = "boundary-%d" % randint(10 ** 8, 10 ** 9)
+            boundary = "boundary-%d" % randint(10**8, 10**9)
             body = await _send_multipart(data, boundary, headers)
 
         max_redirects = 30
