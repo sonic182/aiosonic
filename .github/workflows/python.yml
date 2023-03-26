@@ -40,7 +40,11 @@ jobs:
       #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
         run: |
-          coverage run --source=aiosonic setup.py test
+          pytest --cov-append
+        env:
+          COV_CORE_SOURCE: src 
+          COV_CORE_CONFIG: .coveragerc 
+          COV_CORE_DATAFILE: .coverage.eager 
 
       - name: Coveralls
         env:
