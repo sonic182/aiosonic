@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 
+
+## [0.16.0] 2023-03-26
+### Changed
+- conn_max_requests parameter to allow a maximum number of requests per keep-alived connection.
+- using charset-normalizer for encoding detection
+
 ## [0.15.1] 2022-07-07
 ### Changed
 - Removed some Python 3.6 code remaining
@@ -231,7 +237,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.15.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.16.0..HEAD
+[0.16.0]: https://github.com/sonic182/aiosonic/compare/0.15.1..0.16.0
 [0.15.1]: https://github.com/sonic182/aiosonic/compare/0.15.0..0.15.1
 [0.15.0]: https://github.com/sonic182/aiosonic/compare/0.14.1..0.15.0
 [0.14.1]: https://github.com/sonic182/aiosonic/compare/0.14.0..0.14.1
