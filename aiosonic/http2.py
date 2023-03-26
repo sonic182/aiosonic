@@ -51,7 +51,9 @@ class Http2Handler(object):
         """Cleanup."""
         self.reader_task.cancel()
 
-    async def request(self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]):
+    async def request(
+        self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]
+    ):
         from aiosonic import HttpResponse
 
         body = body or b""

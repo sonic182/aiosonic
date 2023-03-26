@@ -375,11 +375,15 @@ async def _send_multipart(
             # (Content-Type, custom filename, ...),
 
             # write Contet-Disposition
-            to_write = "Content-Disposition: form-data; " + 'name="%s"; filename="%s"%s%s' % (
-                key,
-                basename(val.name),
-                _NEW_LINE,
-                _NEW_LINE,
+            to_write = (
+                "Content-Disposition: form-data; "
+                + 'name="%s"; filename="%s"%s%s'
+                % (
+                    key,
+                    basename(val.name),
+                    _NEW_LINE,
+                    _NEW_LINE,
+                )
             )
             to_send += to_write.encode()
 
@@ -457,7 +461,9 @@ async def _do_request(
             raise ReadTimeout()
 
         # reading headers
-        await response._set_response_headers(http_parser.parse_headers_iterator(connection))
+        await response._set_response_headers(
+            http_parser.parse_headers_iterator(connection)
+        )
 
         size = response.headers.get("content-length")
         chunked = response.headers.get("transfer-encoding", "") == "chunked"
@@ -798,7 +804,9 @@ class HTTPClient:
                     if self.handle_cookies:
                         self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
-                    parsed_full_url = http_parser.get_url_parsed(response.headers["location"])
+                    parsed_full_url = http_parser.get_url_parsed(
+                        response.headers["location"]
+                    )
 
                     # if full url, will have scheme
                     if parsed_full_url.scheme:
@@ -832,7 +840,9 @@ class HTTPClient:
     def _add_cookies_to_request(self, host: str, headers: HeadersType):
         """Add cookies to request."""
         host_cookies = self.cookies_map.get(host)
-        if host_cookies and not any([header.lower() == "cookie" for header, _ in headers]):
+        if host_cookies and not any(
+            [header.lower() == "cookie" for header, _ in headers]
+        ):
             cookies_str = host_cookies.output(header="Cookie:")
             for cookie_data in cookies_str.split("\r\n"):
                 http_parser.add_header(headers, *cookie_data.split(": ", 1))

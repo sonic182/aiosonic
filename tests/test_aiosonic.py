@@ -168,7 +168,9 @@ async def test_keep_alive_cyclic_pool(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = "http://localhost:%d" % server.port
 
-    connector = TCPConnector(pool_size=2, connection_cls=MyConnection, pool_cls=CyclicQueuePool)
+    connector = TCPConnector(
+        pool_size=2, connection_cls=MyConnection, pool_cls=CyclicQueuePool
+    )
     async with aiosonic.HTTPClient(connector) as client:
 
         for _ in range(5):
@@ -687,7 +689,7 @@ async def test_connection_error(mocker):
         return conn
 
     acquire = mocker.patch("aiosonic.TCPConnector.acquire", new=get_conn)
-    connector = mocker.MagicMock()
+    connector = mocker.MagicMock(conn_max_requests=100)
 
     async def connect(*args, **kwargs):
         return None, None
@@ -770,7 +772,9 @@ async def test_wait_connections_busy_timeout(mocker):
         await asyncio.sleep(1)
         return True
 
-    _connect = mocker.patch("aiosonic.connectors.TCPConnector.wait_free_pool", new=long_connect)
+    _connect = mocker.patch(
+        "aiosonic.connectors.TCPConnector.wait_free_pool", new=long_connect
+    )
 
     _connect.return_value = long_connect()
     async with aiosonic.HTTPClient() as client:
