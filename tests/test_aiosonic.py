@@ -150,7 +150,6 @@ async def test_keep_alive_smart_pool(app, aiohttp_server):
 
     connector = TCPConnector(pool_size=2, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
-
         res = None
         for _ in range(5):
             res = await client.get(url)
@@ -172,7 +171,6 @@ async def test_keep_alive_cyclic_pool(app, aiohttp_server):
         pool_size=2, connection_cls=MyConnection, pool_cls=CyclicQueuePool
     )
     async with aiosonic.HTTPClient(connector) as client:
-
         for _ in range(5):
             res = await client.get(url)
         async with await connector.pool.acquire() as connection:
@@ -405,7 +403,6 @@ async def test_request_timeout(app, aiohttp_server, mocker):
     _connect.return_value = long_request()
     connector = TCPConnector(timeouts=Timeouts(request_timeout=0.2))
     async with aiosonic.HTTPClient(connector) as client:
-
         with pytest.raises(RequestTimeout):
             await client.get(url)
         await server.close()
@@ -419,7 +416,6 @@ async def test_pool_acquire_timeout(app, aiohttp_server, mocker):
 
     connector = TCPConnector(pool_size=1, timeouts=Timeouts(pool_acquire=0.3))
     async with aiosonic.HTTPClient(connector) as client:
-
         with pytest.raises(ConnectionPoolAcquireTimeout):
             await asyncio.gather(
                 client.get(url),
@@ -593,10 +589,8 @@ async def test_close_connection(app, aiohttp_server):
 
     connector = TCPConnector(pool_size=1, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
-
         res = await client.post(url, data=b"close")
         async with await connector.pool.acquire() as connection:
-
             assert res.status_code == 200
             assert not connection.keep
             assert await res.text() == "close"
@@ -611,7 +605,6 @@ async def test_close_old_keeped_conn(app, aiohttp_server):
     url2 = "http://localhost:%d" % server2.port
     connector = TCPConnector(pool_size=1, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
-
         await client.get(url1)
         # get used writer
         async with await connector.pool.acquire() as connection:
@@ -655,7 +648,6 @@ async def test_max_redirects(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = "http://localhost:%d/max_redirects" % server.port
     async with aiosonic.HTTPClient() as client:
-
         with pytest.raises(MaxRedirects):
             await client.get(url, follow=True)
         await server.close()
@@ -699,7 +691,6 @@ async def test_connection_error(mocker):
     connector.release.return_value.set_result(True)
 
     async with aiosonic.HTTPClient() as client:
-
         with pytest.raises(ConnectionError):
             await client.get("http://foo")
 
@@ -748,7 +739,6 @@ async def test_get_no_hostname(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = "http://:%d" % server.port
     async with aiosonic.HTTPClient() as client:
-
         with pytest.raises(HttpParsingError):
             await client.get(url)
 

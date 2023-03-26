@@ -14,20 +14,11 @@ from json import dumps, loads
 from os.path import basename
 from random import randint
 from ssl import SSLContext
-from typing import (
-    AsyncIterator,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode
 from zlib import decompress as zlib_decompress
 
-import chardet
+from charset_normalizer import detect
 
 from aiosonic import http_parser
 from aiosonic.connection import Connection
@@ -52,11 +43,6 @@ from aiosonic.utils import get_debug_logger
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
-try:
-    import cchardet as chardet
-except ImportError:
-    pass
-
 # VARIABLES
 _HTTP_RESPONSE_STATUS_LINE = re.compile(
     r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)"
@@ -65,6 +51,7 @@ _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _NEW_LINE = "\r\n"
 dlogger = get_debug_logger()
+RANDOM_RANGE = (10**8, 10**9)
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 
@@ -187,7 +174,7 @@ class HttpResponse:
                 # RFC 7159 states that the default encoding is UTF-8.
                 encoding = "utf-8"
             else:
-                encoding = chardet.detect(self.body)["encoding"]
+                encoding = detect(self.body)["encoding"]
         if not encoding:
             encoding = "utf-8"
 
@@ -758,7 +745,7 @@ class HTTPClient:
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
-            boundary = "boundary-%d" % randint(10**8, 10**9)
+            boundary = "boundary-%d" % randint(*RANDOM_RANGE)
             body = await _send_multipart(data, boundary, headers)
 
         max_redirects = 30
