@@ -56,8 +56,6 @@ django==3.2.18
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
-exceptiongroup==1.1.1
-    # via pytest
 filelock==3.10.6
     # via pytest-mypy
 frozenlist==1.3.3
@@ -100,7 +98,7 @@ mypy-extensions==1.0.0
     # via
     #   black
     #   mypy
-onecache==0.5.0
+onecache==0.5.1
     # via -r requirements.txt
 packaging==23.0
     # via
@@ -168,16 +166,8 @@ termcolor==2.2.0
     # via pytest-sugar
 toml==0.10.2
     # via pytest-black
-tomli==2.0.1
-    # via
-    #   black
-    #   coverage
-    #   mypy
-    #   pytest
 typing-extensions==4.5.0
-    # via
-    #   black
-    #   mypy
+    # via mypy
 urllib3==1.26.15
     # via requests
 uvicorn==0.21.1
