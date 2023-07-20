@@ -6,7 +6,7 @@
 #
 aiodns==3.0.0
     # via -r test-requirements.in
-aiohttp==3.8.4
+aiohttp==3.8.5
     # via
     #   -r test-requirements.in
     #   pytest-aiohttp
