@@ -1,6 +1,6 @@
 aiodns
 aiohttp
-asgiref<3.5.0
+asgiref<3.8.0
 black
 coveralls
 django<4.0.0
