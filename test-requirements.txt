@@ -29,7 +29,7 @@ black==23.1.0
     # via
     #   -r test-requirements.in
     #   pytest-black
-certifi==2022.12.7
+certifi==2023.7.22
     # via
     #   httpcore
     #   httpx
