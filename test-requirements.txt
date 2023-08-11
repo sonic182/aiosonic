@@ -100,7 +100,7 @@ mypy-extensions==1.0.0
     # via
     #   black
     #   mypy
-onecache==0.5.0
+onecache==0.6.0
     # via -r requirements.txt
 packaging==23.0
     # via
