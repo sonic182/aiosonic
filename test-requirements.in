@@ -4,7 +4,7 @@ asgiref<3.5.0
 black
 coveralls
 django<4.0.0
-click<8.1.0
+click<8.2.0
 httpx
 proxy.py
 pytest
