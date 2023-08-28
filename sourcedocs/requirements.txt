@@ -12,30 +12,30 @@ certifi==2023.7.22
     # via requests
 charset-normalizer==3.2.0
     # via requests
-docutils==0.17.1
+docutils==0.20.1
     # via sphinx
 idna==2.10
     # via requests
-imagesize==1.2.0
+imagesize==1.4.1
     # via sphinx
 jinja2==3.0.1
     # via sphinx
 markupsafe==2.0.1
     # via jinja2
-packaging==20.9
+packaging==23.1
     # via sphinx
 pygments==2.15.0
     # via sphinx
-pyparsing==2.4.7
-    # via packaging
 pytz==2021.1
     # via babel
 requests==2.31.0
     # via sphinx
 snowballstemmer==2.1.0
     # via sphinx
-sphinx==4.1.1
-    # via -r sourcedocs/requirements.in
+sphinx==7.2.4
+    # via
+    #   -r sourcedocs/requirements.in
+    #   sphinxcontrib-serializinghtml
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
 sphinxcontrib-devhelp==1.0.2
@@ -46,10 +46,7 @@ sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
     # via sphinx
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==1.1.9
     # via sphinx
 urllib3==1.26.5
     # via requests
-
-# The following packages are considered to be unsafe in a requirements file:
-# setuptools
