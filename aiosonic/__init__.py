@@ -146,6 +146,11 @@ class HttpResponse:
         """Get status code."""
         return int(self.response_initial["code"])
 
+    @property
+    def ok(self) -> bool:
+        """Returns True if :attr:`status_code` is 2xx range, False if not."""
+        return 200 <= self.status_code <= 299
+
     def _set_body(self, data):
         """Set body."""
         if self.compressed == "gzip":
