@@ -13,7 +13,9 @@ aiohttp==3.8.5
 aiosignal==1.3.1
     # via aiohttp
 anyio==3.6.2
-    # via httpcore
+    # via
+    #   httpcore
+    #   httpx
 asgiref==3.4.1
     # via
     #   -r test-requirements.in
@@ -56,6 +58,8 @@ django==3.2.20
     # via -r test-requirements.in
 docopt==0.6.2
     # via coveralls
+exceptiongroup==1.1.3
+    # via pytest
 filelock==3.10.6
     # via pytest-mypy
 frozenlist==1.3.3
@@ -74,7 +78,7 @@ hpack==4.0.0
     #   h2
 httpcore==0.16.3
     # via httpx
-httpx==0.23.3
+httpx==0.25.1
     # via -r test-requirements.in
 hyperframe==6.0.1
     # via
@@ -83,8 +87,8 @@ hyperframe==6.0.1
 idna==3.4
     # via
     #   anyio
+    #   httpx
     #   requests
-    #   rfc3986
     #   yarl
 iniconfig==2.0.0
     # via pytest
@@ -153,8 +157,6 @@ pytz==2023.2
     # via django
 requests==2.31.0
     # via coveralls
-rfc3986[idna2008]==1.5.0
-    # via httpx
 sniffio==1.3.0
     # via
     #   anyio
@@ -166,8 +168,16 @@ termcolor==2.2.0
     # via pytest-sugar
 toml==0.10.2
     # via pytest-black
+tomli==2.0.1
+    # via
+    #   black
+    #   coverage
+    #   mypy
+    #   pytest
 typing-extensions==4.5.0
-    # via mypy
+    # via
+    #   black
+    #   mypy
 urllib3==1.26.15
     # via requests
 uvicorn==0.21.1
