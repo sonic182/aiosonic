@@ -66,13 +66,17 @@ setup(
         "Topic :: Internet :: WWW/HTTP",
         "Operating System :: OS Independent",
         "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
     ],
-    setup_requires=["pytest-runner"],
     install_requires=requirements("./requirements.txt"),
     extras_require={
         "test": add_marks(

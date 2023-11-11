@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import platform
 import ssl
 from urllib.parse import urlparse
 
@@ -489,6 +490,11 @@ async def test_get_chunked_response(app, aiohttp_server):
         await server.close()
 
 
+# TODO: investigate and fix a compatibility issue for PyPy
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy",
+    reason="this test freezes testing on PyPy",
+)
 @pytest.mark.asyncio
 async def test_get_chunked_response_and_not_read_it(app, aiohttp_server):
     """Test get chunked response and not read it.
