@@ -1,5 +1,14 @@
 aiodns
-aiohttp
+# regular versions of aiohttp don't support Python 3.12 yet
+# (see https://github.com/aio-libs/aiohttp/issues/7739#issuecomment-1773868351),
+# and pip-compile doesn't support multiple package versions, e.g.
+# aiohttp ; python_version < "3.12"
+# aiohttp==3.9.0b1 ; python_version >= "3.12"
+# so the only option we have at the moment is this:
+aiohttp>=3.9.0b1
+# and still, we have to manually adjust test-requirements.txt
+# to keep support for Python 3.7.
+# (see https://github.com/jazzband/pip-tools/issues/1326)
 asgiref<3.5.0
 black
 coveralls
