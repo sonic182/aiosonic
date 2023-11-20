@@ -64,7 +64,7 @@ class Connection:
             return True  # noqa
 
         if self.writer:
-            is_closing = lambda: self.writer.is_closing  # type: ignore
+            is_closing = self.writer.is_closing  # type: ignore
 
         dns_info_copy = dns_info.copy()
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
