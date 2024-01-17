@@ -133,7 +133,7 @@ class Connection:
             if self.writer and not self.blocked:
                 self.close()
 
-        if not self.blocked:
+        if self.blocked:
             await self.release()
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
