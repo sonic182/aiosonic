@@ -12,7 +12,6 @@ import h2.events
 
 from aiosonic.connectors import TCPConnector
 
-# from concurrent import futures (unused)
 from aiosonic.exceptions import HttpParsingError
 from aiosonic.http2 import Http2Handler
 from aiosonic.tcp_helpers import keepalive_flags
