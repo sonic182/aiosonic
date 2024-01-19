@@ -151,7 +151,7 @@ class Connection:
 
             else:
                 while self.blocked:
-                    asyncio_sleep(0.05)
+                    await asyncio_sleep(0.05)
                 if self.cycled:
                     return None
                 elif self.writer and not self.is_closing() and type(self.connector.pool) == CyclicQueuePool:
