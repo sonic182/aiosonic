@@ -160,8 +160,8 @@ class Connection:
                     await self.release()
 
         except CancelledError:
-            if self.writer and not self.is_closing() and type(self.connector.pool) == CyclicQueuePool:
-                self.close()
+            if self.writer and type(self.connector.pool) == CyclicQueuePool:
+                self.close(False, True)
             if not self.cycled:
                 await self.release()
             raise
@@ -186,13 +186,15 @@ class Connection:
     def __del__(self) -> None:
         """Cleanup."""
         if not self.cycled:
-            self.close(True)
+            self.close(True, True)
 
-    def close(self, back_to_queue: bool = False) -> None:
+    def close(self, back_to_queue: bool = False, abort_transport: bool = False) -> None:
         """Close connection if opened."""
         if self.writer and not self.is_closing():
             self.blocked = False
             self.writer.close()
+        if self.writer and abort_transport:
+            self.writer._transport.abort()
         if back_to_queue == True:
             if not self.cycled:
                 self.cycled = True
