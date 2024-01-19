@@ -222,11 +222,7 @@ class HttpResponse:
 
     def __del__(self):
         # clean it
-        if self.chunked and not self.chunks_readed:
-            loop = None
-            if self.connection:
-                loop = get_loop()
-                loop.create_task(self.connection.release())
+        pass
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
