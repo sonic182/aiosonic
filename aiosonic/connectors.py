@@ -73,6 +73,7 @@ class TCPConnector:
         # Faster without timeout
         if not self.timeouts.pool_acquire:
             conn = await self.pool.acquire(urlparsed)
+            conn.cycled = False
             return await self.after_acquire(
                 urlparsed, conn, verify, ssl, timeouts, http2
             )
@@ -81,6 +82,7 @@ class TCPConnector:
             conn = await wait_for(
                 self.pool.acquire(urlparsed), self.timeouts.pool_acquire
             )
+            conn.cycled = False
             return await self.after_acquire(
                 urlparsed, conn, verify, ssl, timeouts, http2
             )
@@ -88,15 +90,18 @@ class TCPConnector:
             raise ConnectionPoolAcquireTimeout()
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
-        dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
-
         try:
+            dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
             await wait_for(
                 conn.connect(urlparsed, dns_info, verify, ssl, http2),
                 timeout=timeouts.sock_connect,
             )
         except TimeoutException:
+            await self.release(conn)
             raise ConnectTimeout()
+        except Exception:
+            await self.release(conn)
+            raise
         return conn
 
     async def release(self, conn):
