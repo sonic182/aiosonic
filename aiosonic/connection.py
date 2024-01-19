@@ -1,7 +1,8 @@
 """Connection stuffs."""
 
 import ssl
-from asyncio import StreamReader, StreamWriter, open_connection
+from asyncio import StreamReader, StreamWriter, open_connection, CancelledError
+from asyncio import sleep as asyncio_sleep
 from ssl import SSLContext
 from typing import Dict, Optional
 from urllib.parse import ParseResult
@@ -11,6 +12,7 @@ import h2.connection
 import h2.events
 
 from aiosonic.connectors import TCPConnector
+from aiosonic.pools import CyclicQueuePool
 
 # from concurrent import futures (unused)
 from aiosonic.exceptions import HttpParsingError
@@ -31,9 +33,16 @@ class Connection:
         self.blocked = False
         self.temp_key: Optional[str] = None
         self.requests_count = 0
+        self.cycled = False
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
+
+    def is_closing(self):
+        if self.writer:
+            return getattr(self.writer, "is_closing", self.writer._transport.is_closing)
+        else:
+            return False
 
     async def connect(
         self,
@@ -125,21 +134,43 @@ class Connection:
 
     async def __aexit__(self, exc_type: None, exc: None, tb: None) -> None:
         """Release connection."""
-        if self.keep and not exc:
-            self.key = self.temp_key
-        else:
-            self.key = None
-            self.h2conn = None
-            if self.writer and not self.blocked:
+        try:
+            if self.keep and not exc:
+                self.key = self.temp_key
+            else:
+                self.key = None
+                self.h2conn = None
+
+            if (not self.keep or type(self.connector.pool) == CyclicQueuePool) and self.writer and not self.blocked:
                 self.close()
 
-        if not self.blocked:
-            await self.release()
-            if self.h2handler:  # pragma: no cover
-                self.h2handler.cleanup()
+            if not self.blocked and not self.cycled:
+                await self.release()
+                if self.h2handler:  # pragma: no cover
+                    self.h2handler.cleanup()
+
+            else:
+                while self.blocked:
+                    asyncio_sleep(0.05)
+                if self.cycled:
+                    return None
+                elif self.writer and not self.is_closing() and type(self.connector.pool) == CyclicQueuePool:
+                    self.close()
+                if not self.cycled:
+                    await self.release()
+
+        except CancelledError:
+            if self.writer and not self.is_closing() and type(self.connector.pool) == CyclicQueuePool:
+                self.close()
+            if not self.cycled:
+                await self.release()
+            raise
 
     async def release(self) -> None:
         """Release connection."""
+        if self.cycled:
+            return None
+        self.cycled = True
         await self.connector.release(self)
         self.requests_count += 1
         # if keep False and blocked (by latest chunked response), close it.
@@ -154,16 +185,18 @@ class Connection:
 
     def __del__(self) -> None:
         """Cleanup."""
-        self.close(True)
+        if not self.cycled:
+            self.close(True)
 
-    def close(self, check_closing: bool = False) -> None:
+    def close(self, back_to_queue: bool = False) -> None:
         """Close connection if opened."""
-        if self.writer:
-            is_closing = getattr(
-                self.writer, "is_closing", self.writer._transport.is_closing
-            )
-            if not check_closing or is_closing():
-                self.writer.close()
+        if self.writer and not self.is_closing():
+            self.blocked = False
+            self.writer.close()
+        if back_to_queue == True:
+            if not self.cycled:
+                self.cycled = True
+                self.connector.pool.pool.put_nowait(self)
 
     async def http2_request(
         self, headers: Dict[str, str], body: Optional[ParsedBodyType]
