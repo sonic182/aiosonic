@@ -22,7 +22,29 @@ from aiosonic.types import ParsedBodyType
 
 
 class Connection:
-    """Connection class."""
+    """Connection class.
+
+    This class represents a connection to a remote server, managing the communication
+    through a socket. It is designed to handle both HTTP/1.1 and HTTP/2 protocols.
+
+    Attributes:
+        connector (TCPConnector): An instance of the TCPConnector class responsible
+            for managing the connection pool.
+        reader (Optional[StreamReader]): A StreamReader for reading data from the socket.
+        writer (Optional[StreamWriter]): A StreamWriter for efficiently writing data
+            to the socket.
+        keep (bool): A flag indicating whether the connection should be kept alive.
+        key (Optional[str]): A key identifying the connection based on the hostname and port.
+        blocked (bool): A flag indicating whether the connection is currently blocked,
+            meaning it is in use and should not be reinserted into the pool until all
+            data has been read.
+        temp_key (Optional[str]): A temporary key used during the connection setup process.
+        requests_count (int): The count of requests made over the connection.
+        h2conn (Optional[h2.connection.H2Connection]): An instance of the H2Connection
+            class representing the HTTP/2 connection.
+        h2handler (Optional[Http2Handler]): An instance of the Http2Handler class
+            responsible for handling HTTP/2 requests.
+    """
 
     def __init__(self, connector: TCPConnector) -> None:
         self.connector = connector
@@ -65,6 +87,12 @@ class Connection:
         if not self.reader:
             raise MissingReaderException("reader not set.")
         return await self.reader.readexactly(size)
+
+    async def readuntil(self, separator: bytes):
+        """Read until separator"""
+        if not self.reader:
+            raise MissingReaderException("reader not set.")
+        return await self.reader.readuntil(separator)
 
     async def _connect(
         self,
