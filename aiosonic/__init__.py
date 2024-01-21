@@ -208,8 +208,9 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
+        assert self.connection
         while True and not self.chunks_readed:
-            chunk_size = int((await self.connectionreadline()).rstrip(), 16)
+            chunk_size = int((await self.connection.readline()).rstrip(), 16)
             if not chunk_size:
                 # read last CRLF
                 await self.connection.readline()
