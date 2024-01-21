@@ -441,7 +441,7 @@ async def _do_request(
 
         # get response code and version
         try:
-            line = await wait_for(connection.readuntil(), timeouts.sock_read)
+            line = await wait_for(connection.readline(), timeouts.sock_read)
             if not line:
                 raise HttpParsingError(f"response line parsing error: {line}")
             response._set_response_initial(line)
