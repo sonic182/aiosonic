@@ -11,8 +11,11 @@ import h2.connection
 import h2.events
 
 from aiosonic.connectors import TCPConnector
-
-from aiosonic.exceptions import HttpParsingError
+from aiosonic.exceptions import (
+    HttpParsingError,
+    MissingReaderException,
+    MissingWriterException,
+)
 from aiosonic.http2 import Http2Handler
 from aiosonic.tcp_helpers import keepalive_flags
 from aiosonic.types import ParsedBodyType
@@ -44,6 +47,24 @@ class Connection:
     ) -> None:
         """Connet with timeout."""
         await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
+
+    def write(self, data: bytes):
+        """Write data in the socket."""
+        if not self.writer:
+            raise MissingWriterException("writer not set.")
+        self.writer.write(data)
+
+    async def readline(self):
+        """Read data until line break"""
+        if not self.reader:
+            raise MissingReaderException("reader not set.")
+        return await self.reader.readline()
+
+    async def readexactly(self, size: int):
+        """Read exactly size of bytes"""
+        if not self.reader:
+            raise MissingReaderException("reader not set.")
+        return await self.reader.readexactly(size)
 
     async def _connect(
         self,

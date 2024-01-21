@@ -209,14 +209,14 @@ class HttpResponse:
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
         while True and not self.chunks_readed:
-            chunk_size = int((await self.connection.reader.readline()).rstrip(), 16)
+            chunk_size = int((await self.connectionreadline()).rstrip(), 16)
             if not chunk_size:
                 # read last CRLF
-                await self.connection.reader.readline()
+                await self.connection.readline()
                 # free connection
                 await self.connection.release()
                 break
-            chunk = await self.connection.reader.readexactly(chunk_size + 2)
+            chunk = await self.connection.readexactly(chunk_size + 2)
             yield chunk[:-2]
         self.chunks_readed = True
 
@@ -328,7 +328,7 @@ def _handle_chunk(chunk: bytes, connection: Connection):
     if not connection.writer:
         raise MissingWriterException("missing writer in connection")
 
-    connection.writer.write(chunk_size.encode() + chunk + _NEW_LINE.encode())
+    connection.write(chunk_size.encode() + chunk + _NEW_LINE.encode())
 
 
 async def _send_chunks(connection: Connection, body: BodyType):
@@ -344,7 +344,7 @@ async def _send_chunks(connection: Connection, body: BodyType):
 
     if not connection.writer:
         raise MissingWriterException("missing writer in connection")
-    connection.writer.write(("0" + _NEW_LINE * 2).encode())
+    connection.write(("0" + _NEW_LINE * 2).encode())
 
 
 async def _send_multipart(
@@ -428,20 +428,20 @@ async def _do_request(
         if not connection.writer or not connection.reader:
             raise ConnectionError("Not connection writer or reader")
 
-        connection.writer.write(to_send)
+        connection.write(to_send)
 
         if body:
             if isinstance(body, (AsyncIterator, Iterator)):
                 await _send_chunks(connection, body)
             else:
-                connection.writer.write(body)
+                connection.write(body)
 
         response = HttpResponse()
         response._set_request_meta(urlparsed)
 
         # get response code and version
         try:
-            line = await wait_for(connection.reader.readuntil(), timeouts.sock_read)
+            line = await wait_for(connection.readuntil(), timeouts.sock_read)
             if not line:
                 raise HttpParsingError(f"response line parsing error: {line}")
             response._set_response_initial(line)
@@ -463,7 +463,7 @@ async def _do_request(
         response.compressed = response.headers.get("content-encoding", "")
 
         if size:
-            response._set_body(await connection.reader.readexactly(int(size)))
+            response._set_body(await connection.readexactly(int(size)))
 
         if chunked:
             connection.block_until_read_chunks()
