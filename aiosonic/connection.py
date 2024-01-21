@@ -88,7 +88,7 @@ class Connection:
             raise MissingReaderException("reader not set.")
         return await self.reader.readexactly(size)
 
-    async def readuntil(self, separator: bytes):
+    async def readuntil(self, separator: bytes = b'\n'):
         """Read until separator"""
         if not self.reader:
             raise MissingReaderException("reader not set.")
