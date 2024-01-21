@@ -63,8 +63,8 @@ jobs:
           COV_CORE_CONFIG: .coveragerc 
           COV_CORE_DATAFILE: .coverage.eager 
 
-      - name: Coveralls
-        env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-            coveralls --service=github
+      # - name: Coveralls
+      #   env:
+      #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #       coveralls --service=github
