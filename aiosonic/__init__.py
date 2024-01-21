@@ -209,17 +209,19 @@ class HttpResponse:
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
         assert self.connection
-        while True and not self.chunks_readed:
-            chunk_size = int((await self.connection.readline()).rstrip(), 16)
-            if not chunk_size:
-                # read last CRLF
-                await self.connection.readline()
-                # free connection
-                await self.connection.release()
-                break
-            chunk = await self.connection.readexactly(chunk_size + 2)
-            yield chunk[:-2]
-        self.chunks_readed = True
+        try:
+            while True and not self.chunks_readed:
+                chunk_size = int((await self.connection.readline()).rstrip(), 16)
+                if not chunk_size:
+                    # read last CRLF
+                    await self.connection.readline()
+                    break
+                chunk = await self.connection.readexactly(chunk_size + 2)
+                yield chunk[:-2]
+            self.chunks_readed = True
+        finally:
+            # Ensure the conn get's released
+            await self.connection.release()
 
     def __del__(self):
         # clean it
