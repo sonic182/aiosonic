@@ -9,6 +9,9 @@ except ImportError:
 class MissingWriterException(Exception):
     pass
 
+class MissingReaderException(Exception):
+    pass
+
 
 # timeouts
 class BaseTimeout(Exception):
