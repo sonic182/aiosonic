@@ -1,3 +1,5 @@
+"""Pure python HTTP parser."""
+
 from typing import TYPE_CHECKING, AsyncIterator, Dict, Iterator, List
 from urllib.parse import ParseResult, urlencode, urlparse
 
@@ -26,7 +28,7 @@ async def parse_headers_iterator(connection: Connection):
     """Transform loop to iterator."""
     while True:
         # StreamReader already buffers data reading so it is efficient.
-        res_data = await connection.reader.readline()
+        res_data = await connection.readline()
         if b": " not in res_data and b":" not in res_data:
             break
         yield res_data
