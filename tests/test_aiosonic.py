@@ -401,7 +401,7 @@ async def test_request_timeout(app, aiohttp_server, mocker):
         await asyncio.sleep(3)
 
     _connect = mocker.patch("aiosonic._do_request", new=long_request)
-    _connect.return_value = long_request()
+    _connect.return_value = await long_request()
     connector = TCPConnector(timeouts=Timeouts(request_timeout=0.2))
     async with aiosonic.HTTPClient(connector) as client:
         with pytest.raises(RequestTimeout):
