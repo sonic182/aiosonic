@@ -193,8 +193,24 @@ class HttpResponse:
             async for chunk in self.read_chunks():
                 res += chunk
             self._set_body(res)
-        if self.body and self.connection.waiter is not None and not self.connection.waiter.done():
-            self.connection.waiter.set_result(None)
+        if (
+            self.body and
+            self.connection
+           ):
+            if (
+                self.connection.waiter is not None and
+                not self.connection.waiter.done()
+               ):
+                self.connection.waiter.set_result(None)
+        elif (
+            self.body and
+            self.connector.connection
+             ):
+            if (
+                self.connector.connection.waiter is not None and
+                not self.connector.connection.waiter.done()
+               ):
+                self.connector.connection.waiter.set_result(None)
         return self.body
 
     async def text(self) -> str:
