@@ -15,7 +15,7 @@ from aiosonic.exceptions import (
     HttpParsingError,
     TimeoutException,
 )
-from aiosonic.pools import SmartPool
+from aiosonic.pools import SmartPool, CyclicQueuePool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
 
@@ -88,15 +88,23 @@ class TCPConnector:
             raise ConnectionPoolAcquireTimeout()
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
-        dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
 
         try:
+            dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
             await wait_for(
                 conn.connect(urlparsed, dns_info, verify, ssl, http2),
                 timeout=timeouts.sock_connect,
             )
         except TimeoutException:
+            if self.pool == CyclicQueuePool and conn.writer:
+                conn.writer.close()
+            await self.release(conn)
             raise ConnectTimeout()
+        except BaseException:
+            if self.pool == CyclicQueuePool and conn.writer:
+                conn.writer.close()
+            await self.release(conn)
+            raise
         return conn
 
     async def release(self, conn):
