@@ -192,7 +192,7 @@ class Connection:
                 if self.h2handler:  # pragma: no cover
                     self.h2handler.cleanup()
 
-            elif self.waiter is not None:
+            elif self.waiter is not None and self.h2handler is None:
                 await self.waiter
                 if type(self.connector.pool) == CyclicQueuePool:
                     self.close()
@@ -220,10 +220,6 @@ class Connection:
             self.close()
         # ensure unblock conn object after read
         self.blocked = False
-
-    def __del__(self) -> None:
-        """Cleanup."""
-        self.close(True)
 
     def close(self, check_closing: bool = False) -> None:
         """Close connection if opened."""
