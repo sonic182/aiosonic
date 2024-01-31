@@ -36,6 +36,7 @@ from aiosonic.exceptions import (
 from aiosonic.proxy import Proxy
 from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
+from aiosonic.pools import CyclicQueuePool
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
@@ -192,6 +193,8 @@ class HttpResponse:
             async for chunk in self.read_chunks():
                 res += chunk
             self._set_body(res)
+        if self.body and self.connection.waiter is not None and not self.connection.waiter.done():
+            self.connection.waiter.set_result(None)
         return self.body
 
     async def text(self) -> str:
@@ -214,19 +217,14 @@ class HttpResponse:
                 # read last CRLF
                 await self.connection.reader.readline()
                 # free connection
-                await self.connection.release()
+                if self.connection.connector.pool == CyclicQueuePool:
+                    pass
+                else:
+                    await self.connection.release()
                 break
             chunk = await self.connection.reader.readexactly(chunk_size + 2)
             yield chunk[:-2]
         self.chunks_readed = True
-
-    def __del__(self):
-        # clean it
-        if self.chunked and not self.chunks_readed:
-            loop = None
-            if self.connection:
-                loop = get_loop()
-                loop.create_task(self.connection.release())
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
