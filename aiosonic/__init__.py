@@ -202,15 +202,6 @@ class HttpResponse:
                 not self.connection.waiter.done()
                ):
                 self.connection.waiter.set_result(None)
-        elif (
-            self.body and
-            self.connector.connection
-             ):
-            if (
-                self.connector.connection.waiter is not None and
-                not self.connector.connection.waiter.done()
-               ):
-                self.connector.connection.waiter.set_result(None)
         return self.body
 
     async def text(self) -> str:
@@ -489,6 +480,7 @@ async def _do_request(
             response._set_connection(connection)
         else:
             connection.keep = False
+            response._set_connection(connection)
 
         return response
 
