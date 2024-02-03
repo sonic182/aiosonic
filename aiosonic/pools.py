@@ -18,7 +18,7 @@ class CyclicQueuePool:
         """Acquire connection."""
         return await self.pool.get()
 
-    async def release(self, conn):
+    def release(self, conn):
         """Release connection."""
         return self.pool.put_nowait(conn)
 
