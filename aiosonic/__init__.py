@@ -223,10 +223,10 @@ class HttpResponse:
     def __del__(self):
         # clean it
         if self.connection and self.connection.blocked:
-             if self.connection.writer:
-                self.connection.writer._transport.abort()
-             self.connection.blocked = False
-             self.connection.connector.pool.release(self.connection)
+            if self.connection.writer:
+               self.connection.writer._transport.abort()
+            self.connection.blocked = False
+            self.connection.connector.pool.release(self.connection)
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
