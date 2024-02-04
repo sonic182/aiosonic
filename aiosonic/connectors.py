@@ -96,6 +96,7 @@ class TCPConnector:
                 timeout=timeouts.sock_connect,
             )
         except TimeoutException:
+            conn.close()
             await self.release(conn)
             raise ConnectTimeout()
         except BaseException as ex:
