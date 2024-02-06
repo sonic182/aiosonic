@@ -37,7 +37,7 @@ class CyclicQueuePool:
 
 
 class SmartPool:
-    """Pool which utilizes alive connections."""
+    """Pool which priorizes the reusage of connections."""
 
     def __init__(self, connector, pool_size, connection_cls):
         self.pool_size = pool_size
