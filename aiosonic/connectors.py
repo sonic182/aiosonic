@@ -88,15 +88,20 @@ class TCPConnector:
             raise ConnectionPoolAcquireTimeout()
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
-        dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
 
         try:
+            dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
             await wait_for(
                 conn.connect(urlparsed, dns_info, verify, ssl, http2),
                 timeout=timeouts.sock_connect,
             )
         except TimeoutException:
+            conn.close()
+            await self.release(conn)
             raise ConnectTimeout()
+        except BaseException as ex:
+            await self.release(conn)
+            raise ex
         return conn
 
     async def release(self, conn):

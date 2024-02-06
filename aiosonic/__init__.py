@@ -225,11 +225,11 @@ class HttpResponse:
 
     def __del__(self):
         # clean it
-        if self.chunked and not self.chunks_readed:
-            loop = None
-            if self.connection:
-                loop = get_loop()
-                loop.create_task(self.connection.release())
+        if self.connection and self.connection.blocked:
+            if self.connection.writer:
+               self.connection.writer._transport.abort()
+            self.connection.blocked = False
+            self.connection.connector.pool.release(self.connection)
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
@@ -477,6 +477,7 @@ async def _do_request(
             response._set_connection(connection)
         else:
             connection.keep = False
+            response._set_connection(connection)
 
         return response
 
