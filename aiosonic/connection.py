@@ -88,7 +88,7 @@ class Connection:
             raise MissingReaderException("reader not set.")
         return await self.reader.readexactly(size)
 
-    async def readuntil(self, separator: bytes = b'\n'):
+    async def readuntil(self, separator: bytes = b"\n"):
         """Read until separator"""
         if not self.reader:
             raise MissingReaderException("reader not set.")
@@ -182,13 +182,13 @@ class Connection:
                 self.close()
 
         if not self.blocked:
-            await self.release()
+            self.release()
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 
-    async def release(self) -> None:
+    def release(self) -> None:
         """Release connection."""
-        await self.connector.release(self)
+        self.connector.release(self)
         self.requests_count += 1
         # if keep False and blocked (by latest chunked response), close it.
         # server said to close it.
@@ -203,6 +203,14 @@ class Connection:
     def __del__(self) -> None:
         """Cleanup."""
         self.close(True)
+
+    def ensure_released(self):
+        """Ensure the connection is released."""
+        if self.blocked:
+            if self.writer:
+                self.writer._transport.abort()
+            self.blocked = False
+            self.release()
 
     def close(self, check_closing: bool = False) -> None:
         """Close connection if opened."""

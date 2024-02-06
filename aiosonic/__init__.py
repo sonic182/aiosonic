@@ -208,7 +208,8 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
-        assert self.connection
+        if not self.connection:
+            raise ConnectionError("missing connection, possible already read response.")
         try:
             while True and not self.chunks_readed:
                 chunk_size = int((await self.connection.readline()).rstrip(), 16)
@@ -221,15 +222,13 @@ class HttpResponse:
             self.chunks_readed = True
         finally:
             # Ensure the conn get's released
-            await self.connection.release()
+            self.connection.release()
+            self.connection = None
 
     def __del__(self):
         # clean it
-        if self.connection and self.connection.blocked:
-            if self.connection.writer:
-               self.connection.writer._transport.abort()
-            self.connection.blocked = False
-            self.connection.connector.pool.release(self.connection)
+        if self.connection:
+            self.connection.ensure_released()
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
@@ -474,10 +473,9 @@ async def _do_request(
 
         if keepalive:
             connection.keep_alive()
-            response._set_connection(connection)
         else:
             connection.keep = False
-            response._set_connection(connection)
+        response._set_connection(connection)
 
         return response
 

@@ -97,18 +97,16 @@ class TCPConnector:
             )
         except TimeoutException:
             conn.close()
-            await self.release(conn)
+            self.release(conn)
             raise ConnectTimeout()
         except BaseException as ex:
-            await self.release(conn)
+            self.release(conn)
             raise ex
         return conn
 
-    async def release(self, conn):
+    def release(self, conn):
         """Release connection."""
-        res = self.pool.release(conn)
-        if isinstance(res, Coroutine):
-            await res
+        self.pool.release(conn)
 
     async def wait_free_pool(self):
         """Wait until free pool."""

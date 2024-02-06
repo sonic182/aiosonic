@@ -486,7 +486,9 @@ async def test_get_chunked_response(app, aiohttp_server):
 
         async for chunk in res.read_chunks():
             assert chunk in chunks
-        assert await res.text() == ""  # chunks already readed manually
+
+        with pytest.raises(ConnectionError):
+            assert await res.text() == ""  # chunks already readed manually
         await server.close()
 
 
