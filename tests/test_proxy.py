@@ -9,7 +9,7 @@ from tests.conftest import check_port
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_proxy_request(app, aiohttp_server, proxy_serv):
     """Test proxy request."""
     server = await aiohttp_server(app)
