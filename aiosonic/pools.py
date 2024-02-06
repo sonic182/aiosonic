@@ -32,7 +32,7 @@ class CyclicQueuePool:
     async def cleanup(self):
         """Get all conn and close them, this method let this pool unusable."""
         for _ in range(self.pool_size):
-            conn = self.pool.get()
+            conn = self.pool.get_nowait()
             conn.close()
 
 
