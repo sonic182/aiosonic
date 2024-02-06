@@ -22,9 +22,8 @@ build:
 formats: all
 
 # Optionally set the version of Python and requirements required to build your docs
-# python:
-#   version: 3.12
-#   install:
-#     - requirements: sourcedocs/requirements.txt
-#     - method: pip
-#       path: .
+python:
+  install:
+    - requirements: sourcedocs/requirements.txt
+    - method: pip
+      path: .
