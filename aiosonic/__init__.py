@@ -93,7 +93,7 @@ class HttpResponse:
         self.raw_headers = []
         self.body = b""
         self.response_initial = {}
-        self.connection = None
+        self._connection = None
         self.chunked = False
         self.compressed = b""
         self.chunks_readed = False
@@ -139,7 +139,7 @@ class HttpResponse:
 
     def _set_connection(self, connection: Connection):
         """Set header to response."""
-        self.connection = connection
+        self._connection = connection
 
     @property
     def status_code(self) -> int:
@@ -208,27 +208,27 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
-        if not self.connection:
+        if not self._connection:
             raise ConnectionError("missing connection, possible already read response.")
         try:
             while True and not self.chunks_readed:
-                chunk_size = int((await self.connection.readline()).rstrip(), 16)
+                chunk_size = int((await self._connection.readline()).rstrip(), 16)
                 if not chunk_size:
                     # read last CRLF
-                    await self.connection.readline()
+                    await self._connection.readline()
                     break
-                chunk = await self.connection.readexactly(chunk_size + 2)
+                chunk = await self._connection.readexactly(chunk_size + 2)
                 yield chunk[:-2]
             self.chunks_readed = True
         finally:
             # Ensure the conn get's released
-            self.connection.release()
-            self.connection = None
+            self._connection.release()
+            self._connection = None
 
     def __del__(self):
         # clean it
-        if self.connection:
-            self.connection.ensure_released()
+        if self._connection:
+            self._connection.ensure_released()
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
@@ -512,11 +512,6 @@ class HTTPClient:
     async def __aexit__(self, _exc_type, exc, _tb):  # type: ignore
         if exc:
             raise exc
-        await self.shutdown()
-
-    async def shutdown(self):
-        """Cleanup connections, this method makes client unusable."""
-        await self.connector.cleanup()
 
     async def _request_with_body(
         self,

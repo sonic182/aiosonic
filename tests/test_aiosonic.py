@@ -476,7 +476,7 @@ async def test_get_chunked_response(app, aiohttp_server):
 
     async with aiosonic.HTTPClient() as client:
         res = await client.get(url)
-        assert res.connection
+        assert res._connection
         assert res.status_code == 200
 
         chunks = [b"foo", b"bar"]
@@ -526,7 +526,7 @@ async def test_read_chunks_by_text_method(app, aiohttp_server):
 
     async with aiosonic.HTTPClient() as client:
         res = await client.get(url)
-        assert res.connection
+        assert res._connection
         assert res.status_code == 200
         assert await res.text() == "foobar"
         await server.close()
