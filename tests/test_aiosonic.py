@@ -456,19 +456,16 @@ async def test_simple_get_ssl_ctx(app, aiohttp_server, ssl_context):
         await server.close()
 
 
-# sometimes doesn't raise and get stuck
-#
-# @pytest.mark.asyncio
-# @pytest.mark.timeout(2)
-# async def test_simple_get_ssl_no_valid(app, aiohttp_server, ssl_context):
-#     """Test simple get with https no valid."""
-#     server = await aiohttp_server(app, ssl=ssl_context)
-#     url = 'https://localhost:%d' % server.port
-#     async with aiosonic.HTTPClient() as client:
-#
-#         with pytest.raises(ssl.SSLError):
-#             await client.get(url)
-#         await server.close()
+@pytest.mark.asyncio
+@pytest.mark.timeout(2)
+async def test_simple_get_ssl_no_valid(app, aiohttp_server, ssl_context):
+    """Test simple get with https no valid."""
+    server = await aiohttp_server(app, ssl=ssl_context)
+    url = "https://localhost:%d" % server.port
+    async with aiosonic.HTTPClient() as client:
+        with pytest.raises(ssl.SSLError):
+            await client.get(url)
+        await server.close()
 
 
 @pytest.mark.asyncio
