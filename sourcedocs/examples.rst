@@ -60,18 +60,10 @@ Concurrent Requests
        async with aiosonic.HTTPClient() as client:
            # asyncio.gather is the key for concurrent requests.
            responses = await asyncio.gather(*[client.get(url) for url in urls])
-
-           # stream/chunked responses doesn't release the connection acquired
-           # from the pool until the response has been read, so better to read
-           # it.
-           for response in responses:
-               if response.chunked:
-                   await response.text()
-
            assert all([res.status_code in [200, 301] for res in responses])
 
    loop = asyncio.get_event_loop()
-   loo.run_until_complete(main())
+   loop.run_until_complete(main())
 
 
 Chunked Requests
@@ -208,3 +200,40 @@ Configure aiosonic logger at debug level to see some logging
 
  loop = asyncio.get_event_loop()
  loop.run_until_complete(run())
+
+
+Fastapi Usage
+=============
+
+You need to use the fastapi `dependency system <https://fastapi.tiangolo.com/tutorial/dependencies/>`_ in order to have a common HTTPClient instance
+
+.. code-block::  python
+
+
+  from contextlib import asynccontextmanager
+  from typing import Union
+
+  from aiosonic import HTTPClient
+
+  from fastapi import FastAPI
+
+  client = HTTPClient()
+
+
+  @asynccontextmanager
+  async def lifespan(_app: FastAPI):
+      global client
+      yield
+      # useful function to wait all pending requests to finish
+      await client.wait_requests()
+
+
+  app = FastAPI(lifespan=lifespan)
+
+
+  @app.get("/")
+  async def home():
+      assert client, "no client"
+      url = "https://postman-echo.com/post"
+      res = await client.post(url, params={"foo": "bar"})
+      return (await res.json())["args"]

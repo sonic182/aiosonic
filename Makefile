@@ -7,7 +7,7 @@ SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sourcedocs
 BUILDDIR      = docs
-DOCKER_CMD    = curl -sL https://deb.nodesource.com/setup_20.x | bash && apt-get update && apt-get install nodejs -y && cd /root && cp -r /app/* . && pip install -r requirements.txt && pip install -e \".[test]\" && pytest
+DOCKER_CMD    = curl -sL https://deb.nodesource.com/setup_20.x | bash && apt-get update && apt-get install nodejs -y && cd /root && cp -r /app/* . && pip install -r requirements.txt && pip install -e \".[test]\" && ./tests.sh
 
 # Put it first so that "make" without argument is like "make help".
 help:
