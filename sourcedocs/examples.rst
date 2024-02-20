@@ -205,8 +205,6 @@ Configure aiosonic logger at debug level to see some logging
 Fastapi Usage
 =============
 
-You need to use the fastapi `dependency system <https://fastapi.tiangolo.com/tutorial/dependencies/>`_ in order to have a common HTTPClient instance
-
 .. code-block::  python
 
 
