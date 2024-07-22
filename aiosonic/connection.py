@@ -209,6 +209,7 @@ class Connection:
         if self.blocked:
             if self.writer:
                 self.writer._transport.abort()
+                self.reader = None
             self.blocked = False
             self.release()
 
