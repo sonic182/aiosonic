@@ -1535,6 +1535,25 @@ docs = ["Sphinx (>=4.1.2,<4.2.0)", "sphinx-rtd-theme (>=0.5.2,<0.6.0)", "sphinxc
 test = ["Cython (>=0.29.36,<0.30.0)", "aiohttp (==3.9.0b0)", "aiohttp (>=3.8.1)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil", "pyOpenSSL (>=23.0.0,<23.1.0)", "pycodestyle (>=2.9.0,<2.10.0)"]
 
 [[package]]
+name = "winloop"
+version = "0.1.6"
+description = "Windows version of uvloop"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "winloop-0.1.6-cp310-cp310-win_amd64.whl", hash = "sha256:579b74173444d2f81a7db2f3dc40c282b68d926f7ef3e60fd70dff0db86502d9"},
+    {file = "winloop-0.1.6-cp311-cp311-win_amd64.whl", hash = "sha256:21c672482bb3a55c6c73030242e7555315ad12cb7382a4879f8e08d99bc8d976"},
+    {file = "winloop-0.1.6-cp312-cp312-win_amd64.whl", hash = "sha256:9aa0118354f07b2f36953c88f3767fa9832e4de9be2ee76419b8de72a8315cce"},
+    {file = "winloop-0.1.6-cp38-cp38-win_amd64.whl", hash = "sha256:ee5114a971910b6d7ad4fcaf855838b53995c3f6213cd4a78a35644cd2309c1f"},
+    {file = "winloop-0.1.6-cp39-cp39-win_amd64.whl", hash = "sha256:180b55fe6a7fddb2a67bdc9b9d0a1cad22d144e5508abc9d8e6a52083ebee845"},
+    {file = "winloop-0.1.6.tar.gz", hash = "sha256:bd8cda3a4281b5bb4368f8ed94e833421738ee8dba1d208ce8edc1d476eb7b9c"},
+]
+
+[package.extras]
+docs = ["Sphinx (>=4.1.2,<4.2.0)", "sphinx-rtd-theme (>=0.5.2,<0.6.0)", "sphinxcontrib-asyncio (>=0.3.0,<0.4.0)"]
+test = ["Cython (>=0.29.36,<0.30.0)", "aiohttp (==3.9.0b0)", "aiohttp (>=3.8.1)", "flake8 (>=5.0,<6.0)", "mypy (>=0.800)", "psutil", "pyOpenSSL (>=23.0.0,<23.1.0)", "pycodestyle (>=2.9.0,<2.10.0)"]
+
+[[package]]
 name = "yarl"
 version = "1.9.4"
 description = "Yet another URL library"
@@ -1640,4 +1659,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.0,<3.13"
-content-hash = "f20e92c17d7921f0ba342a6d8493be6e44ae9ef7848a55e3e6343332bda7a024"
+content-hash = "97637901d9221ca3aa3f4e17d16d6ffcf1218f15b7ba149a62ff5afe2dfe9202"
