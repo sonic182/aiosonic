@@ -84,7 +84,7 @@ jobs:
       
       - name: Test with pytest
         run: |
-          ./tests.sh --cov-append
+          poetry run py.test --cov-append
         env:
           COV_CORE_SOURCE: src 
           COV_CORE_CONFIG: .coveragerc 

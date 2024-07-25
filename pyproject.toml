@@ -62,6 +62,4 @@ mypy-extensions = {version="^1.0.0", markers="platform_python_implementation != 
 pytest-mypy = {version="^0.10.3", markers="platform_python_implementation != 'PyPy'"}
 typed-ast = {version="^1.4.0", markers="platform_python_implementation != 'PyPy'"}
 uvloop = {version="^0.19.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
-
-[virtualenvs]
-in_project = true
+requests = "^2.32.3"
