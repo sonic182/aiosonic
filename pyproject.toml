@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiosonic"
-version = "0.18.1a1"
+version = "0.18.1a2"
 description = "Async http client"
 readme = "README.md"
 license = "MIT"
@@ -25,6 +25,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+packages = [
+  {include = "aiosonic"},
+  {include = "aiosonic_utils"}
 ]
 
 [tool.poetry.dependencies]
