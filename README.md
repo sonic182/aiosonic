@@ -36,8 +36,8 @@ You can perform this test by installing all test dependencies with `pip install 
 
 # Requirements:
 
-* Python>=3.7
-* PyPy>=3.7
+* Python>=3.8
+* PyPy>=3.8
 
 
 # Features:
@@ -106,7 +106,6 @@ async def run():
     response = await client.get('https://www.google.com/', timeouts=timeouts)
     assert response.status_code == 200
     assert 'Google' in (await response.text())
-    await client.shutdown()
 
     print('success')
 
@@ -131,12 +130,22 @@ if __name__ == '__main__':
 
 # Development
 
-Install packages with pip-tools:
+Install packages with poetry
+
+Reference: https://python-poetry.org/docs/
+
 ```bash
-pip install pip-tools
-pip-compile
-pip-compile test-requirements.in
-pip-sync requirements.txt test-requirements.txt
+poetry install
+```
+
+It is advised that you should install poetry in a serparate virtualenv (I suggest to install it with apt/pacman/etc.), other than the one you may use for development in aiosonic.
+
+I do configure poetry with `poetry config virtualenvs.in-project true` so it uses a virtualenv created in `.venv/`, in aiosonic folder.
+
+### Running tests
+
+```bash
+poetry run py.test
 ```
 
 # Contribute

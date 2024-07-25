@@ -6,6 +6,7 @@ import random
 import shlex
 import ssl
 import subprocess
+import sys
 import zlib
 from datetime import datetime, timedelta
 from http.client import RemoteDisconnected
@@ -16,6 +17,9 @@ from urllib.request import urlopen
 import aiohttp
 import pytest
 from aiohttp import web
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def hello(request):

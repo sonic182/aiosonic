@@ -19,11 +19,9 @@ jobs:
           - '3.10'
           - '3.9'
           - '3.8'
-          - '3.7'
           - 'pypy3.10'
           - 'pypy3.9'
           - 'pypy3.8'
-          - 'pypy3.7'
         exclude:
           - os: windows-latest
             python-version: 'pypy3.10'
@@ -74,25 +72,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[test]"
-      #   if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      # - name: Lint with flake8
-      #   run: |
-      #     # stop the build if there are Python syntax errors or undefined names
-      #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-      #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-      #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          pip install poetry
+          poetry install
       
       - name: Test with pytest
         run: |
-          ./tests.sh --cov-append
+          poetry run py.test --cov-append
         env:
           COV_CORE_SOURCE: src 
           COV_CORE_CONFIG: .coveragerc 
           COV_CORE_DATAFILE: .coverage.eager 
-
-      # - name: Coveralls
-      #   env:
-      #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #       coveralls --service=github
