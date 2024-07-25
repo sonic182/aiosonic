@@ -1,10 +1,6 @@
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 [tool.poetry]
 name = "aiosonic"
-version = "0.18.0"
+version = "0.18.1a1"
 description = "Async http client"
 readme = "README.md"
 license = "MIT"
@@ -64,3 +60,7 @@ typed-ast = {version="^1.4.0", markers="platform_python_implementation != 'PyPy'
 uvloop = {version="^0.19.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 requests = "^2.32.3"
 winloop = {version = "^0.1.6", platform = "win32"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
