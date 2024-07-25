@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] 2024-07-25
+### Changed
+- Dependency management with poetry
+
 ## [0.18.0] 2024-02-06
 ### Fixed
 - Pool drain issues (https://github.com/sonic182/aiosonic/pull/456, https://github.com/sonic182/aiosonic/pull/457) Thanks to @geraldog
@@ -259,7 +263,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.18.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.18.1..HEAD
+[0.18.1]: https://github.com/sonic182/aiosonic/compare/0.18.0..0.18.1
 [0.18.0]: https://github.com/sonic182/aiosonic/compare/0.17.1..0.18.0
 [0.17.1]: https://github.com/sonic182/aiosonic/compare/0.17.0..0.17.1
 [0.17.0]: https://github.com/sonic182/aiosonic/compare/0.16.2..0.17.0
