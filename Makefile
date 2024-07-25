@@ -7,16 +7,11 @@ SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sourcedocs
 BUILDDIR      = docs
-DOCKER_CMD    = curl -sL https://deb.nodesource.com/setup_20.x | bash && apt-get update && apt-get install nodejs -y && cd /root && cp -r /app/* . && pip install -r requirements.txt && pip install -e \".[test]\" && ./tests.sh
+DOCKER_CMD    = curl -sL https://deb.nodesource.com/setup_20.x | bash && apt-get update && apt-get install nodejs -y && cd /root && cp -r /app/* . && pip install poetry && poetry install && poetry run py.test
 
 # Put it first so that "make" without argument is like "make help".
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-
-
-test37:
-	echo "TEST PYTHON 3.7"
-	docker run -i --rm -v $(shell pwd):/app python:3.7 bash -c "$(DOCKER_CMD)"
 
 test38:
 	echo "TEST PYTHON 3.8"
