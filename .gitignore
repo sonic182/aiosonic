@@ -22,6 +22,6 @@ logs/*.log*
 .mypy_cache/
 junit/
 env/
-venv*/
 .coverage.*
 docs/
+.venv/
