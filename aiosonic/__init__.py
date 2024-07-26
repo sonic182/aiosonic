@@ -242,7 +242,7 @@ def _get_hostname(hostname_arg, port):
     return hostname
 
 
-def _get_path(url: ParseResult, proxy: Proxy = None):
+def _get_path(url: ParseResult, proxy: Optional[Proxy] = None):
     if proxy is None:
         return url.path or "/"
     else:
@@ -253,11 +253,11 @@ def _prepare_request_headers(
     url: ParseResult,
     connection: Connection,
     method: str,
-    headers: HeadersType = None,
-    params: ParamsType = None,
-    multipart: bool = None,
-    boundary: str = None,
-    proxy: Proxy = None,
+    headers: Optional[HeadersType] = None,
+    params: Optional[ParamsType] = None,
+    multipart: Optional[bool] = None,
+    boundary: Optional[str] = None,
+    proxy: Optional[Proxy] = None,
 ) -> Union[bytes, HeadersType]:
     """Prepare get data."""
     path = _get_path(url, proxy)
@@ -295,10 +295,14 @@ def _prepare_request_headers(
                 "User-Agent": f"aiosonic/{VERSION}",
             },
         )
-    if proxy and proxy.auth:
+
+    if proxy and proxy.auth and url.scheme == "http":
         http_parser.add_headers(
             headers_base,
-            {"Proxy-Authorization": f"Basic {proxy.auth.decode()}"},
+            {
+                "Proxy-Connection": "keep-alive",
+                "Proxy-Authorization": f"Basic {proxy.auth.decode()}",
+            },
         )
 
     if multipart:
@@ -411,7 +415,7 @@ async def _do_request(
     ssl: Optional[SSLContext],
     timeouts: Optional[Timeouts],
     http2: bool = False,
-    proxy: Proxy = None,
+    proxy: Optional[Proxy] = None,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -420,8 +424,14 @@ async def _do_request(
     if proxy:
         url_connect = http_parser.get_url_parsed(proxy.host)
 
-    args = url_connect, verify, ssl, timeouts, http2
-    async with (await connector.acquire(*args)) as connection:
+    connect_ssl = ssl if not proxy else None
+
+    args = url_connect, verify, connect_ssl, timeouts, http2
+    async with await connector.acquire(*args) as connection:
+
+        if proxy and urlparsed.scheme == "https":
+            await _proxy_connect(connection, proxy, urlparsed, ssl)
+
         to_send = headers_data(connection=connection)
 
         if connection.h2conn:
@@ -840,3 +850,31 @@ class HTTPClient:
         """Save new cookies in map."""
         if response.cookies:
             self.cookies_map[host] = response.cookies
+
+
+async def _proxy_connect(
+    connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext
+):
+    """Send CONNECT and upgrade connection."""
+
+    port = desturl.port or (443 if desturl.scheme == "https" else 80)
+    hostname = _get_hostname(desturl.hostname, port)
+    to_send = f"CONNECT {hostname}:{port} HTTP/1.1{_NEW_LINE}"
+    to_send += f"HOST: {hostname}:{port}{_NEW_LINE}"
+    to_send += f"Proxy-Connection: keep-alive{_NEW_LINE}"
+    if proxy.auth:
+        to_send += f"Proxy-Authorization: Basic {proxy.auth.decode()}{_NEW_LINE}"
+    to_send += _NEW_LINE
+
+    assert connection.writer
+    connection.write(to_send.encode())
+    await connection.writer.drain()
+
+    connect_response = await connection.read(4096)
+    if b"200 Connection established" not in connect_response:
+        connection.close()
+        raise ConnectionError(
+            f"Failed to establish connection through proxy: {connect_response}"
+        )
+    
+    await connection.upgrade(ssl_context)
