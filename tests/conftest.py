@@ -1,6 +1,7 @@
 """Fixtures and more."""
 
 import asyncio
+import datetime
 import gzip
 import random
 import shlex
@@ -8,7 +9,6 @@ import ssl
 import subprocess
 import sys
 import zlib
-import datetime
 from time import sleep
 
 import aiohttp
@@ -231,6 +231,7 @@ def check_port(port, hostname="localhost", timeout_seconds=10):
         sleep(0.2)
         if utcnow() > max_wait:
             raise Exception(f"port {port} never got active.")
+
 
 def utcnow():
     if sys.version_info >= (3, 11):
