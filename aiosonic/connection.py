@@ -11,8 +11,11 @@ import h2.connection
 import h2.events
 
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import (HttpParsingError, MissingReaderException,
-                                 MissingWriterException)
+from aiosonic.exceptions import (
+    HttpParsingError,
+    MissingReaderException,
+    MissingWriterException,
+)
 from aiosonic.http2 import Http2Handler
 from aiosonic.tcp_helpers import keepalive_flags
 from aiosonic.types import ParsedBodyType
@@ -47,9 +50,6 @@ class Connection:
         self.connector = connector
         self.reader: Optional[StreamReader] = None
         self.writer: Optional[StreamWriter] = None
-
-        self.old_reader: Optional[StreamReader] = None
-        self.old_writer: Optional[StreamWriter] = None
 
         self.keep = False  # keep alive flag
         self.key = None
@@ -198,8 +198,8 @@ class Connection:
             )
             if not check_closing or is_closing():
                 self.writer.close()
-    
-    async def upgrade(self, ssl_context: SSLContext= None):
+
+    async def upgrade(self, ssl_context: SSLContext = None):
         ssl_context = ssl_context or get_default_ssl_context(self.verify)
         if not self.writer:
             raise MissingWriterException()
@@ -242,7 +242,7 @@ def get_default_ssl_context(verify=True, http2=False):
         ssl_context = ssl.create_default_context(
             ssl.Purpose.SERVER_AUTH,
         )
-    
+
     if not verify:
         ssl_context.check_hostname = False
         ssl_context.verify_mode = ssl.CERT_NONE
