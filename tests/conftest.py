@@ -1,6 +1,7 @@
 """Fixtures and more."""
 
 import asyncio
+import datetime
 import gzip
 import random
 import shlex
@@ -8,11 +9,7 @@ import ssl
 import subprocess
 import sys
 import zlib
-from datetime import datetime, timedelta
-from http.client import RemoteDisconnected
 from time import sleep
-from urllib.error import URLError
-from urllib.request import urlopen
 
 import aiohttp
 import pytest
@@ -156,8 +153,7 @@ def app():
 
 @pytest.fixture
 def ssl_context():
-    # python 3.5 compatibility
-    context = ssl.SSLContext(getattr(ssl, "PROTOCOL_TLS_SERVER", ssl.PROTOCOL_TLS))
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
     context.load_cert_chain(
         "tests/files/certs/server.cert", "tests/files/certs/server.key"
     )
@@ -219,19 +215,26 @@ def __is_port_in_use(address, port):
 
 def __get_sample_port(_from, to):
     port = random.randint(_from, to)
-    max_wait = datetime.utcnow() + timedelta(seconds=3)
+    max_wait = utcnow() + datetime.timedelta(seconds=3)
     while __is_port_in_use("localhost", port):
         sleep(0.2)
         port = random.randint(_from, to)
-        if datetime.utcnow() > max_wait:
+        if utcnow() > max_wait:
             raise Exception("cannot find free port")
     return port
 
 
 def check_port(port, hostname="localhost", timeout_seconds=10):
     """Check port if it is listening something."""
-    max_wait = datetime.utcnow() + timedelta(seconds=timeout_seconds)
+    max_wait = utcnow() + datetime.timedelta(seconds=timeout_seconds)
     while not __is_port_in_use(hostname, port):
         sleep(0.2)
-        if datetime.utcnow() > max_wait:
+        if utcnow() > max_wait:
             raise Exception(f"port {port} never got active.")
+
+
+def utcnow():
+    if sys.version_info >= (3, 11):
+        return datetime.datetime.now(datetime.UTC)
+    else:
+        return datetime.datetime.utcnow()

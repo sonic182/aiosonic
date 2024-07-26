@@ -11,11 +11,8 @@ import h2.connection
 import h2.events
 
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import (
-    HttpParsingError,
-    MissingReaderException,
-    MissingWriterException,
-)
+from aiosonic.exceptions import (HttpParsingError, MissingReaderException,
+                                 MissingWriterException)
 from aiosonic.http2 import Http2Handler
 from aiosonic.tcp_helpers import keepalive_flags
 from aiosonic.types import ParsedBodyType
@@ -50,6 +47,10 @@ class Connection:
         self.connector = connector
         self.reader: Optional[StreamReader] = None
         self.writer: Optional[StreamWriter] = None
+
+        self.old_reader: Optional[StreamReader] = None
+        self.old_writer: Optional[StreamWriter] = None
+
         self.keep = False  # keep alive flag
         self.key = None
         self.blocked = False
@@ -58,6 +59,8 @@ class Connection:
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
+
+        self.verify = True
 
     async def connect(
         self,
@@ -68,6 +71,7 @@ class Connection:
         http2: bool = False,
     ) -> None:
         """Connet with timeout."""
+        self.verify = verify
         await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
 
     def write(self, data: bytes):
@@ -87,6 +91,12 @@ class Connection:
         if not self.reader:
             raise MissingReaderException("reader not set.")
         return await self.reader.readexactly(size)
+
+    async def read(self, size: int = -1):
+        """Read up to size of bytes"""
+        if not self.reader:
+            raise MissingReaderException("reader not set.")
+        return await self.reader.read(size)
 
     async def readuntil(self, separator: bytes = b"\n"):
         """Read until separator"""
@@ -122,16 +132,7 @@ class Connection:
             self.close()
 
             if urlparsed.scheme == "https":
-                ssl_context = ssl_context or ssl.create_default_context(
-                    ssl.Purpose.SERVER_AUTH,
-                )
-
-                # flag will be removed when fully http2 support
-                if http2:  # pragma: no cover
-                    ssl_context = _get_http2_ssl_context()
-                if not verify:
-                    ssl_context.check_hostname = False
-                    ssl_context.verify_mode = ssl.CERT_NONE
+                ssl_context = ssl_context or get_default_ssl_context(verify, http2)
             else:
                 del dns_info_copy["server_hostname"]
             port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
@@ -167,6 +168,53 @@ class Connection:
         """Check if keep alive."""
         self.blocked = True
 
+    def release(self) -> None:
+        """Release connection."""
+        self.connector.release(self)
+        self.requests_count += 1
+        # if keep False and blocked (by latest chunked response), close it.
+        # server said to close it.
+        if self.requests_count >= self.connector.conn_max_requests or (
+            not self.keep and self.blocked
+        ):
+            self.blocked = False
+            self.close()
+        # ensure unblock conn object after read
+        self.blocked = False
+
+    def ensure_released(self):
+        """Ensure the connection is released."""
+        if self.blocked:
+            if self.writer:
+                self.writer._transport.abort()
+            self.blocked = False
+            self.release()
+
+    def close(self, check_closing: bool = False) -> None:
+        """Close connection if opened."""
+        if self.writer:
+            is_closing = getattr(
+                self.writer, "is_closing", self.writer._transport.is_closing
+            )
+            if not check_closing or is_closing():
+                self.writer.close()
+    
+    async def upgrade(self, ssl_context: SSLContext= None):
+        ssl_context = ssl_context or get_default_ssl_context(self.verify)
+        if not self.writer:
+            raise MissingWriterException()
+        await self.writer.start_tls(ssl_context)
+
+    async def http2_request(
+        self, headers: Dict[str, str], body: Optional[ParsedBodyType]
+    ):
+        if self.h2handler:  # pragma: no cover
+            return await self.h2handler.request(headers, body)
+
+    def __del__(self) -> None:
+        """Cleanup."""
+        self.close(True)
+
     async def __aenter__(self):
         """Get connection from pool."""
         return self
@@ -186,46 +234,19 @@ class Connection:
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 
-    def release(self) -> None:
-        """Release connection."""
-        self.connector.release(self)
-        self.requests_count += 1
-        # if keep False and blocked (by latest chunked response), close it.
-        # server said to close it.
-        if self.requests_count >= self.connector.conn_max_requests or (
-            not self.keep and self.blocked
-        ):
-            self.blocked = False
-            self.close()
-        # ensure unblock conn object after read
-        self.blocked = False
 
-    def __del__(self) -> None:
-        """Cleanup."""
-        self.close(True)
-
-    def ensure_released(self):
-        """Ensure the connection is released."""
-        if self.blocked:
-            if self.writer:
-                self.writer._transport.abort()
-            self.blocked = False
-            self.release()
-
-    def close(self, check_closing: bool = False) -> None:
-        """Close connection if opened."""
-        if self.writer:
-            is_closing = getattr(
-                self.writer, "is_closing", self.writer._transport.is_closing
-            )
-            if not check_closing or is_closing():
-                self.writer.close()
-
-    async def http2_request(
-        self, headers: Dict[str, str], body: Optional[ParsedBodyType]
-    ):
-        if self.h2handler:  # pragma: no cover
-            return await self.h2handler.request(headers, body)
+def get_default_ssl_context(verify=True, http2=False):
+    if http2:  # pragma: no cover
+        ssl_context = _get_http2_ssl_context()
+    else:
+        ssl_context = ssl.create_default_context(
+            ssl.Purpose.SERVER_AUTH,
+        )
+    
+    if not verify:
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+    return ssl_context
 
 
 def _get_http2_ssl_context():
