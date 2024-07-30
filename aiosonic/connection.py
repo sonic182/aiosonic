@@ -60,7 +60,12 @@ class Connection:
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
 
-        self.verify = True
+        self._verify = True
+        self.proxy_connected = False
+
+    @property
+    def is_connected(self):
+        return not self.writer is None
 
     async def connect(
         self,
@@ -71,7 +76,7 @@ class Connection:
         http2: bool = False,
     ) -> None:
         """Connet with timeout."""
-        self.verify = verify
+        self._verify = verify
         await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
 
     def write(self, data: bytes):
@@ -177,7 +182,6 @@ class Connection:
         if self.requests_count >= self.connector.conn_max_requests or (
             not self.keep and self.blocked
         ):
-            self.blocked = False
             self.close()
         # ensure unblock conn object after read
         self.blocked = False
@@ -199,8 +203,11 @@ class Connection:
             if not check_closing or is_closing():
                 self.writer.close()
 
+            self.reader, self.writer = None, None
+        self.proxy_connected = False
+
     async def upgrade(self, ssl_context: SSLContext = None):
-        ssl_context = ssl_context or get_default_ssl_context(self.verify)
+        ssl_context = ssl_context or get_default_ssl_context(self._verify)
         if not self.writer:
             raise MissingWriterException()
         await self.writer.start_tls(ssl_context)
