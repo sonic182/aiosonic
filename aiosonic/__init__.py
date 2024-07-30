@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+import sys
 from asyncio import wait_for
 from codecs import lookup
 from copy import deepcopy
@@ -21,7 +22,7 @@ from zlib import decompress as zlib_decompress
 from charset_normalizer import detect
 
 from aiosonic import http_parser
-from aiosonic.connection import Connection
+from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
     ConnectionDisconnected,
@@ -434,7 +435,9 @@ async def _do_request(
     async with await connector.acquire(*args) as connection:
 
         if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
-            await _proxy_connect(connection, proxy, urlparsed, ssl)
+            await _proxy_connect(
+                connection, proxy, urlparsed, ssl or get_default_ssl_context()
+            )
 
         to_send = headers_data(connection=connection)
 
@@ -881,6 +884,31 @@ async def _proxy_connect(
             f"Failed to establish connection through proxy: {connect_response}"
         )
 
-    await connection.upgrade(ssl_context)
+    if sys.version_info >= (3, 11):
+        await connection.upgrade(ssl_context)
+    else:
+        # Manually upgrade the connection to TLS for Python versions < 3.11
+        await _update_transport(connection, ssl_context)
 
     connection.proxy_connected = True
+
+
+async def _update_transport(connection: Connection, ssl_context):
+    transport = connection.writer.transport
+    protocol = transport.get_protocol()
+    new_transport = await get_loop().start_tls(
+        transport, protocol, ssl_context, server_side=False
+    )
+
+    writer = connection.writer
+    reader = connection.reader
+    assert writer
+
+    writer._transport = new_transport
+    reader._transport = new_transport
+
+    protocol = new_transport.get_protocol()
+    protocol._transport = new_transport
+    protocol._over_ssl = True
+
+    writer._protocol = protocol

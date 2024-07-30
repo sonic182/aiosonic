@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.1] 2024-07-25
+## [0.18.1] 2024-07-30
 ### Changed
 - Dependency management with poetry
+
+### Fixed
+- Proxy usage for https targets
+
 
 ## [0.18.0] 2024-02-06
 ### Fixed
