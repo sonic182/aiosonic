@@ -99,7 +99,7 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
-        self.loop = loop
+        self._loop = loop
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
@@ -231,7 +231,7 @@ class HttpResponse:
     def __del__(self):
         # clean it
         if self._connection and self._connection.blocked:
-            clean_up = self.loop.create_task(self._connection.ensure_released())
+            clean_up = self._loop.create_task(self._connection.ensure_released())
             clean_up.add_done_callback(self._connection.background_tasks.discard)
             self._connection.background_tasks.add(clean_up)
 

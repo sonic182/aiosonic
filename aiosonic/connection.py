@@ -77,7 +77,7 @@ class Connection:
         http2: bool = False,
     ) -> None:
         """Connect with timeout."""
-        self.verify = verify
+        self._verify = verify
         await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
 
     def write(self, data: bytes):
@@ -182,7 +182,6 @@ class Connection:
         if self.requests_count >= self.connector.conn_max_requests or (
             not self.keep and self.blocked
         ):
-            self.blocked = False
             await self.close()
         # ensure unblock conn object after read
         self.blocked = False
@@ -225,10 +224,6 @@ class Connection:
     ):
         if self.h2handler:  # pragma: no cover
             return await self.h2handler.request(headers, body)
-
-    def __del__(self) -> None:
-        """Cleanup."""
-        pass
 
     async def __aenter__(self):
         """Get connection from pool."""

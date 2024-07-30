@@ -6,7 +6,7 @@ import h2.events
 from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParsedBodyType
 from aiosonic.utils import get_debug_logger
-from aiosonic.resolver import AsyncResolver, get_loop
+from aiosonic.resolver import get_loop
 
 dlogger = get_debug_logger()
 
