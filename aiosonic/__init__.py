@@ -87,7 +87,7 @@ class HttpResponse:
       * **raw_headers** (List[Tuple[bytes, bytes]]): headers as raw format
     """
 
-    def __init__(self):
+    def __init__(self, loop: asyncio.AbstractEventLoop):
         self.headers = HttpHeaders()
         self.cookies = None
         self.raw_headers = []
@@ -98,6 +98,7 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
+        self.loop = loop
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
@@ -222,13 +223,16 @@ class HttpResponse:
             self.chunks_readed = True
         finally:
             # Ensure the conn get's released
-            self._connection.release()
-            self._connection = None
+            if self._connection.blocked:
+                await self._connection.release()
+                self._connection = None
 
     def __del__(self):
         # clean it
-        if self._connection:
-            self._connection.ensure_released()
+        if self._connection and self._connection.blocked:
+            clean_up = self.loop.create_task(self._connection.ensure_released())
+            clean_up.add_done_callback(self._connection.background_tasks.discard)
+            self._connection.background_tasks.add(clean_up)
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
@@ -448,7 +452,7 @@ async def _do_request(
             else:
                 connection.write(body)
 
-        response = HttpResponse()
+        response = HttpResponse(get_loop())
         response._set_request_meta(urlparsed)
 
         # get response code and version
