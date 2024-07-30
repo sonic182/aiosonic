@@ -22,6 +22,7 @@ from aiosonic.exceptions import (
 )
 from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool
+from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
 
 # setup debug logger
