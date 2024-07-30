@@ -61,7 +61,12 @@ class Connection:
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
 
-        self.verify = True
+        self._verify = True
+        self.proxy_connected = False
+
+    @property
+    def is_connected(self):
+        return not self.writer is None
 
     async def connect(
         self,
@@ -206,8 +211,11 @@ class Connection:
                 pass
             return
 
+            self.reader, self.writer = None, None
+        self.proxy_connected = False
+
     async def upgrade(self, ssl_context: SSLContext = None):
-        ssl_context = ssl_context or get_default_ssl_context(self.verify)
+        ssl_context = ssl_context or get_default_ssl_context(self._verify)
         if not self.writer:
             raise MissingWriterException()
         await self.writer.start_tls(ssl_context)

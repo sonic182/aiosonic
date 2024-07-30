@@ -433,7 +433,7 @@ async def _do_request(
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args) as connection:
 
-        if proxy and urlparsed.scheme == "https":
+        if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
             await _proxy_connect(connection, proxy, urlparsed, ssl)
 
         to_send = headers_data(connection=connection)
@@ -880,5 +880,7 @@ async def _proxy_connect(
         raise ConnectionError(
             f"Failed to establish connection through proxy: {connect_response}"
         )
-    
+
     await connection.upgrade(ssl_context)
+
+    connection.proxy_connected = True
