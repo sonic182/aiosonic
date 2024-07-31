@@ -56,6 +56,7 @@ class Connection:
         self.blocked = False
         self.temp_key: Optional[str] = None
         self.requests_count = 0
+        self.background_tasks = set()
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
@@ -75,7 +76,7 @@ class Connection:
         ssl_context: SSLContext,
         http2: bool = False,
     ) -> None:
-        """Connet with timeout."""
+        """Connect with timeout."""
         self._verify = verify
         await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
 
@@ -134,7 +135,7 @@ class Connection:
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
         if not (self.key and key == self.key and not is_closing()):
-            self.close()
+            await self.close()
 
             if urlparsed.scheme == "https":
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
@@ -173,35 +174,41 @@ class Connection:
         """Check if keep alive."""
         self.blocked = True
 
-    def release(self) -> None:
+    async def release(self) -> None:
         """Release connection."""
-        self.connector.release(self)
         self.requests_count += 1
         # if keep False and blocked (by latest chunked response), close it.
         # server said to close it.
         if self.requests_count >= self.connector.conn_max_requests or (
             not self.keep and self.blocked
         ):
-            self.close()
+            await self.close()
         # ensure unblock conn object after read
         self.blocked = False
+        self.connector.release(self)
 
-    def ensure_released(self):
+    async def ensure_released(self):
         """Ensure the connection is released."""
         if self.blocked:
-            if self.writer:
-                self.writer._transport.abort()
             self.blocked = False
-            self.release()
+            await self.release()
 
-    def close(self, check_closing: bool = False) -> None:
+    async def close(self) -> None:
         """Close connection if opened."""
-        if self.writer:
-            is_closing = getattr(
-                self.writer, "is_closing", self.writer._transport.is_closing
-            )
-            if not check_closing or is_closing():
-                self.writer.close()
+        if self.reader:
+            try:
+                if not self.reader._transport.is_closing():
+                    self.writer._transport.abort()
+                    await self.writer.wait_closed()
+                else:
+                    await self.writer.wait_closed()
+                if not self.reader.at_eof():
+                    if self.reader._buffer != b'':
+                        await self.reader.readexactly(len(self.reader._buffer))
+                return
+            except:
+                pass
+            return
 
             self.reader, self.writer = None, None
         self.proxy_connected = False
@@ -218,10 +225,6 @@ class Connection:
         if self.h2handler:  # pragma: no cover
             return await self.h2handler.request(headers, body)
 
-    def __del__(self) -> None:
-        """Cleanup."""
-        self.close(True)
-
     async def __aenter__(self):
         """Get connection from pool."""
         return self
@@ -234,10 +237,10 @@ class Connection:
             self.key = None
             self.h2conn = None
             if self.writer and not self.blocked:
-                self.close()
+                await self.close()
 
         if not self.blocked:
-            self.release()
+            await self.release()
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 

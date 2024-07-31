@@ -6,6 +6,7 @@ import h2.events
 from aiosonic.exceptions import MissingEvent
 from aiosonic.types import ParsedBodyType
 from aiosonic.utils import get_debug_logger
+from aiosonic.resolver import get_loop
 
 dlogger = get_debug_logger()
 
@@ -72,7 +73,7 @@ class Http2Handler(object):
         res = self.requests[stream_id].copy()
         del self.requests[stream_id]
 
-        response = HttpResponse()
+        response = HttpResponse(get_loop())
         for key, val in res["headers"]:
             if key == b":status":
                 response.response_initial = {"version": b"2", "code": val}
