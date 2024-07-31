@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] 2024-07-31
+
+### Fixed
+- Runtime error in certain conditions https://github.com/sonic182/aiosonic/issues/473 (Thanks to @geraldog)
+
 ## [0.18.1] 2024-07-30
 ### Changed
 - Dependency management with poetry
@@ -267,7 +272,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.18.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.19.0..HEAD
+[0.19.0]: https://github.com/sonic182/aiosonic/compare/0.18.1..0.19.0
 [0.18.1]: https://github.com/sonic182/aiosonic/compare/0.18.0..0.18.1
 [0.18.0]: https://github.com/sonic182/aiosonic/compare/0.17.1..0.18.0
 [0.17.1]: https://github.com/sonic182/aiosonic/compare/0.17.0..0.17.1
