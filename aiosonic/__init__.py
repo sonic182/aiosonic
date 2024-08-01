@@ -11,7 +11,8 @@ from functools import partial
 from gzip import decompress as gzip_decompress
 from http import cookies
 from io import IOBase
-from json import dumps, loads
+from json import dumps as json_dumps
+from json import loads
 from os.path import basename
 from random import randint
 from ssl import SSLContext
@@ -511,10 +512,10 @@ class HTTPClient:
 
     def __init__(
         self,
-        connector: TCPConnector = None,
-        handle_cookies=False,
-        verify_ssl=True,
-        proxy: Proxy = None,
+        connector: Optional[TCPConnector] = None,
+        handle_cookies: bool = False,
+        verify_ssl: bool = True,
+        proxy: Optional[Proxy] = None,
     ):
         """Initialize client options."""
         self.connector = connector or TCPConnector()
@@ -528,62 +529,27 @@ class HTTPClient:
 
     async def __aexit__(self, _exc_type, exc, _tb):  # type: ignore
         if exc:
-            raise exc
-
-    async def _request_with_body(
-        self,
-        url: str,
-        method: str,
-        data: DataType = None,
-        headers: HeadersType = None,
-        json: Union[dict, list] = None,
-        params: ParamsType = None,
-        json_serializer=dumps,
-        multipart: bool = False,
-        verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
-        follow: bool = False,
-        http2: bool = False,
-    ) -> HttpResponse:
-        """Do post http request."""
-        if not data and not json:
-            TypeError('missing argument, either "json" or "data"')
-        if json is not None:
-            data = json_serializer(json)
-            headers = deepcopy(headers) if headers else HttpHeaders()
-            http_parser.add_header(headers, "Content-Type", "application/json")
-        return await self.request(
-            url,
-            method,
-            headers,
-            params,
-            data,
-            multipart,
-            verify=verify,
-            ssl=ssl,
-            follow=follow,
-            timeouts=timeouts,
-            http2=http2,
-        )
+            # Handle the exception appropriately, e.g., logging
+            return False  # Returning False re-raises the exception
+        return True
 
     async def get(
         self,
         url: str,
-        headers: HeadersType = None,
-        params: ParamsType = None,
+        headers: Optional[HeadersType] = None,
+        params: Optional[ParamsType] = None,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
         """Do get http request."""
         return await self.request(
-            url,
-            "GET",
-            headers,
-            params,
+            url=url,
+            method="GET",
+            headers=headers,
+            params=params,
             verify=verify,
             ssl=ssl,
             follow=follow,
@@ -594,28 +560,28 @@ class HTTPClient:
     async def post(
         self,
         url: str,
-        data: DataType = None,
-        headers: HeadersType = None,
-        json: Union[dict, list] = None,
-        params: ParamsType = None,
-        json_serializer=dumps,
+        data: Optional[DataType] = None,
+        headers: Optional[HeadersType] = None,
+        json: Optional[Union[dict, list]] = None,
+        params: Optional[ParamsType] = None,
+        json_serializer=json_dumps,
         multipart: bool = False,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
         """Do post http request."""
-        return await self._request_with_body(
-            url,
-            "POST",
-            data,
-            headers,
-            json,
-            params,
-            json_serializer,
-            multipart,
+        return await self.request(
+            url=url,
+            method="POST",
+            headers=headers,
+            params=params,
+            data=data,
+            json=json,
+            json_serializer=json_serializer,
+            multipart=multipart,
             verify=verify,
             ssl=ssl,
             follow=follow,
@@ -626,28 +592,28 @@ class HTTPClient:
     async def put(
         self,
         url: str,
-        data: DataType = None,
-        headers: HeadersType = None,
-        json: Union[dict, list] = None,
-        params: ParamsType = None,
-        json_serializer=dumps,
+        data: Optional[DataType] = None,
+        headers: Optional[HeadersType] = None,
+        json: Optional[Union[dict, list]] = None,
+        params: Optional[ParamsType] = None,
+        json_serializer=json_dumps,
         multipart: bool = False,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
         """Do put http request."""
-        return await self._request_with_body(
-            url,
-            "PUT",
-            data,
-            headers,
-            json,
-            params,
-            json_serializer,
-            multipart,
+        return await self.request(
+            url=url,
+            method="PUT",
+            headers=headers,
+            params=params,
+            data=data,
+            json=json,
+            json_serializer=json_serializer,
+            multipart=multipart,
             verify=verify,
             ssl=ssl,
             follow=follow,
@@ -658,28 +624,28 @@ class HTTPClient:
     async def patch(
         self,
         url: str,
-        data: DataType = None,
-        headers: HeadersType = None,
-        json: Union[dict, list] = None,
-        params: ParamsType = None,
-        json_serializer=dumps,
+        data: Optional[DataType] = None,
+        headers: Optional[HeadersType] = None,
+        json: Optional[Union[dict, list]] = None,
+        params: Optional[ParamsType] = None,
+        json_serializer=json_dumps,
         multipart: bool = False,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
         """Do patch http request."""
-        return await self._request_with_body(
-            url,
-            "PATCH",
-            data,
-            headers,
-            json,
-            params,
-            json_serializer,
-            multipart,
+        return await self.request(
+            url=url,
+            method="PATCH",
+            headers=headers,
+            params=params,
+            data=data,
+            json=json,
+            json_serializer=json_serializer,
+            multipart=multipart,
             verify=verify,
             ssl=ssl,
             follow=follow,
@@ -691,27 +657,27 @@ class HTTPClient:
         self,
         url: str,
         data: DataType = b"",
-        headers: HeadersType = None,
-        json: Union[dict, list] = None,
-        params: ParamsType = None,
-        json_serializer=dumps,
+        headers: Optional[HeadersType] = None,
+        json: Optional[Union[dict, list]] = None,
+        params: Optional[ParamsType] = None,
+        json_serializer=json_dumps,
         multipart: bool = False,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
         """Do delete http request."""
-        return await self._request_with_body(
-            url,
-            "DELETE",
-            data,
-            headers,
-            json,
-            params,
-            json_serializer,
-            multipart,
+        return await self.request(
+            url=url,
+            method="DELETE",
+            headers=headers,
+            params=params,
+            data=data,
+            json=json,
+            json_serializer=json_serializer,
+            multipart=multipart,
             verify=verify,
             ssl=ssl,
             follow=follow,
@@ -723,13 +689,15 @@ class HTTPClient:
         self,
         url: str,
         method: str = "GET",
-        headers: HeadersType = None,
-        params: ParamsType = None,
-        data: DataType = None,
+        headers: Optional[HeadersType] = None,
+        params: Optional[ParamsType] = None,
+        data: Optional[DataType] = None,
+        json: Optional[Union[dict, list]] = None,
+        json_serializer=json_dumps,
         multipart: bool = False,
         verify: bool = True,
-        ssl: SSLContext = None,
-        timeouts: Timeouts = None,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
     ) -> HttpResponse:
@@ -739,10 +707,10 @@ class HTTPClient:
             * **url**: url of request
             * **method**: Http method of request
             * **headers**: headers to add in request
-            * **params**: query params to add in
-              request if not manually added
+            * **params**: query params to add in request if not manually added
             * **data**: Data to be sent, this param is ignored for get
-              requests.
+            * **json**: If provided, encodes the provided json structure and appends the corresponding header.
+            * **json_serializer**: Use provided json serializer, default: json.dumps
             * **multipart**: Tell aiosonic if request is multipart
             * **verify**: parameter to indicate whether to verify ssl
             * **ssl**: this parameter allows to specify a custom ssl context
@@ -750,6 +718,13 @@ class HTTPClient:
             * **follow**: parameter to indicate whether to follow redirects
             * **http2**: flag to indicate whether to use http2 (experimental)
         """
+        headers = deepcopy(headers) if headers else HttpHeaders()
+
+        if json is not None:
+            if data is not None and data != b"":
+                raise TypeError("json and data arguments provided, use just one.")
+            data = _handle_json_input(json, json_serializer, headers)
+
         urlparsed = http_parser.get_url_parsed(url)
 
         boundary = None
@@ -912,3 +887,10 @@ async def _update_transport(connection: Connection, ssl_context):
     protocol._over_ssl = True
 
     writer._protocol = protocol
+
+
+def _handle_json_input(json, json_serializer, headers):
+    data = json_serializer(json)
+    headers = deepcopy(headers)
+    http_parser.add_header(headers, "Content-Type", "application/json")
+    return data
