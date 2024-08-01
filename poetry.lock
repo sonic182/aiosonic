@@ -16,13 +16,13 @@ pycares = ">=4.0.0"
 
 [[package]]
 name = "aiohappyeyeballs"
-version = "2.3.2"
-description = "Happy Eyeballs"
+version = "2.3.4"
+description = "Happy Eyeballs for asyncio"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "aiohappyeyeballs-2.3.2-py3-none-any.whl", hash = "sha256:903282fb08c8cfb3de356fd546b263248a477c99cb147e20a115e14ab942a4ae"},
-    {file = "aiohappyeyeballs-2.3.2.tar.gz", hash = "sha256:77e15a733090547a1f5369a1287ddfc944bd30df0eb8993f585259c34b405f4e"},
+    {file = "aiohappyeyeballs-2.3.4-py3-none-any.whl", hash = "sha256:40a16ceffcf1fc9e142fd488123b2e218abc4188cf12ac20c67200e1579baa42"},
+    {file = "aiohappyeyeballs-2.3.4.tar.gz", hash = "sha256:7e1ae8399c320a8adec76f6c919ed5ceae6edd4c3672f4d9eae2b27e37c80ff6"},
 ]
 
 [[package]]
@@ -975,16 +975,14 @@ files = [
 
 [[package]]
 name = "onecache"
-version = "0.6.0"
+version = "0.7.0"
 description = "Python cache for sync and async code"
 optional = false
-python-versions = "*"
+python-versions = "<3.13,>=3.8"
 files = [
-    {file = "onecache-0.6.0.tar.gz", hash = "sha256:b1c16802530526abc1a8276e1ade78d15c93f6c3b63a2443b56abb3e467ec8b4"},
+    {file = "onecache-0.7.0-py3-none-any.whl", hash = "sha256:b39e575f7d75791d826e65c609fa1d718a6ad7425ec1a440f7448214ca4de528"},
+    {file = "onecache-0.7.0.tar.gz", hash = "sha256:a7cb3b4f8d63d0c6153cc3174b11f70cd1ae38c06ed57c6972b9f3fce0b4945f"},
 ]
-
-[package.extras]
-test = ["certifi (==2023.7.22)", "charset-normalizer (==3.2.0)", "coverage[toml] (==6.5.0)", "coveralls (==3.3.1)", "docopt (==0.6.2)", "exceptiongroup (==1.1.2)", "flake8 (==5.0.4)", "flake8-docstrings (==1.7.0)", "idna (==3.4)", "importlib-metadata (==4.2.0)", "iniconfig (==2.0.0)", "mccabe (==0.7.0)", "packaging (==23.1)", "pluggy (==1.2.0)", "pycodestyle (==2.9.1)", "pydocstyle (==6.3.0)", "pyflakes (==2.5.0)", "pytest (==7.4.0)", "pytest-asyncio (==0.21.1)", "pytest-cov (==4.1.0)", "pytest-sugar (==0.9.7)", "requests (==2.31.0)", "snowballstemmer (==2.2.0)", "termcolor (==2.3.0)", "tomli (==2.0.1)", "typing-extensions (==4.7.1)", "urllib3 (==2.0.4)", "zipp (==3.15.0)"]
 
 [[package]]
 name = "packaging"
@@ -1468,29 +1466,30 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "1.26.19"
+version = "2.2.2"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
+python-versions = ">=3.8"
 files = [
-    {file = "urllib3-1.26.19-py2.py3-none-any.whl", hash = "sha256:37a0344459b199fce0e80b0d3569837ec6b6937435c5244e7fd73fa6006830f3"},
-    {file = "urllib3-1.26.19.tar.gz", hash = "sha256:3e3d753a8618b86d7de333b4223005f68720bcd6a7d2bcb9fbd2229ec7c1e429"},
+    {file = "urllib3-2.2.2-py3-none-any.whl", hash = "sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472"},
+    {file = "urllib3-2.2.2.tar.gz", hash = "sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168"},
 ]
 
 [package.extras]
-brotli = ["brotli (==1.0.9)", "brotli (>=1.0.9)", "brotlicffi (>=0.8.0)", "brotlipy (>=0.6.0)"]
-secure = ["certifi", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "ipaddress", "pyOpenSSL (>=0.14)", "urllib3-secure-extra"]
-socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+h2 = ["h2 (>=4,<5)"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "uvicorn"
-version = "0.30.3"
+version = "0.30.4"
 description = "The lightning-fast ASGI server."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "uvicorn-0.30.3-py3-none-any.whl", hash = "sha256:94a3608da0e530cea8f69683aa4126364ac18e3826b6630d1a65f4638aade503"},
-    {file = "uvicorn-0.30.3.tar.gz", hash = "sha256:0d114d0831ff1adbf231d358cbf42f17333413042552a624ea6a9b4c33dcfd81"},
+    {file = "uvicorn-0.30.4-py3-none-any.whl", hash = "sha256:06b00e3087e58c6865c284143c0c42f810b32ff4f265ab19d08c566f74a08728"},
+    {file = "uvicorn-0.30.4.tar.gz", hash = "sha256:00db9a9e3711a5fa59866e2b02fac69d8dc70ce0814aaec9a66d1d9e5c832a30"},
 ]
 
 [package.dependencies]
@@ -1670,4 +1669,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.0,<3.13"
-content-hash = "97637901d9221ca3aa3f4e17d16d6ffcf1218f15b7ba149a62ff5afe2dfe9202"
+content-hash = "888015b19410e87b6f7f8308604d5c867cedb90514f9761f05e1a06ab6f25ba5"
