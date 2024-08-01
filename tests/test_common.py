@@ -1,10 +1,11 @@
+from asyncio import get_event_loop
+
 import pytest
 
-from asyncio import get_event_loop
 import aiosonic
-from aiosonic import HTTPClient, HttpHeaders, HttpResponse
-from aiosonic.http_parser import add_header, add_headers
+from aiosonic import HttpHeaders, HttpResponse
 from aiosonic.exceptions import MissingWriterException
+from aiosonic.http_parser import add_header, add_headers
 
 
 def test_headers_retrival():
@@ -91,37 +92,6 @@ def test_handle_bad_chunk(mocker):
         conn = mocker.MagicMock()
         conn.writer = None
         aiosonic._handle_chunk(b"foo", conn)
-
-
-@pytest.mark.asyncio
-async def test_json_parser(mocker):
-    headers = HttpHeaders()
-    add_header(headers, "Content-Type", "application/json")
-
-    # python<=3.7 compatible mock
-    async def mocked(*args, **kwargs):
-        mock = mocker.MagicMock()
-        mock(*args, **kwargs)
-        return mock
-
-    mocker.patch("aiosonic.HTTPClient.request", new=mocked)
-    instance = HTTPClient()
-
-    res = await instance.post("foo", json=[])
-    res.assert_called_once_with(  # type: ignore
-        instance,
-        "foo",
-        "POST",
-        headers,
-        None,
-        "[]",
-        False,
-        verify=True,
-        ssl=None,
-        follow=False,
-        timeouts=None,
-        http2=False,
-    )
 
 
 def test_hostname_parse():

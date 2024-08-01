@@ -723,7 +723,8 @@ class HTTPClient:
         if json is not None:
             if data is not None and data != b"":
                 raise TypeError("json and data arguments provided, use just one.")
-            data = _handle_json_input(json, json_serializer, headers)
+            data = json_serializer(json)
+            http_parser.add_header(headers, "Content-Type", "application/json")
 
         urlparsed = http_parser.get_url_parsed(url)
 
@@ -887,10 +888,3 @@ async def _update_transport(connection: Connection, ssl_context):
     protocol._over_ssl = True
 
     writer._protocol = protocol
-
-
-def _handle_json_input(json, json_serializer, headers):
-    data = json_serializer(json)
-    headers = deepcopy(headers)
-    http_parser.add_header(headers, "Content-Type", "application/json")
-    return data
