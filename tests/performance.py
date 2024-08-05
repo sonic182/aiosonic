@@ -118,27 +118,24 @@ def do_tests(url):
     """Start benchmark."""
     print("doing tests...")
     concurrency = 25
-    loop = asyncio.get_event_loop()
 
     # aiohttp
-    res1 = loop.run_until_complete(performance_aiohttp(url, concurrency))
+    res1 = asyncio.run(performance_aiohttp(url, concurrency))
 
     # aiosonic
-    res2 = loop.run_until_complete(performance_aiosonic(url, concurrency))
+    res2 = asyncio.run(performance_aiosonic(url, concurrency))
 
     # requests
     res3 = timeit_requests(url, concurrency)
 
     # aiosonic cyclic
-    res4 = loop.run_until_complete(
-        performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool)
-    )
+    res4 = asyncio.run(performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool))
 
     # httpx
     httpx_exc = False
     res5 = None
     try:
-        res5 = loop.run_until_complete(performance_httpx(url, concurrency))
+        res5 = asyncio.run(performance_httpx(url, concurrency))
     except Exception as exc:
         httpx_exc = exc
         print("httpx did break with: " + str(exc))
@@ -178,8 +175,7 @@ def do_tests(url):
 def start_server(port):
     """Start server."""
     if is_tool("node"):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(start_dummy_server(port))
+        asyncio.run(start_dummy_server(port))
     else:
         subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
 
