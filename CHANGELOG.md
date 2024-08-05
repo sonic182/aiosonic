@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] 2024-08-05
+
+### Changed
+* version range for charset-normalizer
+
 ## [0.20.0] 2024-08-01
 
 ### Changed
@@ -278,7 +283,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.20.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.20.1..HEAD
+[0.20.1]: https://github.com/sonic182/aiosonic/compare/0.20.0..0.20.1
 [0.20.0]: https://github.com/sonic182/aiosonic/compare/0.19.0..0.20.0
 [0.19.0]: https://github.com/sonic182/aiosonic/compare/0.18.1..0.19.0
 [0.18.1]: https://github.com/sonic182/aiosonic/compare/0.18.0..0.18.1
