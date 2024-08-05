@@ -95,7 +95,6 @@ Getting Started
       response = await client.get('https://www.google.com/', timeouts=timeouts)
       assert response.status_code == 200
       assert 'Google' in (await response.text())
-      await client.shutdown()
   
       print('success')
   
@@ -114,16 +113,14 @@ Some benchmarking
  » python tests/performance.py
  doing tests...
  {
-  "aiosonic": "1000 requests in 182.03 ms",
-  "aiosonic cyclic": "1000 requests in 370.55 ms",
-  "aiohttp": "1000 requests in 367.66 ms",
-  "requests": "1000 requests in 4613.77 ms",
-  "httpx": "1000 requests in 812.41 ms"
+  "aiosonic": "1000 requests in 105.53 ms",
+  "aiosonic cyclic": "1000 requests in 104.08 ms",
+  "aiohttp": "1000 requests in 184.51 ms",
+  "requests": "1000 requests in 1644.21 ms"
  }
- aiosonic is 101.97% faster than aiohttp
- aiosonic is 2434.55% faster than requests
- aiosonic is 103.56% faster than aiosonic cyclic
- aiosonic is 346.29% faster than httpx
+ aiosonic is 74.84% faster than aiohttp
+ aiosonic is 1457.99% faster than requests
+ aiosonic is -1.38% faster than aiosonic cyclic
 
 
 This is a *very basic, dummy test*, machine dependant. If you look for performance, test and compare your code with this and other packages like aiohttp.
