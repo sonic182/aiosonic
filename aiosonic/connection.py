@@ -134,7 +134,9 @@ class Connection:
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        if not (self.key and key == self.key and not is_closing()):
+        if not (self.key and key == self.key and not is_closing() and
+                self.requests_count <= self.connector.conn_max_requests
+            ):
             await self.close()
 
             if urlparsed.scheme == "https":
@@ -177,12 +179,6 @@ class Connection:
     async def release(self) -> None:
         """Release connection."""
         self.requests_count += 1
-        # if keep False and blocked (by latest chunked response), close it.
-        # server said to close it.
-        if self.requests_count >= self.connector.conn_max_requests or (
-            not self.keep and self.blocked
-        ):
-            await self.close()
         # ensure unblock conn object after read
         self.blocked = False
         self.connector.release(self)
@@ -236,8 +232,6 @@ class Connection:
         else:
             self.key = None
             self.h2conn = None
-            if self.writer and not self.blocked:
-                await self.close()
 
         if not self.blocked:
             await self.release()
