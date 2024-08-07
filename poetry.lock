@@ -1059,13 +1059,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "proxy-py"
-version = "2.4.4"
+version = "2.4.5"
 description = "⚡ Fast • 🪶 Lightweight • 0️⃣ Dependency • 🔌 Pluggable • 😈 TLS interception • 🔒 DNS-over-HTTPS • 🔥 Poor Mans VPN • ⏪ Reverse & ⏩ Forward • 👮🏿 Proxy Server framework • 🌐 Web Server framework • ➵ ➶ ➷ ➠ PubSub framework • 👷 Work acceptor & executor framework."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "proxy.py-2.4.4-py3-none-any.whl", hash = "sha256:8d02fa2f1f94ad5bee96962c7b02badb9b4075d1a99d31700577ea15713ba4d3"},
-    {file = "proxy_py-2.4.4.tar.gz", hash = "sha256:216581f70ad673f4ecb5f6b27f52491aaf1c056829f4a670f5ea3b5a340f4272"},
+    {file = "proxy.py-2.4.5-py3-none-any.whl", hash = "sha256:2dee7682b50c6cdc9ffa097b24398d80fcf4c8efe65790a9dca4dc391576022f"},
+    {file = "proxy_py-2.4.5.tar.gz", hash = "sha256:0f6eab21bb75591152b77e89a6809135e13100a250071b810838379537460ad8"},
 ]
 
 [[package]]
