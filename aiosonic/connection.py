@@ -137,7 +137,7 @@ class Connection:
         if not (self.key and key == self.key and not is_closing() and
                 self.requests_count <= self.connector.conn_max_requests
             ):
-            await self.close()
+            self.close()
 
             if urlparsed.scheme == "https":
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
@@ -176,35 +176,27 @@ class Connection:
         """Check if keep alive."""
         self.blocked = True
 
-    async def release(self) -> None:
+    def release(self) -> None:
         """Release connection."""
         self.requests_count += 1
         # ensure unblock conn object after read
         self.blocked = False
         self.connector.release(self)
 
-    async def ensure_released(self):
+    def ensure_released(self):
         """Ensure the connection is released."""
         if self.blocked:
             self.blocked = False
-            await self.release()
+            self.release()
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Close connection if opened."""
         if self.reader:
             try:
                 if not self.reader._transport.is_closing():
                     self.writer._transport.abort()
-                    await self.writer.wait_closed()
-                else:
-                    await self.writer.wait_closed()
-                if not self.reader.at_eof():
-                    if self.reader._buffer != b'':
-                        await self.reader.readexactly(len(self.reader._buffer))
-                return
             except:
                 pass
-            return
 
             self.reader, self.writer = None, None
         self.proxy_connected = False
@@ -234,7 +226,7 @@ class Connection:
             self.h2conn = None
 
         if not self.blocked:
-            await self.release()
+            self.release()
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 

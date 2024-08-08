@@ -1,5 +1,3 @@
-from asyncio import get_event_loop
-
 import pytest
 
 import aiosonic
@@ -23,7 +21,7 @@ def test_headers_retrival_common():
 
 def test_headers_parsing():
     """Test parsing header with no value."""
-    parsing = HttpResponse(get_event_loop())
+    parsing = HttpResponse()
     parsing._set_header(*HttpHeaders._clear_line(b"Expires: \r\n"))
     assert parsing.raw_headers == [("Expires", "")]
 
@@ -59,7 +57,7 @@ def test_add_header_replace():
 
 def test_encoding_from_header():
     """Test use encoder from header."""
-    response = HttpResponse(get_event_loop())
+    response = HttpResponse()
     response._set_response_initial(b"HTTP/1.1 200 OK\r\n")
     response._set_header("content-type", "text/html; charset=utf-8")
     response.body = b"foo"
@@ -74,14 +72,14 @@ def test_encoding_from_header():
 
 def test_parse_response_line():
     """Test parsing response line"""
-    response = HttpResponse(get_event_loop())
+    response = HttpResponse()
     response._set_response_initial(b"HTTP/1.1 200 OK\r\n")
     assert response.status_code == 200
 
 
 def test_parse_response_line_with_empty_reason():
     """Test parsing response line with empty reason-phrase"""
-    response = HttpResponse(get_event_loop())
+    response = HttpResponse()
     response._set_response_initial(b"HTTP/1.1 200 \r\n")
     assert response.status_code == 200
 
