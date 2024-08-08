@@ -186,15 +186,13 @@ class Connection:
     def ensure_released(self):
         """Ensure the connection is released."""
         if self.blocked:
-            self.blocked = False
             self.release()
 
     def close(self) -> None:
         """Close connection if opened."""
         if self.reader:
             try:
-                if not self.reader._transport.is_closing():
-                    self.writer._transport.abort()
+                self.writer._transport.abort()
             except:
                 pass
 
