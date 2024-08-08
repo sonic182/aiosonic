@@ -711,7 +711,7 @@ async def test_request_multipart_value_error():
 @pytest.mark.asyncio
 async def test_json_response_parsing():
     """Test json response parsing."""
-    response = HttpResponse(asyncio.get_event_loop())
+    response = HttpResponse()
     response._set_response_initial(b"HTTP/1.1 200 OK\r\n")
     response._set_header("content-type", "application/json; charset=utf-8")
     response.body = b'{"foo": "bar"}'
