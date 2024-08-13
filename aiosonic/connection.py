@@ -134,8 +134,10 @@ class Connection:
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        if not (self.key and key == self.key and not is_closing()):
-            await self.close()
+        if not (self.key and key == self.key and not is_closing() and
+                self.requests_count <= self.connector.conn_max_requests
+            ):
+            self.close()
 
             if urlparsed.scheme == "https":
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
@@ -174,41 +176,25 @@ class Connection:
         """Check if keep alive."""
         self.blocked = True
 
-    async def release(self) -> None:
+    def release(self) -> None:
         """Release connection."""
         self.requests_count += 1
-        # if keep False and blocked (by latest chunked response), close it.
-        # server said to close it.
-        if self.requests_count >= self.connector.conn_max_requests or (
-            not self.keep and self.blocked
-        ):
-            await self.close()
         # ensure unblock conn object after read
         self.blocked = False
         self.connector.release(self)
 
-    async def ensure_released(self):
+    def ensure_released(self):
         """Ensure the connection is released."""
         if self.blocked:
-            self.blocked = False
-            await self.release()
+            self.release()
 
-    async def close(self) -> None:
+    def close(self) -> None:
         """Close connection if opened."""
         if self.reader:
             try:
-                if not self.reader._transport.is_closing():
-                    self.writer._transport.abort()
-                    await self.writer.wait_closed()
-                else:
-                    await self.writer.wait_closed()
-                if not self.reader.at_eof():
-                    if self.reader._buffer != b'':
-                        await self.reader.readexactly(len(self.reader._buffer))
-                return
+                self.writer._transport.abort()
             except:
                 pass
-            return
 
             self.reader, self.writer = None, None
         self.proxy_connected = False
@@ -236,11 +222,9 @@ class Connection:
         else:
             self.key = None
             self.h2conn = None
-            if self.writer and not self.blocked:
-                await self.close()
 
         if not self.blocked:
-            await self.release()
+            self.release()
             if self.h2handler:  # pragma: no cover
                 self.h2handler.cleanup()
 
