@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] 2024-08-14
+
+### Fixed
+- Safer closing transport with abort, less RuntimeErrors https://github.com/sonic182/aiosonic/pull/483 (Thanks to @geraldog)
+
+
 ## [0.20.1] 2024-08-05
 
 ### Changed
@@ -283,7 +289,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.20.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.21.1..HEAD
+[0.21.0]: https://github.com/sonic182/aiosonic/compare/0.20.1..0.21.0
 [0.20.1]: https://github.com/sonic182/aiosonic/compare/0.20.0..0.20.1
 [0.20.0]: https://github.com/sonic182/aiosonic/compare/0.19.0..0.20.0
 [0.19.0]: https://github.com/sonic182/aiosonic/compare/0.18.1..0.19.0
