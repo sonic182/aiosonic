@@ -24,6 +24,7 @@ from aiosonic.pools import CyclicQueuePool
 
 try:
     import uvloop
+
     uvloop.install()
 except ImportError:
     pass
@@ -38,18 +39,22 @@ async def app(scope, receive, send):
     """Simple ASGI app."""
     assert scope["type"] == "http"
     res = b"foo"
-    await send({
-        "type": "http.response.start",
-        "status": 200,
-        "headers": [
-            [b"content-type", b"text/plain"],
-            [b"content-length", b"%d" % len(res)],
-        ],
-    })
-    await send({
-        "type": "http.response.body",
-        "body": res,
-    })
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [
+                [b"content-type", b"text/plain"],
+                [b"content-length", b"%d" % len(res)],
+            ],
+        }
+    )
+    await send(
+        {
+            "type": "http.response.body",
+            "body": res,
+        }
+    )
 
 
 async def start_dummy_server(port):
@@ -69,7 +74,9 @@ async def timeit_coro(func, *args, repeat=1000, **kwargs):
 
 async def performance_aiohttp(url, concurrency):
     """Test aiohttp performance."""
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=concurrency)) as session:
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(limit=concurrency)
+    ) as session:
         return await timeit_coro(session.get, url)
 
 
@@ -111,7 +118,9 @@ async def do_tests(url):
     results["aiohttp"] = await performance_aiohttp(url, concurrency)
     results["aiosonic"] = await performance_aiosonic(url, concurrency)
     results["requests"] = timeit_requests(url, concurrency)
-    results["aiosonic_cyclic"] = await performance_aiosonic(url, concurrency, pool_cls=CyclicQueuePool)
+    results["aiosonic_cyclic"] = await performance_aiosonic(
+        url, concurrency, pool_cls=CyclicQueuePool
+    )
 
     try:
         results["httpx"] = await performance_httpx(url, concurrency)
@@ -119,14 +128,31 @@ async def do_tests(url):
         # results["httpx_error"] = str(exc)
         print(f"httpx encountered an error: {exc}")
 
-    print(json.dumps({k: f"1000 requests in {v:.2f} ms" for k, v in results.items() if not k.endswith('_error')}, indent=4))
+    print(
+        json.dumps(
+            {
+                k: f"1000 requests in {v:.2f} ms"
+                for k, v in results.items()
+                if not k.endswith("_error")
+            },
+            indent=4,
+        )
+    )
 
     if "httpx" in results:
-        print(f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx")
+        print(
+            f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx"
+        )
 
-    print(f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp")
-    print(f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests")
-    print(f"aiosonic is {((results['aiosonic_cyclic'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiosonic cyclic")
+    print(
+        f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp"
+    )
+    print(
+        f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests"
+    )
+    print(
+        f"aiosonic is {((results['aiosonic_cyclic'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiosonic cyclic"
+    )
 
     return results
 
@@ -161,14 +187,13 @@ def main():
 
     try:
         res = asyncio.run(do_tests(url))
-        
+
         # Check if any results are valid and proceed
         fastest_client = sorted(res.items(), key=lambda x: x[1])[0][0]
         assert "aiosonic" in fastest_client
-        
+
     finally:
         process.terminate()
-
 
 
 if __name__ == "__main__":
