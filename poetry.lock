@@ -1059,14 +1059,20 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "proxy-py"
-version = "2.4.4"
-description = "⚡ Fast • 🪶 Lightweight • 0️⃣ Dependency • 🔌 Pluggable • 😈 TLS interception • 🔒 DNS-over-HTTPS • 🔥 Poor Mans VPN • ⏪ Reverse & ⏩ Forward • 👮🏿 Proxy Server framework • 🌐 Web Server framework • ➵ ➶ ➷ ➠ PubSub framework • 👷 Work acceptor & executor framework."
+version = "2.4.7"
+description = "\\u26a1 Fast \\u2022 \\U0001fab6 Lightweight \\u2022 \\U0001f51f Dependency \\u2022 \\U0001f50c Pluggable \\u2022 \\U0001f608 TLS interception \\u2022 \\U0001f512 DNS-over-HTTPS \\u2022 \\U0001f525 Poor Mans VPN \\u2022 \\u23ea Reverse & \\u23e9 Forward \\u2022 \\U0001f46e\\U0001f3ff Proxy Server framework \\u2022 \\U0001f310 Web Server framework \\u2022 \\u27b5 \\u27b6 \\u27b7 \\u27a0 PubSub framework \\u2022 \\U0001f477 Work acceptor & executor framework."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "proxy.py-2.4.4-py3-none-any.whl", hash = "sha256:8d02fa2f1f94ad5bee96962c7b02badb9b4075d1a99d31700577ea15713ba4d3"},
-    {file = "proxy_py-2.4.4.tar.gz", hash = "sha256:216581f70ad673f4ecb5f6b27f52491aaf1c056829f4a670f5ea3b5a340f4272"},
+    {file = "proxy.py-2.4.7-py3-none-any.whl", hash = "sha256:83ddfda5479403434eace531c2bdef41fd9091df473a4051cd9df1564de056a9"},
+    {file = "proxy_py-2.4.7.tar.gz", hash = "sha256:2e20ad717025cdee92d528be1321b7af8743d941e56de2ae6f390c6dc67aaad1"},
 ]
+
+[package.extras]
+metrics = ["prometheus-client (==0.17.1)", "prometheus-client (==0.20.0)"]
+release = ["setuptools-scm (==6.3.2)", "twine (==3.8.0)"]
+testing = ["autopep8 (==1.6.0)", "coverage (==6.2)", "coverage (==7.4.4)", "flake8 (==4.0.1)", "h2 (==4.1.0)", "hpack (==4.0.0)", "httpx (==0.22.0)", "httpx (==0.27.0)", "hyperframe (==6.0.1)", "mccabe (==0.6.1)", "mypy (==0.971)", "pre-commit (==2.16.0)", "py-spy (==0.3.12)", "pylint (==2.13.7)", "pylint (==3.1.0)", "pytest (==7.0.1)", "pytest (==8.1.1)", "pytest-asyncio (==0.16.0)", "pytest-asyncio (==0.21.1)", "pytest-cov (==3.0.0)", "pytest-cov (==5.0.0)", "pytest-mock (==3.14.0)", "pytest-mock (==3.6.1)", "pytest-xdist (==2.5.0)", "pytest-xdist (==3.5.0)", "python-coveralls (==2.9.3)", "rope (==1.1.1)", "tox (==3.28.0)", "tox (==4.14.2)", "types-requests (==2.28.11.5)", "types-setuptools (==64.0.1)", "wheel (==0.37.1)"]
+tunnel = ["cryptography (==36.0.2)", "cryptography (==39.0.1)", "paramiko (==2.11.0)", "paramiko (==3.4.0)", "types-paramiko (==2.11.3)", "types-paramiko (==3.4.0.20240311)"]
 
 [[package]]
 name = "pycares"
