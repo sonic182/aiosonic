@@ -43,9 +43,12 @@ aiodns = "^3.2.0"
 aiohttp = "^3.9.5"
 asgiref = "^3.8.1"
 black = "^24.4.2"
-django = "<4.0.0"
 click = "<8.1.0"
+django = "<4.0.0"
+httptools = {version="^0.6.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 httpx = "^0.27.0"
+mypy = {version="^1.0.0", markers="platform_python_implementation != 'PyPy'"}
+mypy-extensions = {version="^1.0.0", markers="platform_python_implementation != 'PyPy'"}
 proxy-py = "^2.4.4"
 pytest = "^8.3.1"
 pytest-aiohttp = "^1.0.5"
@@ -54,16 +57,13 @@ pytest-black = "^0.3.12"
 pytest-cov = "^5.0.0"
 pytest-django = "^4.8.0"
 pytest-mock = "^3.14.0"
+pytest-mypy = {version="^0.10.3", markers="platform_python_implementation != 'PyPy'"}
 pytest-sugar = "^1.0.0"
 pytest-timeout = "^2.3.1"
-uvicorn = "^0.30.3"
-httptools = {version="^0.6.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
-mypy = {version="^1.0.0", markers="platform_python_implementation != 'PyPy'"}
-mypy-extensions = {version="^1.0.0", markers="platform_python_implementation != 'PyPy'"}
-pytest-mypy = {version="^0.10.3", markers="platform_python_implementation != 'PyPy'"}
-typed-ast = {version="^1.4.0", markers="platform_python_implementation != 'PyPy'"}
-uvloop = {version="^0.19.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 requests = "^2.32.3"
+typed-ast = {version="^1.4.0", markers="platform_python_implementation != 'PyPy'"}
+uvicorn = "^0.30.3"
+uvloop = {version="^0.19.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 winloop = {version = "^0.1.6", platform = "win32"}
 
 [build-system]
