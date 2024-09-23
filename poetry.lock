@@ -1075,13 +1075,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "proxy-py"
-version = "2.4.7"
+version = "2.4.8"
 description = "\\u26a1 Fast \\u2022 \\U0001fab6 Lightweight \\u2022 \\U0001f51f Dependency \\u2022 \\U0001f50c Pluggable \\u2022 \\U0001f608 TLS interception \\u2022 \\U0001f512 DNS-over-HTTPS \\u2022 \\U0001f525 Poor Mans VPN \\u2022 \\u23ea Reverse & \\u23e9 Forward \\u2022 \\U0001f46e\\U0001f3ff Proxy Server framework \\u2022 \\U0001f310 Web Server framework \\u2022 \\u27b5 \\u27b6 \\u27b7 \\u27a0 PubSub framework \\u2022 \\U0001f477 Work acceptor & executor framework."
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "proxy.py-2.4.7-py3-none-any.whl", hash = "sha256:83ddfda5479403434eace531c2bdef41fd9091df473a4051cd9df1564de056a9"},
-    {file = "proxy_py-2.4.7.tar.gz", hash = "sha256:2e20ad717025cdee92d528be1321b7af8743d941e56de2ae6f390c6dc67aaad1"},
+    {file = "proxy.py-2.4.8-py3-none-any.whl", hash = "sha256:316cbed3184c8ddf4f9b3143f7dc449ef1d44a7c5ca1988276a01444f6426e51"},
+    {file = "proxy_py-2.4.8.tar.gz", hash = "sha256:77088312aa558c9402af2b88d135a1e261af51f5e38242f1d37867559a0a65cb"},
 ]
 
 [package.extras]
