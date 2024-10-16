@@ -19,7 +19,7 @@ class MultipartForm:
 
         import asyncio
         import aiosonic
-        from multipart import MultipartForm
+        from aiosonic.multipart import MultipartForm
         
         async def upload_file():
             client = aiosonic.HTTPClient()
