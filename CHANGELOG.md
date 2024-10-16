@@ -6,11 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] 2024-10-16
+
+### Added
+- MultipartForm class for easier multipart form data creation (https://github.com/sonic182/aiosonic/pull/513)
+
+
 ## [0.21.0] 2024-08-14
 
 ### Fixed
 - Safer closing transport with abort, less RuntimeErrors https://github.com/sonic182/aiosonic/pull/483 (Thanks to @geraldog)
-
 
 ## [0.20.1] 2024-08-05
 
@@ -289,7 +294,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.21.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.22.0..HEAD
+[0.22.0]: https://github.com/sonic182/aiosonic/compare/0.21.0..0.22.0
 [0.21.0]: https://github.com/sonic182/aiosonic/compare/0.20.1..0.21.0
 [0.20.1]: https://github.com/sonic182/aiosonic/compare/0.20.0..0.20.1
 [0.20.0]: https://github.com/sonic182/aiosonic/compare/0.19.0..0.20.0
