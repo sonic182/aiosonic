@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 _LRU_CACHE_SIZE = 512
 
+
 # Functions with cache
 @CacheDecorator(_LRU_CACHE_SIZE)
 def get_url_parsed(url: str) -> ParseResult:

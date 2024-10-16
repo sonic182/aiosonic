@@ -77,6 +77,13 @@ Then, pass connector to aiosonic HTTPClient instance.
 .. autoclass:: aiosonic.resolver.ThreadedResolver
    :members:
 
+Multipart Form Data
+===================
+
+This class can be used for sending multipart form data.
+
+.. autoclass:: aiosonic.multipart.MultipartForm
+   :members:
 
 Proxy Support
 =============

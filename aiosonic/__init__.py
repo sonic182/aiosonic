@@ -35,6 +35,7 @@ from aiosonic.exceptions import (
     RequestTimeout,
     TimeoutException,
 )
+from aiosonic.multipart import MultipartForm
 from aiosonic.proxy import Proxy
 from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
@@ -419,6 +420,7 @@ async def _do_request(
     timeouts: Optional[Timeouts],
     http2: bool = False,
     proxy: Optional[Proxy] = None,
+    transfer_chunked: bool = True
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -449,7 +451,11 @@ async def _do_request(
 
         if body:
             if isinstance(body, (AsyncIterator, Iterator)):
-                await _send_chunks(connection, body)
+                if transfer_chunked:
+                    await _send_chunks(connection, body)
+                else:
+                    async for chunk in body:
+                        connection.write(chunk)
             else:
                 connection.write(body)
 
@@ -732,13 +738,20 @@ class HTTPClient:
         if self.handle_cookies:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
-        if method != "GET" and data and not multipart:
-            body = http_parser.setup_body_request(data, headers)
+        transfer_chunked = True
+        
+        if method == "GET":
+            pass  # handle GET request if necessary
+        elif isinstance(data, MultipartForm):
+            body, size = await data.get_body_size()
+            http_parser.add_headers(headers, data.get_headers(size))
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
             boundary = "boundary-%d" % randint(*RANDOM_RANGE)
             body = await _send_multipart(data, boundary, headers)
+        elif data:
+            body = http_parser.setup_body_request(data, headers)
 
         max_redirects = 30
         # if class or request method has false, it will be false
@@ -767,6 +780,7 @@ class HTTPClient:
                         timeouts,
                         http2,
                         self.proxy,
+                        transfer_chunked=transfer_chunked
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
