@@ -1,4 +1,5 @@
 from typing import AsyncIterator, Dict, Iterator, Sequence, Tuple, Union
+from aiosonic.multipart import MultipartForm
 
 # TYPES
 ParamsType = Union[
@@ -13,6 +14,7 @@ DataType = Union[
     tuple,
     AsyncIterator[bytes],
     Iterator[bytes],
+    MultipartForm
 ]
 BodyType = Union[
     str,

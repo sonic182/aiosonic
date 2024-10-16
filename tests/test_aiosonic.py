@@ -21,6 +21,7 @@ from aiosonic.exceptions import (
     RequestTimeout,
 )
 from aiosonic.http2 import Http2Handler
+from aiosonic.multipart import MultipartForm
 from aiosonic.pools import CyclicQueuePool
 from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
@@ -336,6 +337,21 @@ async def test_post_multipart_to_django(live_server):
 
     async with aiosonic.HTTPClient() as client:
         res = await client.post(url, data=data, multipart=True)
+        assert res.status_code == 200
+        assert await res.text() == "bar-foo"
+
+
+@pytest.mark.asyncio
+async def test_post_multipart_to_django_with_class(live_server):
+    """Test post multipart."""
+    url = live_server.url + "/post_file"
+
+    form = MultipartForm()
+    form.add_field("foo", open("tests/files/bar.txt", "rb"), "myfile.txt")
+    form.add_field("field1", "foo")
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=form)
         assert res.status_code == 200
         assert await res.text() == "bar-foo"
 
