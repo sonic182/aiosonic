@@ -62,7 +62,7 @@ pytest-sugar = "^1.0.0"
 pytest-timeout = "^2.3.1"
 requests = "^2.32.3"
 typed-ast = {version="^1.4.0", markers="platform_python_implementation != 'PyPy'"}
-uvicorn = "^0.30.3"
+uvicorn = ">=0.30.3,<0.33.0"
 uvloop = {version=">=0.19,<0.21", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 winloop = {version = "^0.1.6", platform = "win32"}
 
