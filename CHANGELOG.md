@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] 2025-01-26
+
+### Added
+- Python 3.13 compatibility
+
 ## [0.22.0] 2024-10-16
 
 ### Added
@@ -294,7 +299,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.22.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.22.1..HEAD
+[0.22.1]: https://github.com/sonic182/aiosonic/compare/0.22.0..0.22.1
 [0.22.0]: https://github.com/sonic182/aiosonic/compare/0.21.0..0.22.0
 [0.21.0]: https://github.com/sonic182/aiosonic/compare/0.20.1..0.21.0
 [0.20.1]: https://github.com/sonic182/aiosonic/compare/0.20.0..0.20.1
