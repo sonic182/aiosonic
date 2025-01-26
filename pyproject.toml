@@ -33,7 +33,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8.0,<3.13"
+python = ">=3.8.0,<3.14"
 charset-normalizer = ">=2.0.0,<4.0.0"
 h2 = "^4.1.0"
 onecache = "^0.7.0"
