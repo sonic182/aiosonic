@@ -44,34 +44,31 @@ jobs:
           node-version: 20
 
       - uses: actions/cache@v3
-        if: startsWith(runner.os, 'Linux')
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-${{matrix.python-version}}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{matrix.python-version}}-pip-
-      
-      - uses: actions/cache@v3
-        if: startsWith(runner.os, 'macOS')
-        with:
-          path: ~/Library/Caches/pip
-          key: ${{ runner.os }}-${{matrix.python-version}}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{matrix.python-version}}-pip-
-      
-      - uses: actions/cache@v3
-        if: startsWith(runner.os, 'Windows')
-        with:
-          path: ~\AppData\Local\pip\Cache
+          path: |
+            ~/.cache/pip
+            ~/Library/Caches/pip
+            ~\AppData\Local\pip\Cache
           key: ${{ runner.os }}-${{matrix.python-version}}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-${{matrix.python-version}}-pip-
 
+      - name: Install Rust (for PyPy)
+        if: ${{ startsWith(matrix.python-version, 'pypy') }}
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            . "$HOME/.cargo/env"
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install rust
+          elif [[ "$RUNNER_OS" == "Windows" ]]; then
+            choco install rustup.install -y
+            rustup default stable
+          fi
+
       - name: Install dependencies (CPython)
         if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         run: |
-          curl -sL https://deb.nodesource.com/setup_20.x | bash
-          apt-get update && apt-get install -y nodejs
           python -m pip install --upgrade pip
           pip install poetry
           poetry install
@@ -79,10 +76,6 @@ jobs:
       - name: Install dependencies (PyPy)
         if: ${{ startsWith(matrix.python-version, 'pypy') }}
         run: |
-          curl -sL https://deb.nodesource.com/setup_20.x | bash
-          apt-get update && apt-get install -y nodejs curl build-essential
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          . /root/.cargo/env
           python -m pip install --upgrade pip
           pip install poetry
           poetry install
