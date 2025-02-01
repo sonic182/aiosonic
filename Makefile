@@ -7,7 +7,30 @@ SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = sourcedocs
 BUILDDIR      = docs
-DOCKER_CMD    = curl -sL https://deb.nodesource.com/setup_20.x | bash && apt-get update && apt-get install nodejs -y && cd /root && cp -r /app/* . && pip install poetry && poetry install && poetry run py.test
+
+# Default Docker command for CPython
+DOCKER_CMD = curl -sL https://deb.nodesource.com/setup_20.x | bash \
+	&& apt-get update \
+	&& apt-get install -y nodejs \
+	&& cd /root \
+	&& cp -r /app/* . \
+	&& pip install poetry \
+	&& poetry install \
+	&& poetry run py.test
+
+# Separate Docker command for PyPy
+# Installs an up-to-date Rust toolchain with rustup (rather than older distro cargo/rustc).
+# Also upgrades pip/setuptools/wheel/maturin to avoid potential parse issues.
+DOCKER_CMD_PYPY = curl -sL https://deb.nodesource.com/setup_20.x | bash \
+	&& apt-get update \
+	&& apt-get install -y nodejs curl build-essential \
+	&& curl https://sh.rustup.rs -sSf | sh -s -- -y \
+	&& . /root/.cargo/env \
+	&& cd /root \
+	&& cp -r /app/* . \
+	&& pip install poetry \
+	&& poetry install \
+	&& poetry run py.test
 
 # Put it first so that "make" without argument is like "make help".
 help:
@@ -37,23 +60,15 @@ test313:
 	echo "TEST PYTHON 3.13"
 	docker run -i --rm -v $(shell pwd):/app python:3.13 bash -c "$(DOCKER_CMD)"
 
-test-pypy37:
-	echo "TEST PYPY 3.7"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.7 bash -c "$(DOCKER_CMD)"
-
-test-pypy38:
-	echo "TEST PYPY 3.8"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.8 bash -c "$(DOCKER_CMD)"
-
 test-pypy39:
 	echo "TEST PYPY 3.9"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.9 bash -c "$(DOCKER_CMD)"
+	docker run -i --rm -v $(shell pwd):/app pypy:3.9 bash -c "$(DOCKER_CMD_PYPY)"
 
 test-pypy310:
 	echo "TEST PYPY 3.10"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.10 bash -c "$(DOCKER_CMD)"
+	docker run -i --rm -v $(shell pwd):/app pypy:3.10 bash -c "$(DOCKER_CMD_PYPY)"
 
-test: test37 test38 test39 test310 test311 test312 test313 test-pypy37 test-pypy38 test-pypy39 test-pypy310
+test: test38 test39 test310 test311 test312 test313 test-pypy39 test-pypy310
 	echo "OK"
 
 clear:
