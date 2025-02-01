@@ -29,6 +29,12 @@ jobs:
             python-version: 'pypy3.8'
           - os: windows-latest
             python-version: 'pypy3.7'
+          - os: macos-latest
+            python-version: 'pypy3.10'
+          - os: macos-latest
+            python-version: 'pypy3.9'
+          - os: macos-latest
+            python-version: 'pypy3.8'
 
     steps:
       - uses: actions/checkout@v4
@@ -54,17 +60,10 @@ jobs:
             ${{ runner.os }}-${{matrix.python-version}}-pip-
 
       - name: Install Rust (for PyPy)
-        if: ${{ startsWith(matrix.python-version, 'pypy') }}
+        if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-            . "$HOME/.cargo/env"
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install rust
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            choco install rustup.install -y
-            rustup default stable
-          fi
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          . "$HOME/.cargo/env"
 
       - name: Install dependencies (CPython)
         if: ${{ !startsWith(matrix.python-version, 'pypy') }}
@@ -74,7 +73,7 @@ jobs:
           poetry install
 
       - name: Install dependencies (PyPy)
-        if: ${{ startsWith(matrix.python-version, 'pypy') }}
+        if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
         run: |
           python -m pip install --upgrade pip
           pip install poetry
