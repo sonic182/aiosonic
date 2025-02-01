@@ -79,7 +79,7 @@ jobs:
           pip install poetry
           poetry install
           # tweak to make pypy tests work
-          poetry add django<4.1
+          poetry add "django<4.1"
 
       - name: Test with pytest
         run: |
