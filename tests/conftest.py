@@ -26,7 +26,6 @@ async def hello(request):
 def get_app():
     """Get aiohttp app."""
     application = web.Application()
-    # Only the "/" route remains.
     application.router.add_get("/", hello)
     return application
 
