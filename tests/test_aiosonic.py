@@ -330,21 +330,22 @@ async def test_get_keepalive(http_serv):
 
 
 @pytest.mark.asyncio
-async def test_post_multipart_to_django(live_server):
+async def test_post_multipart(http_serv):
     """Test post multipart."""
-    url = live_server.url + "/post_file"
+    url = f"{http_serv}/upload_file"
     data = {"foo": open("tests/files/bar.txt", "rb"), "field1": "foo"}
 
     async with aiosonic.HTTPClient() as client:
         res = await client.post(url, data=data, multipart=True)
         assert res.status_code == 200
+        # assert await res.content() == b"bar\n-foo"
         assert await res.text() == "bar-foo"
 
 
 @pytest.mark.asyncio
-async def test_post_multipart_to_django_with_class(live_server):
+async def test_post_multipart_with_class(http_serv):
     """Test post multipart."""
-    url = live_server.url + "/post_file"
+    url = f"{http_serv}/upload_file"
 
     form = MultipartForm()
     form.add_field("foo", open("tests/files/bar.txt", "rb"), "myfile.txt")
