@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.2] 2025-02-10
+
+### Removed
+- django server in tests
+  - using a nodejs equivalent
+- Python 3.7 compatibility
+
 ## [0.22.1] 2025-02-01
 
 ### Added
@@ -299,7 +306,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.22.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.22.2..HEAD
+[0.22.2]: https://github.com/sonic182/aiosonic/compare/0.22.1..0.22.2
 [0.22.1]: https://github.com/sonic182/aiosonic/compare/0.22.0..0.22.1
 [0.22.0]: https://github.com/sonic182/aiosonic/compare/0.21.0..0.22.0
 [0.21.0]: https://github.com/sonic182/aiosonic/compare/0.20.1..0.21.0
