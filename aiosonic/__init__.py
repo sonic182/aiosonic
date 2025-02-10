@@ -104,8 +104,6 @@ class HttpResponse:
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
-        print("--- data")
-        print(data)
         res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip("\r\n"))
         assert res
         self.response_initial = res.groupdict()
