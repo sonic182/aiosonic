@@ -232,7 +232,8 @@ class HttpResponse:
     def __del__(self):
         # clean it
         if self._connection and self._connection.blocked:
-            self._connection.ensure_released()
+            response_read = self.body
+            self._connection.ensure_released(response_read)
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}
