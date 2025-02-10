@@ -104,6 +104,8 @@ class HttpResponse:
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
+        print("--- data")
+        print(data)
         res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip("\r\n"))
         assert res
         self.response_initial = res.groupdict()
@@ -232,7 +234,8 @@ class HttpResponse:
     def __del__(self):
         # clean it
         if self._connection and self._connection.blocked:
-            self._connection.ensure_released()
+            response_read = self.body
+            self._connection.ensure_released(response_read)
 
     def _set_request_meta(self, urlparsed: ParseResult):
         self.request_meta = {"from_path": urlparsed.path or "/"}

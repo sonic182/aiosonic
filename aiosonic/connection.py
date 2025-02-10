@@ -183,10 +183,15 @@ class Connection:
         self.blocked = False
         self.connector.release(self)
 
-    def ensure_released(self):
+    def ensure_released(self, response_read=True):
         """Ensure the connection is released."""
         if self.blocked:
             self.release()
+
+        # ensure no incomplete response, so closing socket if not read
+        # the response to force a new connection.
+        if not response_read:
+            self.close()
 
     def close(self) -> None:
         """Close connection if opened."""
