@@ -165,7 +165,7 @@ def http2_serv():
     """Sample aiohttp app."""
     port = __get_sample_port(3000, 4000)
 
-    proc = subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
+    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/http2.js {port}"))
     url = f"https://localhost:{port}"
 
     check_port(port)
@@ -175,10 +175,10 @@ def http2_serv():
 
 @pytest.fixture(scope="session")
 def http_serv():
-    """Sample aiohttp app."""
+    """Sample http app."""
     port = __get_sample_port(3000, 4000)
 
-    proc = subprocess.Popen(shlex.split(f"node tests/http1.mjs {port}"))
+    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/http1.mjs {port}"))
     url = f"http://localhost:{port}"
 
     check_port(port)
