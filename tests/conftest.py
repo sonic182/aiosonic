@@ -76,7 +76,7 @@ def http_serv_new():
     """Sample http app."""
     port = __get_sample_port(3000, 4000)
 
-    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/basic.js {port}"))
+    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/basic.mjs {port}"))
     url = f"http://localhost:{port}"
 
     check_port(port)

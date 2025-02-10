@@ -1,9 +1,7 @@
-
-// server.js
-const http = require('http');
-const url = require('url');
-const querystring = require('querystring');
-const zlib = require('zlib');
+import http from 'http';
+import url from 'url';
+import querystring from 'querystring';
+import zlib from 'zlib';
 
 // Helper: read request body and return a promise that resolves to a string.
 function readRequestBody(req) {
@@ -118,9 +116,9 @@ const server = http.createServer(async (req, res) => {
           return;
         }
       }
-      // If body contains "close", set Connection header to close.
+      // If body contains "close", force close the connection immediately.
       if (body && body.indexOf('close') !== -1) {
-        // Create a Buffer for the body to ensure we know its byte length.
+        // Create a Buffer for the body to determine its byte length.
         const bodyBuffer = Buffer.from(body, 'utf8');
         res.writeHead(200, {
           'Content-Type': 'text/plain',
@@ -128,7 +126,7 @@ const server = http.createServer(async (req, res) => {
           'Content-Length': bodyBuffer.length
         });
         res.end(bodyBuffer, () => {
-          // Forcefully destroy the socket after the response is finished.
+          // Destroy the socket immediately after sending the response.
           req.socket.destroy();
         });
         return;
@@ -198,4 +196,3 @@ server.keepAliveTimeout = 60;
 const myArgs = process.argv.slice(2);
 server.listen(myArgs[0]);
 console.log(`--- LISTENING ON PORT ${myArgs[0]}`);
-
