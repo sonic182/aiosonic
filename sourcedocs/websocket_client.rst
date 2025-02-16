@@ -3,7 +3,7 @@
 WebSocket Client
 ================
 
-... (rest of your content) ...
+The WebSocket client module provides functionality
 
 .. automodule:: aiosonic.web_socket_client
     :members:

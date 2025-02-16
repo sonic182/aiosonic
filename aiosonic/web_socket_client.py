@@ -26,6 +26,7 @@ import hashlib
 import json
 import os
 import struct
+from abc import ABC, abstractmethod
 from ssl import SSLContext
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
@@ -42,6 +43,47 @@ CRLF = "\r\n"
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
+# --- Protocol Handler Definitions ---
+class ProtocolHandler(ABC):
+    """
+    Base class for WebSocket subprotocol handlers.
+
+    To implement a custom protocol (for example, using MessagePack), subclass
+    this base class and implement the encode and decode methods. For example:
+
+    .. code-block:: python
+
+        import msgpack
+
+        class MsgpackHandler(ProtocolHandler):
+            @property
+            def name(self) -> str:
+                return "msgpack"
+            
+            def encode(self, data) -> bytes:
+                return msgpack.packb(data, use_bin_type=True)
+            
+            def decode(self, data: bytes):
+                return msgpack.unpackb(data, raw=False)
+    """
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Return the protocol name used for negotiation."""
+        pass
+
+    @abstractmethod
+    def encode(self, data) -> bytes:
+        """Encode data into bytes."""
+        pass
+
+    @abstractmethod
+    def decode(self, data: bytes):
+        """Decode bytes into data."""
+        pass
+
+
 class WebSocketConnection:
     OPCODE_TEXT = 0x1
     OPCODE_BINARY = 0x2
@@ -54,7 +96,8 @@ class WebSocketConnection:
         conn: "Connection",
         text_queue_maxsize: int = 100,
         binary_queue_maxsize: int = 100,
-        drop_frames: bool = False
+        drop_frames: bool = False,
+        protocol_handler: Optional[ProtocolHandler] = None
     ):
         self.conn = conn
         self.connected = True
@@ -67,6 +110,7 @@ class WebSocketConnection:
         self._pong_queue = asyncio.Queue()  # pong queue remains unlimited
         # Store drop settings.
         self._drop_frames = drop_frames
+        self.protocol_handler = protocol_handler
         # Start the dispatcher loop.
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
         self._keep_alive_task = None
@@ -158,7 +202,6 @@ class WebSocketConnection:
             self.connected = False
 
     # --- Public API for Sending/Receiving Frames ---
-
     async def send_text(self, message: str):
         await self._send_frame(self.OPCODE_TEXT, message.encode("utf-8"))
 
@@ -214,8 +257,22 @@ class WebSocketConnection:
         self.conn.close()
         self._frame_dispatch_task.cancel()
 
-    # --- Keep-Alive Task Implementation ---
+    # --- Convenience Methods for Protocol Handlers ---
+    async def send_protocol(self, data):
+        """Send data using the configured protocol handler."""
+        if not self.protocol_handler:
+            raise RuntimeError("No protocol handler configured")
+        encoded = self.protocol_handler.encode(data)
+        await self._send_frame(self.OPCODE_BINARY, encoded)
 
+    async def receive_protocol(self, timeout: Optional[float] = None):
+        """Receive data using the configured protocol handler."""
+        if not self.protocol_handler:
+            raise RuntimeError("No protocol handler configured")
+        data = await self.receive_bytes(timeout=timeout)
+        return self.protocol_handler.decode(data)
+
+    # --- Keep-Alive Task Implementation ---
     def start_keep_alive(self, interval: float = 30.0):
         if self._keep_alive_task is None:
             self._keep_alive_task = asyncio.create_task(self._keep_alive_loop(interval))
@@ -239,7 +296,6 @@ class WebSocketConnection:
             return
 
     # --- Context Manager Support ---
-
     async def __aenter__(self):
         return self
 
