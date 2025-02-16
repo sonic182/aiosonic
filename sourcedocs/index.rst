@@ -2,7 +2,7 @@
 Welcome to aiosonic
 ===================
 
-A really fast, lightweight Python asyncio HTTP/1.1 and HTTP/2 client.
+A really fast, lightweight Python asyncio HTTP/1.1, HTTP/2, and WebSocket client.
 
 Current version is |release|.
 

@@ -4,9 +4,9 @@
 [![Documentation Status](https://readthedocs.org/projects/aiosonic/badge/?version=latest)](https://aiosonic.readthedocs.io/en/latest/?badge=latest)
 [![Discord](https://img.shields.io/discord/898929656969965648)](https://discord.gg/e7tBnYSRjj)
 
-# aiosonic - lightweight Python asyncio HTTP client
+# aiosonic - lightweight Python asyncio HTTP/WebSocket client
 
-A very fast, lightweight Python asyncio HTTP/1.1 and HTTP/2 client.
+A very fast, lightweight Python asyncio HTTP/1.1, HTTP/2, and WebSocket client.
 
 
 The repository is hosted on [GitHub](https://github.com/sonic182/aiosonic).
