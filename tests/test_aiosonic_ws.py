@@ -1,5 +1,6 @@
 import asyncio
 import json
+import ssl
 
 import pytest
 
@@ -142,3 +143,15 @@ async def test_ws_drop_frames(ws_serv):
             except Exception:
                 pass
             assert len(messages) <= 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(5)
+async def test_ws_ssl_connect(ws_serv_ssl):
+    # Create an SSL context that skips verification for testing purposes.
+    ssl_ctx = ssl._create_unverified_context()
+    async with WebSocketClient() as client:
+        async with await client.connect(ws_serv_ssl, ssl=ssl_ctx) as ws:
+            await ws.send_text("Hello Secure WebSocket")
+            msg = await ws.receive_text()
+            assert msg == "Echo: Hello Secure WebSocket"

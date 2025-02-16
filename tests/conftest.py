@@ -23,7 +23,7 @@ if sys.platform == "win32":
 def run_cmd(command: str):
     """
     Helper to run a command.
-    On Windows, use shell=True so that npm/node commands are resolved via PATH.
+    On Windows, use shell=True so that commands like 'npm' or 'node' are resolved via PATH.
     On other systems, split the command.
     """
     if sys.platform == "win32":
@@ -46,8 +46,7 @@ async def hello_cookies(request):
         text=res,
         headers={
             "set-cookie": "csrftoken=sometoken; expires=Sat, "
-            "04-Dec-2021 11:33:13 GMT; "
-            "Max-Age=31449600; Path=/"
+            "04-Dec-2021 11:33:13 GMT; Max-Age=31449600; Path=/"
         },
     )
 
@@ -208,10 +207,21 @@ def proxy_serv():
 
 @pytest.fixture(scope="session")
 def ws_serv():
-    """Sample WebSocket app."""
+    """Sample WebSocket app (non-SSL)."""
     port = __get_sample_port(3000, 4000)
-    proc = run_cmd(f"npm run ws-server -- {port}")
+    proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port}")
     url = f"ws://localhost:{port}"
+    check_port(port)
+    yield url
+    proc.terminate()
+
+
+@pytest.fixture(scope="session")
+def ws_serv_ssl():
+    """Sample secure WebSocket app (SSL)."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port} ssl")
+    url = f"wss://localhost:{port}"
     check_port(port)
     yield url
     proc.terminate()
