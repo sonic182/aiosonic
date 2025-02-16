@@ -2,11 +2,11 @@
 Welcome to aiosonic
 ===================
 
-Really Fast Python asyncio HTTP 1.1 and 2.0 client.
+A really fast, lightweight Python asyncio HTTP/1.1 and HTTP/2 client.
 
 Current version is |release|.
 
-Repo is hosted at GitHub_.
+The repository is hosted on GitHub_: 
 
 .. _GitHub: https://github.com/sonic182/aiosonic
 
@@ -14,38 +14,37 @@ Repo is hosted at GitHub_.
 Features
 ========
 
-- Keepalive and smart pool of connections
-- Multipart File Uploads
-- Chunked responses handling
-- Chunked requests
-- Connection Timeouts
-- Automatic Decompression
-- Follow Redirects
-- Fully type annotated.
+- Keepalive support and a smart pool of connections
+- Multipart file uploads
+- Handling of chunked responses and requests
+- Connection timeouts and automatic decompression
+- Automatic redirect following
+- Fully type-annotated code
 - WebSocket support
-- 100% test coverage (Sometimes not).
-- HTTP2 (BETA) when using the correct flag
+- Comprehensive test coverage (nearly 100%)
+- HTTP/2 (BETA; enabled via a flag)
 
 Requirements
 ============
 
-- Python>=3.8
-- PyPy >=3.8
+- Python >= 3.8 (or PyPy 3.8+)
 
-Install
-=======
+Installation
+============
 
 .. code-block:: bash
 
    $ pip install aiosonic
 
 .. note::
-   You may want to install *optional* :term:`cchardet` library as faster
-   replacement for :term:`chardet`.
+   For better character encoding performance, you may install the optional
+   *cchardet* library as a faster replacement for *chardet*.
 
 
 Getting Started
 ===============
+
+Below is a basic example of using aiosonic's HTTP client:
 
 .. code-block:: python
 
@@ -56,16 +55,12 @@ Getting Started
    async def run():
        client = aiosonic.HTTPClient()
 
-       # ##################
-       # Sample get request
-       # ##################
+       # Sample GET request
        response = await client.get('https://www.google.com/')
        assert response.status_code == 200
        assert 'Google' in (await response.text())
 
-       # ##################
-       # Post data as multipart form
-       # ##################
+       # POST data as multipart form
        url = "https://postman-echo.com/post"
        posted_data = {'foo': 'bar'}
        response = await client.post(url, data=posted_data)
@@ -73,17 +68,13 @@ Getting Started
        data = json.loads(await response.content())
        assert data['form'] == posted_data
 
-       # ##################
-       # Posted as JSON
-       # ##################
+       # POST data as JSON
        response = await client.post(url, json=posted_data)
        assert response.status_code == 200
        data = json.loads(await response.content())
        assert data['json'] == posted_data
 
-       # ##################
-       # Request with timeout
-       # ##################
+       # GET request with timeouts
        from aiosonic.timeout import Timeouts
        timeouts = Timeouts(sock_read=10, sock_connect=3)
        response = await client.get('https://www.google.com/', timeouts=timeouts)
@@ -99,33 +90,41 @@ Getting Started
 WebSocket Example
 =================
 
-This example demonstrates how to use the WebSocket support in aiosonic.
+This example demonstrates how to use the WebSocket support provided by aiosonic.
 
 .. code-block:: python
 
    import asyncio
    from aiosonic import WebSocketClient
 
-   async def run_ws():
+   async def main():
+       # Replace with your WebSocket server URL
+       ws_url = "ws://localhost:8080"  
        async with WebSocketClient() as client:
-           # Connect to a WebSocket echo server
-           async with await client.connect("ws://echo.websocket.org") as ws:
-               # Send a text message
-               await ws.send_text("Hello WebSocket!")
-               # Wait for the echo response (with a timeout of 5 seconds)
-               response = await ws.receive_text(timeout=5)
+           async with await client.connect(ws_url) as ws:
+               # Send a text message.
+               await ws.send_text("Hello WebSocket")
+               
+               # Receive the echo response.
+               response = await ws.receive_text()
                print("Received:", response)
-               # Close the connection gracefully
+               
+               # Send a ping and wait for the pong response.
+               await ws.ping(b"keep-alive")
+               pong = await ws.receive_pong()
+               print("Pong received:", pong)
+               
+               # Gracefully close the connection.
                await ws.close(code=1000, reason="Normal closure")
 
-   if __name__ == '__main__':
-       asyncio.run(run_ws())
+   if __name__ == "__main__":
+       asyncio.run(main())
 
 
 Benchmarks
 ==========
 
-Some benchmarking
+Below is a basic performance benchmark comparing aiosonic with other HTTP clients:
 
 .. code-block:: bash
 
@@ -141,29 +140,20 @@ Some benchmarking
    aiosonic is 1457.99% faster than requests
    aiosonic is -1.38% faster than aiosonic cyclic
 
-This is a *very basic, dummy test*, machine dependant. If you look for performance, test and compare your code with this and other packages like aiohttp.
+Note that these benchmarks are machine-dependent and intended only as a rough comparison.
 
-You can perform this test by installing all test dependencies with
-```
-pip install -e ".[test]"
-```
-and running:
-
-```
-python tests/performance.py
-```
 
 Contributing
 ============
 
-1. Fork
-2. Create a branch `feature/your_feature`
-3. Commit - Push - Pull Request
+1. Fork the repository.
+2. Create a branch (e.g. ``feature/your_feature``).
+3. Commit, push, and submit a pull request.
 
-Thanks :)
+Thanks to all contributors!
 
 
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`
