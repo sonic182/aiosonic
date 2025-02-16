@@ -2,6 +2,7 @@ import json
 
 import pytest
 from aiosonic import WebSocketClient
+from aiosonic.exceptions import ReadTimeout
 
 
 @pytest.mark.asyncio
@@ -74,7 +75,7 @@ async def test_ws_receive_timeout(ws_serv):
     """Test WebSocket receive timeout."""
     async with WebSocketClient() as client:
         async with await client.connect(ws_serv) as ws:
-            with pytest.raises(TimeoutError):
+            with pytest.raises(ReadTimeout):
                 await ws.receive_text(timeout=0.1)
 
 

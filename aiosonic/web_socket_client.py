@@ -8,6 +8,7 @@ from typing import Optional, Tuple, List, Dict
 
 from aiosonic import TCPConnector, http_parser
 from aiosonic.connection import Connection
+from aiosonic.exceptions import ConnectionDisconnected, ReadTimeout
 from aiosonic.pools import WsPool
 from aiosonic.timeout import Timeouts
 
@@ -100,9 +101,18 @@ class WebSocketConnection:
     async def receive_text(self, timeout: Optional[float] = None) -> str:
         """
         Receive a text message from the WebSocket connection.
-        If no frame is received within `timeout` seconds, a TimeoutError is raised.
+        If no frame is received within `timeout` seconds, a ReadTimeout is raised.
+        If the connection is closed unexpectedly, a ConnectionDisconnected is raised.
         """
-        opcode, payload = await asyncio.wait_for(self._read_frame(), timeout=timeout)
+        try:
+            opcode, payload = await asyncio.wait_for(self._read_frame(), timeout=timeout)
+        except asyncio.IncompleteReadError as exc:
+            # This indicates that the stream ended before we got our expected data.
+            self.conn.keep = False  # if applicable; flag connection as unusable
+            raise ConnectionDisconnected("Connection was closed unexpectedly") from exc
+        except asyncio.TimeoutError as exc:
+            raise ReadTimeout("Timed out while waiting for a frame") from exc
+
         if opcode != self.OPCODE_TEXT:
             raise ValueError(f"Expected text frame, got opcode {opcode}")
         return payload.decode("utf-8")
