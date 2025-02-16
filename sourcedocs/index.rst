@@ -159,12 +159,10 @@ Indices and Tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-* :ref:`websocket_client`
 
 .. toctree::
    :maxdepth: 2
 
-   index
    examples
    reference
    websocket_client
