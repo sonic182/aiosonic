@@ -1,3 +1,25 @@
+"""
+WebSocket Client Module
+=======================
+
+This module implements a WebSocket client for aiosonic, providing a
+WebSocketConnection class for managing WebSocket connections and a
+WebSocketClient class for performing the upgrade handshake and connecting
+to a WebSocket server.
+
+Classes:
+    WebSocketConnection: Manages a WebSocket connection and provides methods
+                         for sending and receiving text, binary, and JSON messages,
+                         as well as handling ping/pong and closing the connection.
+    WebSocketClient: Performs the HTTP upgrade request and establishes a
+                     WebSocket connection with optional custom headers and
+                     subprotocol negotiation.
+
+Exceptions:
+    ConnectionDisconnected: Raised when the connection is unexpectedly closed.
+    ReadTimeout: Raised when a read operation times out.
+"""
+
 import asyncio
 import base64
 import hashlib
@@ -14,14 +36,33 @@ from aiosonic.timeout import Timeouts
 
 
 class WebSocketConnection:
+    """
+    Manages a WebSocket connection.
+
+    This class provides methods to send and receive messages (text, binary, and JSON)
+    over a WebSocket connection, as well as to handle ping/pong messages and to close
+    the connection properly.
+
+    Attributes:
+        conn (Connection): The underlying connection.
+        connected (bool): Flag indicating whether the connection is active.
+        close_code (Optional[int]): The close code returned after a close frame is sent.
+        subprotocol (Optional[str]): The negotiated subprotocol, if any.
+    """
+
     # WebSocket OpCodes
-    OPCODE_TEXT   = 0x1
+    OPCODE_TEXT = 0x1
     OPCODE_BINARY = 0x2
-    OPCODE_CLOSE  = 0x8
-    OPCODE_PING   = 0x9
-    OPCODE_PONG   = 0xA
+    OPCODE_CLOSE = 0x8
+    OPCODE_PING = 0x9
+    OPCODE_PONG = 0xA
 
     def __init__(self, conn: Connection):
+        """
+        Initialize a new WebSocketConnection.
+
+        :param conn: The underlying TCP connection.
+        """
         self.conn = conn
         self.connected = True
         self.close_code: Optional[int] = None
@@ -32,7 +73,11 @@ class WebSocketConnection:
     def _build_frame(self, opcode: int, payload: bytes) -> bytes:
         """
         Build a WebSocket frame with the given opcode and payload.
-        Always builds masked frames (as required for client-to-server messages).
+        The frame is masked, as required for client-to-server messages.
+
+        :param opcode: The opcode for the frame.
+        :param payload: The payload data as bytes.
+        :return: The complete WebSocket frame.
         """
         # FIN bit (1) plus opcode
         fin_and_opcode = 0x80 | (opcode & 0x0F)
@@ -59,7 +104,12 @@ class WebSocketConnection:
         return bytes(header) + bytes(masked_payload)
 
     async def _send_frame(self, opcode: int, payload: bytes):
-        """Helper: Build and send a frame with the specified opcode and payload."""
+        """
+        Build and send a WebSocket frame with the specified opcode and payload.
+
+        :param opcode: The opcode for the frame.
+        :param payload: The payload data as bytes.
+        """
         frame = self._build_frame(opcode, payload)
         async with self._send_lock:
             self.conn.write(frame)
@@ -67,8 +117,10 @@ class WebSocketConnection:
 
     async def _read_frame(self) -> Tuple[int, bytes]:
         """
-        Read a frame from the connection.
-        Returns a tuple (opcode, payload). Unmasks the payload if needed.
+        Read a WebSocket frame from the connection.
+
+        :return: A tuple (opcode, payload) where opcode is an integer and payload is bytes.
+        :raises: asyncio.IncompleteReadError if the stream ends unexpectedly.
         """
         async with self._read_lock:
             header = await self.conn.readexactly(2)
@@ -95,20 +147,31 @@ class WebSocketConnection:
             return opcode, payload
 
     async def send_text(self, message: str):
-        """Send a text message over the WebSocket connection."""
+        """
+        Send a text message over the WebSocket connection.
+
+        :param message: The text message to send.
+        """
         await self._send_frame(self.OPCODE_TEXT, message.encode("utf-8"))
 
     async def receive_text(self, timeout: Optional[float] = None) -> str:
         """
         Receive a text message from the WebSocket connection.
+
         If no frame is received within `timeout` seconds, a ReadTimeout is raised.
         If the connection is closed unexpectedly, a ConnectionDisconnected is raised.
+
+        :param timeout: Optional timeout in seconds.
+        :return: The received text message.
+        :raises ReadTimeout: If the read operation times out.
+        :raises ConnectionDisconnected: If the connection closes unexpectedly.
+        :raises ValueError: If the received frame is not a text frame.
         """
         try:
             opcode, payload = await asyncio.wait_for(self._read_frame(), timeout=timeout)
         except asyncio.IncompleteReadError as exc:
-            # This indicates that the stream ended before we got our expected data.
-            self.conn.keep = False  # if applicable; flag connection as unusable
+            # Indicates that the stream ended unexpectedly.
+            self.conn.keep = False  # Flag connection as unusable, if applicable.
             raise ConnectionDisconnected("Connection was closed unexpectedly") from exc
         except asyncio.TimeoutError as exc:
             raise ReadTimeout("Timed out while waiting for a frame") from exc
@@ -118,32 +181,59 @@ class WebSocketConnection:
         return payload.decode("utf-8")
 
     async def send_bytes(self, data: bytes):
-        """Send binary data as a WebSocket frame."""
+        """
+        Send binary data as a WebSocket frame.
+
+        :param data: The binary data to send.
+        """
         await self._send_frame(self.OPCODE_BINARY, data)
 
     async def receive_bytes(self) -> bytes:
-        """Receive a binary message from the WebSocket connection."""
+        """
+        Receive a binary message from the WebSocket connection.
+
+        :return: The binary data received.
+        :raises ValueError: If the received frame is not a binary frame.
+        """
         opcode, payload = await self._read_frame()
         if opcode != self.OPCODE_BINARY:
             raise ValueError(f"Expected binary frame, got opcode {opcode}")
         return payload
 
     async def send_json(self, data):
-        """Serialize data to JSON and send it as a text frame."""
+        """
+        Serialize data to JSON and send it as a text frame.
+
+        :param data: The data to serialize and send.
+        """
         await self.send_text(json.dumps(data))
 
     async def receive_json(self):
-        """Receive a text frame and deserialize it from JSON."""
+        """
+        Receive a text frame and deserialize it from JSON.
+
+        :return: The deserialized JSON object.
+        """
         return json.loads(await self.receive_text())
 
     async def ping(self, data: bytes = b''):
-        """Send a ping frame with an optional payload."""
+        """
+        Send a ping frame with an optional payload.
+
+        :param data: Optional payload data (must be <=125 bytes).
+        :raises ValueError: If payload exceeds 125 bytes.
+        """
         if len(data) > 125:
             raise ValueError("Ping payload must be 125 bytes or less")
         await self._send_frame(self.OPCODE_PING, data)
 
     async def receive_pong(self) -> bytes:
-        """Receive a pong frame from the WebSocket connection."""
+        """
+        Receive a pong frame from the WebSocket connection.
+
+        :return: The pong payload as bytes.
+        :raises ValueError: If the received frame is not a pong frame.
+        """
         opcode, payload = await self._read_frame()
         if opcode != self.OPCODE_PONG:
             raise ValueError(f"Expected pong frame, got opcode {opcode}")
@@ -153,6 +243,10 @@ class WebSocketConnection:
         """
         Send a WebSocket close frame with the given status code and reason,
         then close the underlying connection.
+
+        :param code: The WebSocket close code.
+        :param reason: The reason for closing the connection.
+        :raises ValueError: If the close payload exceeds 125 bytes.
         """
         payload = struct.pack(">H", code) + reason.encode("utf-8")
         if len(payload) > 125:
@@ -163,15 +257,39 @@ class WebSocketConnection:
         self.conn.close()
 
     async def __aenter__(self):
+        """
+        Enter the asynchronous context manager.
+
+        :return: The WebSocketConnection instance.
+        """
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit the asynchronous context manager, closing the connection if still active.
+        """
         if self.connected:
             await self.close()
 
 
 class WebSocketClient:
+    """
+    WebSocket Client.
+
+    This class handles the HTTP upgrade process and establishes a WebSocket
+    connection. It supports custom headers and subprotocol negotiation.
+
+    Attributes:
+        connector (TCPConnector): The TCP connector to use for the connection.
+        timeouts (Timeouts): Timeout settings.
+    """
+
     def __init__(self, connector: Optional[TCPConnector] = None):
+        """
+        Initialize a new WebSocketClient.
+
+        :param connector: Optional custom TCPConnector.
+        """
         self.connector = connector or TCPConnector(pool_cls=WsPool)
         self.timeouts = Timeouts()
 
@@ -183,6 +301,20 @@ class WebSocketClient:
         headers: Optional[Dict[str, str]] = None,
         subprotocols: Optional[List[str]] = None,
     ) -> WebSocketConnection:
+        """
+        Connect to a WebSocket server.
+
+        Performs the HTTP upgrade handshake to establish the WebSocket connection.
+        Custom headers and subprotocols can be provided.
+
+        :param url: The WebSocket URL.
+        :param verify: Whether to verify the SSL certificate.
+        :param ssl: Whether to use SSL (if None, inferred from the URL scheme).
+        :param headers: Optional custom headers to include in the handshake.
+        :param subprotocols: Optional list of subprotocols for negotiation.
+        :return: An instance of WebSocketConnection.
+        :raises ConnectionError: If the handshake fails.
+        """
         urlparsed = http_parser.get_url_parsed(url)
         ssl = ssl or (urlparsed.scheme == "wss")
 
@@ -249,8 +381,16 @@ class WebSocketClient:
         return ws_conn
 
     async def __aenter__(self):
+        """
+        Enter the asynchronous context manager.
+
+        :return: The WebSocketClient instance.
+        """
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """
+        Exit the asynchronous context manager.
+        """
         # Optionally close the connector if needed.
         pass
