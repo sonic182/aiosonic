@@ -200,6 +200,19 @@ def proxy_serv():
     proc.terminate()
 
 
+@pytest.fixture(scope="session")
+def ws_serv():
+    """Sample ws app."""
+    port = __get_sample_port(3000, 4000)
+
+    proc = subprocess.Popen(shlex.split(f"npm run ws-server -- {port}"))
+    url = f"ws://localhost:{port}"
+
+    check_port(port)
+    yield url
+    proc.terminate()
+
+
 def __is_port_in_use(address, port):
     import socket
 

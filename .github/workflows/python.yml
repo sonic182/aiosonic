@@ -68,6 +68,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
           poetry install
+          npm install
 
       - name: Install dependencies (PyPy)
         if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
@@ -75,6 +76,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
           poetry install
+          npm install
 
       - name: Test with pytest
         run: |
