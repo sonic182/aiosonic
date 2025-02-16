@@ -114,6 +114,35 @@ if __name__ == '__main__':
     loop.run_until_complete(run())
 ```
 
+# WebSockets usage
+
+```python
+import asyncio
+from aiosonic import WebSocketClient
+
+async def main():
+    ws_url = "ws://localhost:8080"  
+    async with WebSocketClient() as client:
+        async with await client.connect(ws_url) as ws:
+            await ws.send_text("Hello WebSocket")
+            
+            # example receiving from an echo server
+            response = await ws.receive_text()
+            print("Received:", response)
+            
+            # Send a ping and wait for the pong response.
+            await ws.ping(b"keep-alive")
+            pong = await ws.receive_pong()
+            print("Pong received:", pong)
+            
+            # Gracefully close the connection.
+            await ws.close(code=1000, reason="Normal closure")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+```
+
 # [TODO'S](https://github.com/sonic182/aiosonic/projects/1)
 
 * HTTP2
