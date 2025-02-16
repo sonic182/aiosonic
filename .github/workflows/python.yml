@@ -52,9 +52,9 @@ jobs:
             ~/.cache/pip
             ~/Library/Caches/pip
             ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-${{matrix.python-version}}-pip-${{ hashFiles('**/requirements.txt') }}
+          key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-${{matrix.python-version}}-pip-
+            ${{ runner.os }}-${{ matrix.python-version }}-pip-
 
       - name: Install Rust (for PyPy)
         if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
@@ -62,19 +62,21 @@ jobs:
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           . "$HOME/.cargo/env"
 
-      - name: Install dependencies (CPython)
-        if: ${{ !startsWith(matrix.python-version, 'pypy') }}
+      # Install Python dependencies using Poetry.
+      # This step always installs dependencies for CPython.
+      # For PyPy, we only run this step on Linux because PyPy is not supported on Windows or macOS.
+      - name: Install Python dependencies
+        if: ${{ !startsWith(matrix.python-version, 'pypy') || (startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux') }}
         run: |
           python -m pip install --upgrade pip
           pip install poetry
           poetry install
 
-      - name: Install dependencies (PyPy)
-        if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
+      # Run npm install in the tests folder by setting the working-directory.
+      - name: Install npm dependencies
+        if: ${{ !startsWith(matrix.python-version, 'pypy') || (startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux') }}
+        run: npm install
+        working-directory: tests
 
       - name: Test with pytest
         run: |

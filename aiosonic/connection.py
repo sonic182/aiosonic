@@ -139,11 +139,11 @@ class Connection:
             ):
             self.close()
 
-            if urlparsed.scheme == "https":
+            if urlparsed.scheme in ["https", "wss"]:
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (443 if urlparsed.scheme == "https" else 80)
+            port = urlparsed.port or (443 if urlparsed.scheme in ["https", "ws"] else 80)
             dns_info_copy["port"] = port
 
             self.reader, self.writer = await open_connection(

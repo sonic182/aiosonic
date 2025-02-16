@@ -89,11 +89,11 @@ def test_handle_bad_chunk(mocker):
     with pytest.raises(MissingWriterException):
         conn = mocker.MagicMock()
         conn.writer = None
-        aiosonic._handle_chunk(b"foo", conn)
+        aiosonic.client._handle_chunk(b"foo", conn)
 
 
 def test_hostname_parse():
     """Test hostname encoding"""
     hostname = "gnosisespaña.es"
     port = 443
-    assert aiosonic._get_hostname(hostname, port) == "xn--gnosisespaa-beb.es"
+    assert aiosonic.client._get_hostname(hostname, port) == "xn--gnosisespaa-beb.es"

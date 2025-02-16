@@ -15,8 +15,21 @@ import aiohttp
 import pytest
 from aiohttp import web
 
+# On Windows, use the WindowsSelectorEventLoopPolicy.
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
+def run_cmd(command: str):
+    """
+    Helper to run a command.
+    On Windows, use shell=True so that commands like 'npm' or 'node' are resolved via PATH.
+    On other systems, split the command.
+    """
+    if sys.platform == "win32":
+        return subprocess.Popen(command, shell=True)
+    else:
+        return subprocess.Popen(shlex.split(command))
 
 
 async def hello(request):
@@ -33,8 +46,7 @@ async def hello_cookies(request):
         text=res,
         headers={
             "set-cookie": "csrftoken=sometoken; expires=Sat, "
-            "04-Dec-2021 11:33:13 GMT; "
-            "Max-Age=31449600; Path=/"
+            "04-Dec-2021 11:33:13 GMT; Max-Age=31449600; Path=/"
         },
     )
 
@@ -83,7 +95,7 @@ async def delete_handler(request):
 
 
 async def put_patch_handler(request):
-    """Sample delete method."""
+    """Sample put/patch method."""
     return web.Response(text="put_patch")
 
 
@@ -94,11 +106,9 @@ async def chunked_response(request):
         reason="OK",
         headers={"Content-Type": "text/plain"},
     )
-    # response.enable_chunked_encoding()
     await response.prepare(request)
     await response.write(b"foo")
     await response.write(b"bar")
-
     await response.write_eof()
     return response
 
@@ -162,12 +172,10 @@ def ssl_context():
 
 @pytest.fixture(scope="session")
 def http2_serv():
-    """Sample aiohttp app."""
+    """Sample HTTP/2 app."""
     port = __get_sample_port(3000, 4000)
-
-    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/http2.js {port}"))
+    proc = run_cmd(f"node tests/nodeapps/http2.js {port}")
     url = f"https://localhost:{port}"
-
     check_port(port)
     yield url
     proc.terminate()
@@ -175,12 +183,10 @@ def http2_serv():
 
 @pytest.fixture(scope="session")
 def http_serv():
-    """Sample http app."""
+    """Sample HTTP/1 app."""
     port = __get_sample_port(3000, 4000)
-
-    proc = subprocess.Popen(shlex.split(f"node tests/nodeapps/http1.mjs {port}"))
+    proc = run_cmd(f"node tests/nodeapps/http1.mjs {port}")
     url = f"http://localhost:{port}"
-
     check_port(port)
     yield url
     proc.terminate()
@@ -188,15 +194,36 @@ def http_serv():
 
 @pytest.fixture(scope="session")
 def proxy_serv():
-    """Sample aiohttp app."""
+    """Sample proxy app."""
     port = __get_sample_port(8000, 9000)
     auth = "user:password"
     command = f"proxy --basic-auth {auth} --hostname 127.0.0.1 --port {port}"
-    proc = subprocess.Popen(shlex.split(command))
+    proc = run_cmd(command)
     url = f"http://127.0.0.1:{port}"
-
     check_port(port, "127.0.0.1")
     yield (url, auth)
+    proc.terminate()
+
+
+@pytest.fixture(scope="session")
+def ws_serv():
+    """Sample WebSocket app (non-SSL)."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port}")
+    url = f"ws://localhost:{port}"
+    check_port(port)
+    yield url
+    proc.terminate()
+
+
+@pytest.fixture(scope="session")
+def ws_serv_ssl():
+    """Sample secure WebSocket app (SSL)."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port} ssl")
+    url = f"wss://localhost:{port}"
+    check_port(port)
+    yield url
     proc.terminate()
 
 
@@ -225,7 +252,7 @@ def __get_sample_port(_from, to):
 
 
 def check_port(port, hostname="localhost", timeout_seconds=10):
-    """Check port if it is listening something."""
+    """Check if a port is listening."""
     max_wait = utcnow() + datetime.timedelta(seconds=timeout_seconds)
     while not __is_port_in_use(hostname, port):
         sleep(0.2)

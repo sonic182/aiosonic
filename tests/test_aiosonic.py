@@ -417,7 +417,7 @@ async def test_request_timeout(app, aiohttp_server, mocker):
     async def long_request(*_args, **_kwargs):
         await asyncio.sleep(3)
 
-    _connect = mocker.patch("aiosonic._do_request", new=long_request)
+    _connect = mocker.patch("aiosonic.client._do_request", new=long_request)
     _connect.return_value = long_request()
     connector = TCPConnector(timeouts=Timeouts(request_timeout=0.2))
     async with aiosonic.HTTPClient(connector) as client:
@@ -680,16 +680,16 @@ async def test_sending_chunks_with_error(mocker):
     """Sending bad chunck data type."""
     conn = mocker.MagicMock()
     conn.writer = None
-    mocker.patch("aiosonic._handle_chunk")
+    mocker.patch("aiosonic.client._handle_chunk")
 
     def chunks_data():
         yield b"foo"
 
     with pytest.raises(MissingWriterException):
-        await aiosonic._send_chunks(conn, chunks_data())
+        await aiosonic.client._send_chunks(conn, chunks_data())
 
     with pytest.raises(ValueError):
-        await aiosonic._send_chunks(conn, {})
+        await aiosonic.client._send_chunks(conn, {})
 
 
 @pytest.mark.asyncio
