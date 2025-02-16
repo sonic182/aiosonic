@@ -14,16 +14,17 @@ Repo is hosted at GitHub_.
 Features
 ========
 
-- Keepalive and Smart Pool of Connections
+- Keepalive and smart pool of connections
 - Multipart File Uploads
 - Chunked responses handling
 - Chunked requests
-- Fully type annotated.
 - Connection Timeouts
 - Automatic Decompression
 - Follow Redirects
-- **WebSocket support**: send and receive text, binary, and JSON messages; handle ping/pong; negotiate subprotocols; and manage close codes.
+- Fully type annotated.
+- WebSocket support
 - 100% test coverage (Sometimes not).
+- HTTP2 (BETA) when using the correct flag
 
 Requirements
 ============

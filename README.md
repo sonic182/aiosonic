@@ -48,6 +48,7 @@ You can perform this test by installing all test dependencies with `pip install 
 * Automatic Decompression
 * Follow Redirects
 * Fully type annotated.
+- WebSocket support
 * 100% test coverage (Sometimes not).
 * HTTP2 (BETA) when using the correct flag
 

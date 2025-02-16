@@ -1,6 +1,8 @@
+import asyncio
 import json
 
 import pytest
+
 from aiosonic import WebSocketClient
 from aiosonic.exceptions import ReadTimeout
 
@@ -116,3 +118,27 @@ async def test_ws_custom_headers(ws_serv):
             await ws.send_text("test")
             response = await ws.receive_text()
             assert "Echo" in response
+
+
+@pytest.mark.asyncio
+async def test_ws_drop_frames(ws_serv):
+    """Test that with drop_frames enabled, extra frames are dropped (queue does not grow indefinitely)."""
+    # Use small queues and enable drop mode.
+    conn_opts = {"text_queue_maxsize": 2, "drop_frames": True}
+    async with WebSocketClient() as client:
+        async with await client.connect(ws_serv, conn_opts=conn_opts) as ws:
+            # Send three messages quickly.
+            await ws.send_text("Message 1")
+            await ws.send_text("Message 2")
+            await ws.send_text("Message 3")
+            # Allow some time for echoes to arrive.
+            await asyncio.sleep(0.2)
+            # Since the queue can hold at most 2 messages, we should only be able to get 2.
+            messages = []
+            try:
+                while True:
+                    msg = await asyncio.wait_for(ws.receive_text(), timeout=0.1)
+                    messages.append(msg)
+            except Exception:
+                pass
+            assert len(messages) <= 2

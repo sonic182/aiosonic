@@ -52,7 +52,7 @@ _HTTP_RESPONSE_STATUS_LINE = re.compile(
 )
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
-_NEW_LINE = "\r\n"
+CRLF = "\r\n"
 dlogger = get_debug_logger()
 RANDOM_RANGE = (10**8, 10**9)
 
@@ -125,14 +125,14 @@ class HttpResponse:
         if dlogger.level == logging.DEBUG:
 
             def logparse(data):
-                return _NEW_LINE.join([f"{key}={value}" for key, value in data])
+                return CRLF.join([f"{key}={value}" for key, value in data])
 
             info = {**self.response_initial, **self.request_meta}.items()
             to_log_info = [[key, val] for key, val in info]
             meta_log = logparse(to_log_info)
             headers_log = logparse(self.raw_headers)
             dlogger.debug(
-                meta_log + _NEW_LINE + "Headers:" + _NEW_LINE * 2 + headers_log + "---"
+                meta_log + CRLF + "Headers:" + CRLF * 2 + headers_log + "---"
             )  # noqa
 
     def _update_cookies(self, header_tuple):
@@ -274,7 +274,7 @@ def _prepare_request_headers(
         query = urlencode(params)
         path += f"{query}" if "?" in path else f"?{query}"
     uppercase_method = method.upper()
-    get_base = f"{uppercase_method} {path} HTTP/1.1{_NEW_LINE}"
+    get_base = f"{uppercase_method} {path} HTTP/1.1{CRLF}"
 
     port = url.port or (443 if url.scheme == "https" else 80)
     hostname = _get_hostname(url.hostname, port)
@@ -324,22 +324,22 @@ def _prepare_request_headers(
         return headers_base
 
     for key, data in http_parser.headers_iterator(headers_base):
-        get_base += f"{key}: {data}{_NEW_LINE}"
+        get_base += f"{key}: {data}{CRLF}"
 
     # log request headers
     if dlogger.level == logging.DEBUG:
         dlogger.debug(get_base + "---")
-    return (get_base + _NEW_LINE).encode()
+    return (get_base + CRLF).encode()
 
 
 def _handle_chunk(chunk: bytes, connection: Connection):
     """Handle chunk sending in transfer-encoding chunked."""
-    chunk_size = hex(len(chunk)).replace("0x", "") + _NEW_LINE
+    chunk_size = hex(len(chunk)).replace("0x", "") + CRLF
 
     if not connection.writer:
         raise MissingWriterException("missing writer in connection")
 
-    connection.write(chunk_size.encode() + chunk + _NEW_LINE.encode())
+    connection.write(chunk_size.encode() + chunk + CRLF.encode())
 
 
 async def _send_chunks(connection: Connection, body: BodyType):
@@ -355,7 +355,7 @@ async def _send_chunks(connection: Connection, body: BodyType):
 
     if not connection.writer:
         raise MissingWriterException("missing writer in connection")
-    connection.write(("0" + _NEW_LINE * 2).encode())
+    connection.write(("0" + CRLF * 2).encode())
 
 
 async def _send_multipart(
@@ -371,7 +371,7 @@ async def _send_multipart(
     to_send = b""
     for key, val in data.items():
         # write --boundary + field
-        to_send += (f"--{boundary}{_NEW_LINE}").encode()
+        to_send += (f"--{boundary}{CRLF}").encode()
 
         if isinstance(val, IOBase):
             # TODO: Utility to accept files with multipart metadata
@@ -384,8 +384,8 @@ async def _send_multipart(
                 % (
                     key,
                     basename(val.name),
-                    _NEW_LINE,
-                    _NEW_LINE,
+                    CRLF,
+                    CRLF,
                 )
             )
             to_send += to_write.encode()
@@ -401,9 +401,9 @@ async def _send_multipart(
 
         else:
             to_send += (
-                f'Content-Disposition: form-data; name="{key}"{_NEW_LINE}{_NEW_LINE}'
+                f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
             ).encode()
-            to_send += val.encode() + _NEW_LINE.encode()
+            to_send += val.encode() + CRLF.encode()
 
     # write --boundary-- for finish
     to_send += (f"--{boundary}--").encode()
@@ -854,12 +854,12 @@ async def _proxy_connect(
 
     port = desturl.port or (443 if desturl.scheme == "https" else 80)
     hostname = _get_hostname(desturl.hostname, port)
-    to_send = f"CONNECT {hostname}:{port} HTTP/1.1{_NEW_LINE}"
-    to_send += f"HOST: {hostname}:{port}{_NEW_LINE}"
-    to_send += f"Proxy-Connection: keep-alive{_NEW_LINE}"
+    to_send = f"CONNECT {hostname}:{port} HTTP/1.1{CRLF}"
+    to_send += f"HOST: {hostname}:{port}{CRLF}"
+    to_send += f"Proxy-Connection: keep-alive{CRLF}"
     if proxy.auth:
-        to_send += f"Proxy-Authorization: Basic {proxy.auth.decode()}{_NEW_LINE}"
-    to_send += _NEW_LINE
+        to_send += f"Proxy-Authorization: Basic {proxy.auth.decode()}{CRLF}"
+    to_send += CRLF
 
     assert connection.writer
     connection.write(to_send.encode())
