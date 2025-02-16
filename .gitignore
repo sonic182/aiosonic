@@ -25,4 +25,4 @@ env/
 .coverage.*
 docs/
 .venv/
-node_modules/
+tests/node_modules/
