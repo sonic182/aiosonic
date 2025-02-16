@@ -35,10 +35,6 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 pip install aiosonic
 ```
 
-> **Note:**  
-> For better character encoding performance, consider installing the optional
-> `cchardet` package as a faster replacement for `chardet`.
-
 ## Getting Started
 
 Below is an example demonstrating basic HTTP client usage:

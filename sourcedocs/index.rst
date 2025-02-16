@@ -36,10 +36,6 @@ Installation
 
    $ pip install aiosonic
 
-.. note::
-   For better character encoding performance, you may install the optional
-   *cchardet* library as a faster replacement for *chardet*.
-
 
 Getting Started
 ===============
