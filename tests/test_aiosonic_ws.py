@@ -125,7 +125,7 @@ async def test_ws_custom_headers(ws_serv):
 async def test_ws_drop_frames(ws_serv):
     """Test that with drop_frames enabled, extra frames are dropped (queue does not grow indefinitely)."""
     # Use small queues and enable drop mode.
-    conn_opts = {"text_queue_maxsize": 2, "drop_frames": True}
+    conn_opts = {"queue_maxsize": 2, "drop_frames": True}
     async with WebSocketClient() as client:
         async with await client.connect(ws_serv, conn_opts=conn_opts) as ws:
             # Send three messages quickly.
