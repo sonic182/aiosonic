@@ -22,7 +22,7 @@ from aiosonic.exceptions import (
 )
 from aiosonic.http2 import Http2Handler
 from aiosonic.multipart import MultipartForm
-from aiosonic.pools import CyclicQueuePool
+from aiosonic.pools import CyclicQueuePool, PoolConfig
 from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
 
@@ -150,7 +150,7 @@ async def test_keep_alive_smart_pool(app, aiohttp_server):
     url = "http://localhost:%d" % server.port
     urlparsed = urlparse(url)
 
-    connector = TCPConnector(pool_size=2, connection_cls=MyConnection)
+    connector = TCPConnector(PoolConfig(size=2), connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         res = None
         for _ in range(5):
@@ -170,7 +170,7 @@ async def test_keep_alive_cyclic_pool(app, aiohttp_server):
     url = "http://localhost:%d" % server.port
 
     connector = TCPConnector(
-        pool_size=2, connection_cls=MyConnection, pool_cls=CyclicQueuePool
+        PoolConfig(size=2), connection_cls=MyConnection, pool_cls=CyclicQueuePool
     )
     async with aiosonic.HTTPClient(connector) as client:
         for _ in range(5):
@@ -432,7 +432,7 @@ async def test_pool_acquire_timeout(app, aiohttp_server, mocker):
     server = await aiohttp_server(app)
     url = "http://localhost:%d/slow_request" % server.port
 
-    connector = TCPConnector(pool_size=1, timeouts=Timeouts(pool_acquire=0.3))
+    connector = TCPConnector(PoolConfig(size=1), timeouts=Timeouts(pool_acquire=0.3))
     async with aiosonic.HTTPClient(connector) as client:
         with pytest.raises(ConnectionPoolAcquireTimeout):
             await asyncio.gather(
@@ -609,7 +609,7 @@ async def test_close_connection(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = "http://localhost:%d/post" % server.port
 
-    connector = TCPConnector(pool_size=1, connection_cls=MyConnection)
+    connector = TCPConnector(PoolConfig(size=1), connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         res = await client.post(url, data=b"close")
         async with await connector.pool.acquire() as connection:
@@ -625,7 +625,7 @@ async def test_close_old_keeped_conn(app, aiohttp_server):
     server2 = await aiohttp_server(app)
     url1 = "http://localhost:%d" % server1.port
     url2 = "http://localhost:%d" % server2.port
-    connector = TCPConnector(pool_size=1, connection_cls=MyConnection)
+    connector = TCPConnector(PoolConfig(size=1), connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         await client.get(url1)
         # get used writer

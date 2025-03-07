@@ -1,17 +1,35 @@
 """Pools module."""
 
 from abc import ABC, abstractmethod
-from asyncio import Queue, Semaphore
+from asyncio import Queue, Semaphore, wait_for
+from dataclasses import dataclass, field
+from typing import Optional
 from urllib.parse import ParseResult
 
+from aiosonic.exceptions import ConnectionPoolAcquireTimeout, TimeoutException
+from aiosonic.timeout import Timeouts
+
+
+@dataclass
+class PoolConfig:
+    """Configuration options for connection pools."""
+
+    size: int = field(default=10)
 
 
 class BasePool(ABC):
     """Abstract base class for connection pools."""
 
-    def __init__(self, connector, pool_size, connection_cls):
+    def __init__(
+        self,
+        connector,
+        pool_conf: PoolConfig,
+        connection_cls,
+        timeouts: Optional[Timeouts] = None,
+    ):
         """Initialize pool with common attributes."""
-        self.pool_size = pool_size
+        self.pool_conf = pool_conf
+        self.timeouts = timeouts or Timeouts()
         self._init_pool(connector, connection_cls)
 
     @abstractmethod
@@ -49,13 +67,19 @@ class CyclicQueuePool(BasePool):
     """Cyclic queue pool of connections."""
 
     def _init_pool(self, connector, connection_cls):
-        self.pool = Queue(self.pool_size)
-        for _ in range(self.pool_size):
+        self.pool = Queue(self.pool_conf.size)
+        for _ in range(self.pool_conf.size):
             self.pool.put_nowait(connection_cls(connector))
 
     async def acquire(self, _urlparsed: ParseResult = None):
         """Acquire connection."""
-        return await self.pool.get()
+        if not self.timeouts.pool_acquire:
+            return await self.pool.get()
+        else:
+            try:
+                return await wait_for(self.pool.get(), self.timeouts.pool_acquire)
+            except TimeoutException:
+                raise ConnectionPoolAcquireTimeout()
 
     def release(self, conn):
         """Release connection."""
@@ -63,14 +87,14 @@ class CyclicQueuePool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_size == self.pool.qsize()
+        return self.pool_conf.size == self.pool.qsize()
 
     def free_conns(self) -> int:
         return self.pool.qsize()
 
     async def cleanup(self):
         """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_size):
+        for _ in range(self.pool_conf.size):
             conn = self.pool.get_nowait()
             conn.close()
 
@@ -80,13 +104,20 @@ class SmartPool(BasePool):
 
     def _init_pool(self, connector, connection_cls):
         self.pool = set()
-        self.sem = Semaphore(self.pool_size)
-        for _ in range(self.pool_size):
+        self.sem = Semaphore(self.pool_conf.size)
+        for _ in range(self.pool_conf.size):
             self.pool.add(connection_cls(connector))
 
     async def acquire(self, urlparsed: ParseResult = None):
         """Acquire connection."""
-        await self.sem.acquire()
+        if not self.timeouts.pool_acquire:
+            await self.sem.acquire()
+        else:
+            try:
+                await wait_for(self.sem.acquire(), self.timeouts.pool_acquire)
+            except TimeoutException:
+                raise ConnectionPoolAcquireTimeout()
+
         if urlparsed:
             key = f"{urlparsed.hostname}-{urlparsed.port}"
             for item in self.pool:
@@ -105,11 +136,11 @@ class SmartPool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_size == self.sem._value
+        return self.pool_conf.size == self.sem._value
 
     async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_size):
+        for _ in range(self.pool_conf.size):
             conn = await self.acquire()
             conn.close()
 

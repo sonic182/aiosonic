@@ -2,7 +2,7 @@
 import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
-from typing import TYPE_CHECKING, Coroutine
+from typing import TYPE_CHECKING
 from urllib.parse import ParseResult
 
 # import h2.connection (unused)
@@ -15,7 +15,7 @@ from aiosonic.exceptions import (
     HttpParsingError,
     TimeoutException,
 )
-from aiosonic.pools import SmartPool
+from aiosonic.pools import PoolConfig, SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
 
@@ -29,7 +29,7 @@ class TCPConnector:
     Holds the main logic for making connections to destination hosts.
 
     Params:
-        * **pool_size**: size for pool of connections
+        * **pool_config**: configs for the connection pool.
         * **timeouts**: global timeouts to use for connections with this connector. default: :class:`aiosonic.timeout.Timeouts` instance with default args.
         * **connection_cls**: connection class to be used. default: :class:`aiosonic.connection.Connection`
         * **pool_cls**: pool class to be used. default: :class:`aiosonic.pools.SmartPool`
@@ -41,7 +41,7 @@ class TCPConnector:
 
     def __init__(
         self,
-        pool_size: int = 25,
+        pool_config: PoolConfig = PoolConfig(),
         timeouts: Timeouts = None,
         connection_cls=None,
         pool_cls=None,
@@ -52,10 +52,9 @@ class TCPConnector:
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
-        self.pool_size = pool_size
         connection_cls = connection_cls or Connection
         pool_cls = pool_cls or SmartPool
-        self.pool = pool_cls(self, pool_size, connection_cls)
+        self.pool = pool_cls(self, pool_config, connection_cls, timeouts)
         self.timeouts = timeouts or Timeouts()
         self.resolver = resolver or DefaultResolver()
         self.use_dns_cache = use_dns_cache
@@ -63,29 +62,13 @@ class TCPConnector:
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
-    async def acquire(
-        self, urlparsed: ParseResult, verify, ssl, timeouts, http2
-    ) -> "Connection":
+    async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2) -> "Connection":
         """Acquire connection."""
         if not urlparsed.hostname:
             raise HttpParsingError("missing hostname")
 
-        # Faster without timeout
-        if not self.timeouts.pool_acquire:
-            conn = await self.pool.acquire(urlparsed)
-            return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2
-            )
-
-        try:
-            conn = await wait_for(
-                self.pool.acquire(urlparsed), self.timeouts.pool_acquire
-            )
-            return await self.after_acquire(
-                urlparsed, conn, verify, ssl, timeouts, http2
-            )
-        except TimeoutException:
-            raise ConnectionPoolAcquireTimeout()
+        conn = await self.pool.acquire(urlparsed)
+        return await self.after_acquire(urlparsed, conn, verify, ssl, timeouts, http2)
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
 

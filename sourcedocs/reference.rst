@@ -50,6 +50,9 @@ Tiemout Class
 Pool Classes
 ============
 
+.. autoclass:: aiosonic.pools.PoolConfig
+   :members:
+
 .. autoclass:: aiosonic.pools.SmartPool
    :members:
 |
