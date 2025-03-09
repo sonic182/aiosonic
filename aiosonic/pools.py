@@ -12,9 +12,27 @@ from aiosonic.timeout import Timeouts
 
 @dataclass
 class PoolConfig:
-    """Configuration options for connection pools."""
+    """Configuration options for database connection pools.
 
-    size: int = field(default=10)
+    Controls how connections are created, maintained, and recycled.
+    """
+
+    size: int = field(
+        default=10,
+        metadata={"description": "Maximum number of connections to keep in the pool"},
+    )
+    max_conn_requests: Optional[int] = field(
+        default=None,
+        metadata={
+            "description": "Maximum number of requests per connection before recycling (None means no limit)"
+        },
+    )
+    max_conn_idle_ms: Optional[int] = field(
+        default=None,
+        metadata={
+            "description": "Maximum time in milliseconds a connection can remain idle before being closed (None means no limit)"
+        },
+    )
 
 
 class BasePool(ABC):
@@ -22,18 +40,17 @@ class BasePool(ABC):
 
     def __init__(
         self,
-        connector,
-        pool_conf: PoolConfig,
+        conf: PoolConfig,
         connection_cls,
         timeouts: Optional[Timeouts] = None,
     ):
         """Initialize pool with common attributes."""
-        self.pool_conf = pool_conf
+        self.conf = conf
         self.timeouts = timeouts or Timeouts()
-        self._init_pool(connector, connection_cls)
+        self._init_pool(connection_cls)
 
     @abstractmethod
-    def _init_pool(self, connector, connection_cls):
+    def _init_pool(self, connection_cls):
         """Initialize the pool structure."""
         pass
 
@@ -62,14 +79,18 @@ class BasePool(ABC):
         """Clean up all connections. Makes the pool unusable."""
         pass
 
+    @property
+    def pool_size(self):
+        return self.conf.size
+
 
 class CyclicQueuePool(BasePool):
     """Cyclic queue pool of connections."""
 
-    def _init_pool(self, connector, connection_cls):
-        self.pool = Queue(self.pool_conf.size)
-        for _ in range(self.pool_conf.size):
-            self.pool.put_nowait(connection_cls(connector))
+    def _init_pool(self, connection_cls):
+        self.pool = Queue(self.pool_size)
+        for _ in range(self.pool_size):
+            self.pool.put_nowait(connection_cls(self))
 
     async def acquire(self, _urlparsed: ParseResult = None):
         """Acquire connection."""
@@ -87,14 +108,14 @@ class CyclicQueuePool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_conf.size == self.pool.qsize()
+        return self.pool_size== self.pool.qsize()
 
     def free_conns(self) -> int:
         return self.pool.qsize()
 
     async def cleanup(self):
         """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_conf.size):
+        for _ in range(self.pool_size):
             conn = self.pool.get_nowait()
             conn.close()
 
@@ -102,11 +123,11 @@ class CyclicQueuePool(BasePool):
 class SmartPool(BasePool):
     """Pool which priorizes the reusage of connections."""
 
-    def _init_pool(self, connector, connection_cls):
+    def _init_pool(self, connection_cls):
         self.pool = set()
-        self.sem = Semaphore(self.pool_conf.size)
-        for _ in range(self.pool_conf.size):
-            self.pool.add(connection_cls(connector))
+        self.sem = Semaphore(self.pool_size)
+        for _ in range(self.pool_size):
+            self.pool.add(connection_cls(self))
 
     async def acquire(self, urlparsed: ParseResult = None):
         """Acquire connection."""
@@ -136,11 +157,11 @@ class SmartPool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_conf.size == self.sem._value
+        return self.pool_size== self.sem._value
 
     async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_conf.size):
+        for _ in range(self.pool_size):
             conn = await self.acquire()
             conn.close()
 
@@ -161,17 +182,16 @@ class WsPool(BasePool):
     - cleanup(): Does nothing
 
     Note:
-        Users are responsible for managing the lifecycle (including cleanup) of 
+        Users are responsible for managing the lifecycle (including cleanup) of
         WebSocket connections obtained from this factory.
     """
 
-    def _init_pool(self, connector, connection_cls):
-        self.connector = connector
+    def _init_pool(self, connection_cls):
         self.conn_cls = connection_cls
 
     async def acquire(self, _urlparsed: ParseResult = None):
         """Acquire connection."""
-        return self.conn_cls(self.connector)
+        return self.conn_cls(self)
 
     def release(self, conn) -> None:
         """Release connection."""

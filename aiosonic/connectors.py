@@ -2,15 +2,12 @@
 import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import ParseResult
 
-# import h2.connection (unused)
 from onecache import ExpirableCache
 
-# from concurrent import futures (unused)
 from aiosonic.exceptions import (
-    ConnectionPoolAcquireTimeout,
     ConnectTimeout,
     HttpParsingError,
     TimeoutException,
@@ -36,29 +33,26 @@ class TCPConnector:
         * **resolver**: resolver to be used. default: :class:`aiosonic.resolver.DefaultResolver`
         * **ttl_dns_cache**: ttl in milliseconds for dns cache. default: `10000` 10 seconds
         * **use_dns_cache**: Flag to indicate usage of dns cache. default: `True`
-        * **conn_max_requests**: Max requests allowed for a connection. default: `100`
     """
 
     def __init__(
         self,
         pool_config: PoolConfig = PoolConfig(),
-        timeouts: Timeouts = None,
+        timeouts: Optional[Timeouts] = None,
         connection_cls=None,
         pool_cls=None,
         resolver=None,
         ttl_dns_cache=10000,
-        use_dns_cache=True,
-        conn_max_requests=100,
+        use_dns_cache=True
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
         connection_cls = connection_cls or Connection
         pool_cls = pool_cls or SmartPool
-        self.pool = pool_cls(self, pool_config, connection_cls, timeouts)
+        self.pool = pool_cls(pool_config, connection_cls, timeouts)
         self.timeouts = timeouts or Timeouts()
         self.resolver = resolver or DefaultResolver()
         self.use_dns_cache = use_dns_cache
-        self.conn_max_requests = conn_max_requests
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
