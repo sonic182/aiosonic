@@ -421,7 +421,7 @@ async def _do_request(
     timeouts: Optional[Timeouts],
     http2: bool = False,
     proxy: Optional[Proxy] = None,
-    transfer_chunked: bool = True
+    transfer_chunked: bool = True,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -740,7 +740,7 @@ class HTTPClient:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
         transfer_chunked = True
-        
+
         if method == "GET":
             pass  # handle GET request if necessary
         elif isinstance(data, MultipartForm):
@@ -781,7 +781,7 @@ class HTTPClient:
                         timeouts,
                         http2,
                         self.proxy,
-                        transfer_chunked=transfer_chunked
+                        transfer_chunked=transfer_chunked,
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
