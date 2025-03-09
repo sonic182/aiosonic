@@ -10,11 +10,13 @@ from aiosonic.exceptions import ConnectionPoolAcquireTimeout, TimeoutException
 from aiosonic.timeout import Timeouts
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class PoolConfig:
     """Configuration options for database connection pools.
 
     Controls how connections are created, maintained, and recycled.
+
+    This class is immutable and hashable, allowing it to be used as a dictionary key.
     """
 
     size: int = field(
@@ -33,6 +35,14 @@ class PoolConfig:
             "description": "Maximum time in milliseconds a connection can remain idle before being closed (None means no limit)"
         },
     )
+
+    def __hash__(self):
+        """Make PoolConfig hashable for use as dictionary keys.
+
+        Returns:
+            int: Hash value based on the configuration values
+        """
+        return hash((self.size, self.max_conn_requests, self.max_conn_idle_ms))
 
 
 class BasePool(ABC):
@@ -108,7 +118,7 @@ class CyclicQueuePool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_size== self.pool.qsize()
+        return self.pool_size == self.pool.qsize()
 
     def free_conns(self) -> int:
         return self.pool.qsize()
@@ -157,7 +167,7 @@ class SmartPool(BasePool):
 
     def is_all_free(self):
         """Indicates if all pool is free."""
-        return self.pool_size== self.sem._value
+        return self.pool_size == self.sem._value
 
     async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""

@@ -150,12 +150,14 @@ async def test_keep_alive_smart_pool(app, aiohttp_server):
     url = "http://localhost:%d" % server.port
     urlparsed = urlparse(url)
 
-    connector = TCPConnector(PoolConfig(size=2), connection_cls=MyConnection)
+    connector = TCPConnector(
+        {":default": PoolConfig(size=2)}, connection_cls=MyConnection
+    )
     async with aiosonic.HTTPClient(connector) as client:
         res = None
         for _ in range(5):
             res = await client.get(url)
-        async with await connector.pool.acquire(urlparsed) as connection:
+        async with await connector.pools[":default"].acquire(urlparsed) as connection:
             assert res
             assert res.status_code == 200
             assert await res.text() == "Hello, world"
@@ -170,12 +172,14 @@ async def test_keep_alive_cyclic_pool(app, aiohttp_server):
     url = "http://localhost:%d" % server.port
 
     connector = TCPConnector(
-        PoolConfig(size=2), connection_cls=MyConnection, pool_cls=CyclicQueuePool
+        {":default": PoolConfig(size=2)},
+        connection_cls=MyConnection,
+        pool_cls=CyclicQueuePool,
     )
     async with aiosonic.HTTPClient(connector) as client:
         for _ in range(5):
             res = await client.get(url)
-        async with await connector.pool.acquire() as connection:
+        async with await connector.pools[":default"].acquire() as connection:
             assert res.status_code == 200
             assert await res.text() == "Hello, world"
             assert connection.counter == 2
@@ -432,7 +436,9 @@ async def test_pool_acquire_timeout(app, aiohttp_server, mocker):
     server = await aiohttp_server(app)
     url = "http://localhost:%d/slow_request" % server.port
 
-    connector = TCPConnector(PoolConfig(size=1), timeouts=Timeouts(pool_acquire=0.3))
+    connector = TCPConnector(
+        {":default": PoolConfig(size=1)}, timeouts=Timeouts(pool_acquire=0.3)
+    )
     async with aiosonic.HTTPClient(connector) as client:
         with pytest.raises(ConnectionPoolAcquireTimeout):
             await asyncio.gather(
@@ -522,16 +528,16 @@ async def test_get_chunked_response_and_not_read_it(app, aiohttp_server):
 
     async with aiosonic.HTTPClient() as client:
         res = await client.get(url)
-        assert client.connector.pool.free_conns(), 24
+        assert client.connector.pools[":default"].free_conns(), 24
         del res
-        assert client.connector.pool.free_conns(), 25
+        assert client.connector.pools[":default"].free_conns(), 25
 
     connector = aiosonic.TCPConnector(pool_cls=CyclicQueuePool)
     async with aiosonic.HTTPClient(connector) as client:
         res = await client.get(url)
-        assert client.connector.pool.free_conns(), 24
+        assert client.connector.pools[":default"].free_conns(), 24
         del res
-        assert client.connector.pool.free_conns(), 25
+        assert client.connector.pools[":default"].free_conns(), 25
         await server.close()
 
 
@@ -609,10 +615,12 @@ async def test_close_connection(app, aiohttp_server):
     server = await aiohttp_server(app)
     url = "http://localhost:%d/post" % server.port
 
-    connector = TCPConnector(PoolConfig(size=1), connection_cls=MyConnection)
+    connector = TCPConnector(
+        {":default": PoolConfig(size=1)}, connection_cls=MyConnection
+    )
     async with aiosonic.HTTPClient(connector) as client:
         res = await client.post(url, data=b"close")
-        async with await connector.pool.acquire() as connection:
+        async with await connector.pools[":default"].acquire() as connection:
             assert res.status_code == 200
             assert not connection.keep
             assert await res.text() == "close"
@@ -625,11 +633,13 @@ async def test_close_old_keeped_conn(app, aiohttp_server):
     server2 = await aiohttp_server(app)
     url1 = "http://localhost:%d" % server1.port
     url2 = "http://localhost:%d" % server2.port
-    connector = TCPConnector(PoolConfig(size=1), connection_cls=MyConnection)
+    connector = TCPConnector(
+        {":default": PoolConfig(size=1)}, connection_cls=MyConnection
+    )
     async with aiosonic.HTTPClient(connector) as client:
         await client.get(url1)
         # get used writer
-        async with await connector.pool.acquire() as connection:
+        async with await connector.pools[":default"].acquire() as connection:
             writer = connection.writer
 
         await client.get(url2)
