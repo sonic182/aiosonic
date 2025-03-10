@@ -21,17 +21,17 @@ class PoolConfig:
     """
 
     size: int = field(
-        default=10,
+        default=30,
         metadata={"description": "Maximum number of connections to keep in the pool"},
     )
     max_conn_requests: Optional[int] = field(
-        default=None,
+        default=1000,
         metadata={
             "description": "Maximum number of requests per connection before recycling (None means no limit)"
         },
     )
-    max_conn_idle_ms: Optional[int] = field(
-        default=None,
+    max_conn_idle_ms: int = field(
+        default=60000,  # 1min
         metadata={
             "description": "Maximum time in milliseconds a connection can remain idle before being closed (None means no limit)"
         },
@@ -96,12 +96,14 @@ class BasePool(ABC):
 
     def _is_connection_idle(self, conn) -> bool:
         """Check if a connection has been idle too long.
-        
+
         Returns:
             bool: True if the connection is idle and should be closed
         """
-        if (self.conf.max_conn_idle_ms is not None and 
-            conn.last_released_time is not None):
+        if (
+            self.conf.max_conn_idle_ms is not None
+            and conn.last_released_time is not None
+        ):
             idle_time_ms = (time.monotonic() - conn.last_released_time) * 1000
             if idle_time_ms > self.conf.max_conn_idle_ms:
                 return True
@@ -126,11 +128,11 @@ class CyclicQueuePool(BasePool):
                 conn = await wait_for(self.pool.get(), self.timeouts.pool_acquire)
             except TimeoutException:
                 raise ConnectionPoolAcquireTimeout()
-        
+
         if self._is_connection_idle(conn):
             # Close idle connection, this will allow re-opening when using it.
             conn.close()
-        
+
         return conn
 
     def release(self, conn):
@@ -180,16 +182,16 @@ class SmartPool(BasePool):
                     self.pool.remove(item)
                     conn = item
                     break
-        
+
         # If no matching connection, get any connection
         if conn is None and self.pool:
             conn = self.pool.pop()
-        
+
         # Check if connection is idle
         if conn is not None and self._is_connection_idle(conn):
             conn.close()
             conn = conn.__class__(self)
-        
+
         return conn
 
     def release(self, conn) -> None:
