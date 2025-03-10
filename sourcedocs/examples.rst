@@ -43,24 +43,24 @@ Concurrent Requests
 
 .. code-block::  python
 
-   import aiosonic
-   import asyncio
-
-
-   async def main():
-       urls = [
-           'https://www.facebook.com/',
-           'https://www.google.com/',
-           'https://twitch.tv/',
-           'https://linkedin.com/',
-       ]
-       async with aiosonic.HTTPClient() as client:
-           # asyncio.gather is the key for concurrent requests.
-           responses = await asyncio.gather(*[client.get(url) for url in urls])
-           assert all([res.status_code in [200, 301] for res in responses])
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(main())
+ import aiosonic
+ import asyncio
+ 
+ 
+ async def main():
+     urls = [
+         'https://www.facebook.com/',
+         'https://www.google.com/',
+         'https://twitch.tv/',
+         'https://linkedin.com/',
+     ]
+     async with aiosonic.HTTPClient() as client:
+         # asyncio.gather is the key for concurrent requests.
+         responses = await asyncio.gather(*[client.get(url) for url in urls])
+         assert all([res.status_code in [200, 301] for res in responses])
+ 
+ loop = asyncio.get_event_loop()
+ loop.run_until_complete(main())
 
 
 Api Wrapping
@@ -68,32 +68,32 @@ Api Wrapping
 
 .. code-block:: python
 
-   import asyncio
-   import json
-   from aiosonic.base_client import AioSonicBaseClient
-
-   class GitHubAPI(AioSonicBaseClient):
-       base_url = "https://api.github.com"
-       default_headers = {
-           "Accept": "application/vnd.github.v3+json",
-           # Uncomment the next line to use an authentication token
-           # "Authorization": "token YOUR_GITHUB_TOKEN",
-       }
-
-       async def users(self, username: str, **kwargs):
-           response = await self.post(f"/users/{username}", json=kwargs)
-           return response
-
-
-   async def main():
-       github = GitHubAPI()
-       # Call the custom 'users' method to get data for user "octocat"
-       user_data = await github.users("octocat")
-       print(json.dumps(user_data, indent=2))
-
-
-   if __name__ == '__main__':
-       asyncio.run(main())
+ import asyncio
+ import json
+ from aiosonic.base_client import AioSonicBaseClient
+ 
+ class GitHubAPI(AioSonicBaseClient):
+     base_url = "https://api.github.com"
+     default_headers = {
+         "Accept": "application/vnd.github+json",
+         "X-GitHub-Api-Version": "2022-11-28",
+         # Uncomment the next line to use an authentication token
+         # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
+     }
+ 
+     async def users(self, username: str, **kwargs):
+         return await self.get(f"/users/{username}", **kwargs)
+ 
+ 
+ async def main():
+     github = GitHubAPI()
+     # Call the custom 'users' method to get data for user "sonic182"
+     user_data = await github.users("sonic182")
+     print(json.dumps(user_data, indent=2))
+ 
+ 
+ if __name__ == '__main__':
+     asyncio.run(main())
 
 This example demonstrates how to use the BaseClient to define a specialized API client. The users() method hides the details of performing a POST request so that your application code can remain clean and focused on the API semantics.
 
@@ -133,32 +133,32 @@ You can configure different connection pools for different domains, which is use
 
 .. code-block::  python
 
-   import aiosonic
-   import asyncio
-   from aiosonic.pools import PoolConfig
-   
-   
-   async def main():
-       pool_configs = {
-           "https://www.google.com": PoolConfig(
-               size=5,  # Only 5 connections for Google
-               max_conn_requests=100  # Recycle connection after 100 requests
-           ),
-           "https://api.github.com": PoolConfig(
-               size=20,  # More connections for GitHub API
-               max_conn_idle_ms=60000  # Close idle connections after 60 seconds
-           ),
-           ":default": PoolConfig(
-               size=30  # Use 30 connections for any other domains
-           )
-       }
-   
-       # Create connector with custom pool configurations
-       connector = aiosonic.TCPConnector(pool_configs=pool_configs)
-       
-       async with aiosonic.HTTPClient(connector=connector) as client:
-           # ... client usage
-           pass
+ import aiosonic
+ import asyncio
+ from aiosonic.pools import PoolConfig
+ 
+ 
+ async def main():
+     pool_configs = {
+         "https://www.google.com": PoolConfig(
+             size=5,  # Only 5 connections for Google
+             max_conn_requests=100  # Recycle connection after 100 requests
+         ),
+         "https://api.github.com": PoolConfig(
+             size=20,  # More connections for GitHub API
+             max_conn_idle_ms=60000  # Close idle connections after 60 seconds
+         ),
+         ":default": PoolConfig(
+             size=30  # Use 30 connections for any other domains
+         )
+     }
+ 
+     # Create connector with custom pool configurations
+     connector = aiosonic.TCPConnector(pool_configs=pool_configs)
+     
+     async with aiosonic.HTTPClient(connector=connector) as client:
+         # ... client usage
+         pass
 
 Cookies handling
 ================
