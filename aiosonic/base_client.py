@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from aiosonic import HTTPClient
 
@@ -8,19 +9,18 @@ class AioSonicBaseClient:
     default_headers = {}
     _default_client = None
 
-    def __init__(self, http_client: HTTPClient = None):
+    def __init__(self, http_client: Optional[HTTPClient] = None):
         """
         Initialize the API client.
 
         If an HTTPClient instance is provided, it will be used.
-        Otherwise, a shared singleton HTTPClient is used.
+        Otherwise, a new HTTPClient is created for each instance.
         """
         if http_client is not None:
             self.client = http_client
         else:
-            if AioSonicBaseClient._default_client is None:
-                AioSonicBaseClient._default_client = HTTPClient()
-            self.client = AioSonicBaseClient._default_client
+            # Create a new client instance for each base client
+            self.client = HTTPClient()
 
     def process_request_url(self, url: str) -> str:
         """
