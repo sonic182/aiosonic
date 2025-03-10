@@ -3,16 +3,13 @@
 import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
-from typing import Dict, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 from urllib.parse import ParseResult
 
 from onecache import ExpirableCache
 
-from aiosonic.exceptions import (
-    ConnectTimeout,
-    HttpParsingError,
-    TimeoutException,
-)
+from aiosonic.exceptions import (ConnectTimeout, HttpParsingError,
+                                 TimeoutException)
 from aiosonic.pools import PoolConfig, SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
@@ -47,14 +44,14 @@ class TCPConnector:
 
     def __init__(
         self,
-        pool_configs: Optional[Dict[str, PoolConfig]] = None,
+        pool_configs: Optional[Dict[str, Union[PoolConfig, Dict[str, Any]]]] = None,
         timeouts: Optional[Timeouts] = None,
         connection_cls=None,
         pool_cls=None,
         resolver=None,
         ttl_dns_cache=10000,
         use_dns_cache=True,
-    ):
+        ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
         self.connection_cls = connection_cls or Connection
@@ -67,7 +64,7 @@ class TCPConnector:
         if ":default" not in pool_configs:
             pool_configs[":default"] = PoolConfig()
 
-        self.pool_configs = pool_configs
+        self.pool_configs = _check_pool_configs(pool_configs)
 
         # Pre-create pools based on provided pool_configs keys.
         # Keys are expected to be in the form "<scheme>://<host>" or ":default".
@@ -138,3 +135,13 @@ class TCPConnector:
             self.cache.set(key, dns_data)
         assert isinstance(dns_data, list)
         return random.choice(dns_data)
+
+
+def _check_pool_configs(configs) -> Dict[str, PoolConfig]:
+    result = {}  # temporary variable to store results
+    for key, val in configs.items():
+        if isinstance(val, PoolConfig):
+            result[key] = val
+        else:
+            result[key] = PoolConfig(**val)
+    return result
