@@ -21,7 +21,7 @@ from uvicorn.main import Config, Server
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
-from aiosonic.pools import CyclicQueuePool
+from aiosonic.pools import CyclicQueuePool, PoolConfig
 
 try:
     import uvloop
@@ -101,7 +101,9 @@ async def performance_aiosonic(url, concurrency, pool_cls, timeouts, repeat, war
     logger.info(
         f"Starting aiosonic test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
     )
-    client = aiosonic.HTTPClient(TCPConnector(pool_size=concurrency, pool_cls=pool_cls))
+    client = aiosonic.HTTPClient(
+        TCPConnector(pool_config=PoolConfig(size=concurrency), pool_cls=pool_cls)
+    )
     return await timeit_coro(
         client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup
     )

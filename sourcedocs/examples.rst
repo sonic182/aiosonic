@@ -3,9 +3,6 @@
 Examples
 ========
 
-TODO: More examples
-
-
 Download file
 =============
 
@@ -66,8 +63,8 @@ Concurrent Requests
    loop.run_until_complete(main())
 
 
-Chunked Requests
-================
+Chunked Requests (Stream request or response)
+=============================================
 
 Specifying an iterator as the request body, it will make the request transfer made by chunks
 
@@ -93,6 +90,40 @@ Specifying an iterator as the request body, it will make the request transfer ma
  loop = asyncio.get_event_loop()
  loop.run_until_complete(main())
 
+Multiple Pool Configurations
+============================
+
+You can configure different connection pools for different domains, which is useful when you need specialized settings for specific services.
+
+
+.. code-block::  python
+
+   import aiosonic
+   import asyncio
+   from aiosonic.pools import PoolConfig
+   
+   
+   async def main():
+       pool_configs = {
+           "https://www.google.com": PoolConfig(
+               size=5,  # Only 5 connections for Google
+               max_conn_requests=100  # Recycle connection after 100 requests
+           ),
+           "https://api.github.com": PoolConfig(
+               size=20,  # More connections for GitHub API
+               max_conn_idle_ms=60000  # Close idle connections after 60 seconds
+           ),
+           ":default": PoolConfig(
+               size=30  # Use 30 connections for any other domains
+           )
+       }
+   
+       # Create connector with custom pool configurations
+       connector = aiosonic.TCPConnector(pool_configs=pool_configs)
+       
+       async with aiosonic.HTTPClient(connector=connector) as client:
+           # ... client usage
+           pass
 
 Cookies handling
 ================
