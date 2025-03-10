@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] 2025-03-11
+
+### Added
+- Multiple pools configurations in client connector per target host.
+  - conn idle timeout closing for more robust conns.
+- AioSonicBaseClient for easily wrap apis with a class
+
 ## [0.23.1] 2025-02-16
 
 ### Added
@@ -324,7 +331,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.23.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.24.0..HEAD
+[0.24.0]: https://github.com/sonic182/aiosonic/compare/0.23.1..0.24.0
 [0.23.1]: https://github.com/sonic182/aiosonic/compare/0.23.0..0.23.1
 [0.23.0]: https://github.com/sonic182/aiosonic/compare/0.22.3..0.23.0
 [0.22.3]: https://github.com/sonic182/aiosonic/compare/0.22.2..0.22.3
