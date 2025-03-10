@@ -1,5 +1,6 @@
 """Connection stuffs."""
 
+import time
 import ssl
 from asyncio import StreamReader, StreamWriter, open_connection
 from ssl import SSLContext
@@ -73,6 +74,7 @@ class Connection:
 
         self._verify = True
         self.proxy_connected = False
+        self.last_released_time = None
 
     @property
     def is_connected(self):
@@ -257,6 +259,7 @@ class Connection:
         self.requests_count += 1
         # ensure unblock conn object after read
         self.blocked = False
+        self.last_released_time = time.monotonic()  # Track timestamp
         self.pool.release(self)
 
     def ensure_released(self, response_read=True):

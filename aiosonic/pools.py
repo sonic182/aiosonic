@@ -1,5 +1,6 @@
 """Pools module."""
 
+import time
 from abc import ABC, abstractmethod
 from asyncio import Queue, Semaphore, wait_for
 from dataclasses import dataclass, field
@@ -93,6 +94,19 @@ class BasePool(ABC):
     def pool_size(self):
         return self.conf.size
 
+    def _is_connection_idle(self, conn) -> bool:
+        """Check if a connection has been idle too long.
+        
+        Returns:
+            bool: True if the connection is idle and should be closed
+        """
+        if (self.conf.max_conn_idle_ms is not None and 
+            conn.last_released_time is not None):
+            idle_time_ms = (time.monotonic() - conn.last_released_time) * 1000
+            if idle_time_ms > self.conf.max_conn_idle_ms:
+                return True
+        return False
+
 
 class CyclicQueuePool(BasePool):
     """Cyclic queue pool of connections."""
@@ -104,13 +118,20 @@ class CyclicQueuePool(BasePool):
 
     async def acquire(self, _urlparsed: ParseResult = None):
         """Acquire connection."""
+        # Get connection from the pool
         if not self.timeouts.pool_acquire:
-            return await self.pool.get()
+            conn = await self.pool.get()
         else:
             try:
-                return await wait_for(self.pool.get(), self.timeouts.pool_acquire)
+                conn = await wait_for(self.pool.get(), self.timeouts.pool_acquire)
             except TimeoutException:
                 raise ConnectionPoolAcquireTimeout()
+        
+        if self._is_connection_idle(conn):
+            # Close idle connection, this will allow re-opening when using it.
+            conn.close()
+        
+        return conn
 
     def release(self, conn):
         """Release connection."""
@@ -149,13 +170,27 @@ class SmartPool(BasePool):
             except TimeoutException:
                 raise ConnectionPoolAcquireTimeout()
 
+        conn = None
+
+        # Find connection based on URL
         if urlparsed:
             key = f"{urlparsed.hostname}-{urlparsed.port}"
             for item in self.pool:
                 if item.key == key:
                     self.pool.remove(item)
-                    return item
-        return self.pool.pop()
+                    conn = item
+                    break
+        
+        # If no matching connection, get any connection
+        if conn is None and self.pool:
+            conn = self.pool.pop()
+        
+        # Check if connection is idle
+        if conn is not None and self._is_connection_idle(conn):
+            conn.close()
+            conn = conn.__class__(self)
+        
+        return conn
 
     def release(self, conn) -> None:
         """Release connection."""
