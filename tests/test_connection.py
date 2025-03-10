@@ -20,10 +20,10 @@ class IdleTrackingConnection(Connection):
 
 
 @pytest.mark.asyncio
-async def test_max_conn_idle_ms(app, aiohttp_server):
+@pytest.mark.timeout(5)
+async def test_max_conn_idle_ms(http_serv):
     """Test that connections idle longer than max_conn_idle_ms are closed and recreated."""
-    server = await aiohttp_server(app)
-    url = f"http://localhost:{server.port}"
+    url = http_serv
 
     IdleTrackingConnection.next_id = 0
 
@@ -37,6 +37,7 @@ async def test_max_conn_idle_ms(app, aiohttp_server):
         # First request - creates connection #0
         res1 = await client.get(url)
         assert res1.status_code == 200
+        await res1.text()
 
         # Check we have connection #0
         conn1_id = None
@@ -50,6 +51,7 @@ async def test_max_conn_idle_ms(app, aiohttp_server):
         # Second request - should reuse the same connection
         res2 = await client.get(url)
         assert res2.status_code == 200
+        await res2.text()
 
         # Verify same connection was used
         async with await connector.pools[":default"].acquire() as conn:
@@ -61,9 +63,8 @@ async def test_max_conn_idle_ms(app, aiohttp_server):
         # Third request - should create a new connection
         res3 = await client.get(url)
         assert res3.status_code == 200
+        await res3.text()
 
         # Verify a new connection was created
         async with await connector.pools[":default"].acquire() as conn:
             assert conn.id > conn1_id
-
-        await server.close()
