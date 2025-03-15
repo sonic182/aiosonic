@@ -162,6 +162,28 @@ if __name__ == '__main__':
     asyncio.run(main())
 ```
 
+Note: You may wanna do a singleton of your clients implementations in order to reuse the internal HTTPClient instance, and it's pool of connections (efficient usage of the client), an example:
+
+```python
+class SingletonMixin:
+    _instances = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__new__(cls)
+        return cls._instances[cls]
+
+class GitHubAPI(AioSonicBaseClient, SingletonMixin):
+    base_url = "https://api.github.com"
+    # ... the rest of the code
+
+# now, each instance of the class will be the first created
+gh = GitHubAPI()
+g2 = GitHubAPI()
+
+gh == gh2
+```
+
 ## Benchmarks
 
 A simple performance benchmark script is included in the `tests` folder. For example:
