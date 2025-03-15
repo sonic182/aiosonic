@@ -7,7 +7,6 @@ from aiosonic import HTTPClient
 class AioSonicBaseClient:
     base_url = ""
     default_headers = {}
-    _default_client = None
 
     def __init__(self, http_client: Optional[HTTPClient] = None):
         """

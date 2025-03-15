@@ -103,11 +103,62 @@ async def main():
             await ws.ping(b"keep-alive")
             pong = await ws.receive_pong()
             print("Pong received:", pong)
+
+            # You can have a "reader" task like this:
+            async def ws_reader(conn):
+                async for msg in conn:
+                    # handle the message...
+                    # msg is an instance of aiosonic.web_socket_client.Message dataclass.
+                    pass
+
+            asyncio.create_task(ws_reader(client))
             
-            # Gracefully close the connection
+            # Gracefully close the connection (optional)
             await ws.close(code=1000, reason="Normal closure")
 
 if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Api Wrapping
+
+You can easily wrap apis with `AioSonicBaseClient` class
+
+```python
+import asyncio
+import json
+from aiosonic.base_client import AioSonicBaseClient
+
+class GitHubAPI(AioSonicBaseClient):
+    base_url = "https://api.github.com"
+    default_headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
+    }
+
+    async def users(self, username: str, **kwargs):
+        # base_url and headers are applied internally.
+        return await self.get(f"/users/{username}", **kwargs)
+    
+    async def update_repo(self, owner: str, repo: str, description: str):
+        data = {
+            "name": repo,
+            "description": description,
+        }
+        return await self.put(f"/repos/{owner}/{repo}", json=data)
+
+
+async def main():
+    # You can pass an existing aiosonic.HTTPClient() instance in the constructor.
+    # If not provided, AioSonicBaseClient will create a new instance automatically.
+    github = GitHubAPI()
+    # Call the custom 'users' method to get data for user "sonic182"
+    user_data = await github.users("sonic182")
+    print(json.dumps(user_data, indent=2))
+
+
+if __name__ == '__main__':
     asyncio.run(main())
 ```
 

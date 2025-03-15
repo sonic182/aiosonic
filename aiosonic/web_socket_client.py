@@ -120,6 +120,7 @@ class WebSocketConnection:
         subprotocol (Optional[str]): The negotiated subprotocol if any
 
     Example:
+
         ```python
         async with WebSocketClient() as client:
             # Connect to a WebSocket server
