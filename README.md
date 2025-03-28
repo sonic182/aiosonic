@@ -111,7 +111,7 @@ async def main():
                     # msg is an instance of aiosonic.web_socket_client.Message dataclass.
                     pass
 
-            asyncio.create_task(ws_reader(client))
+            asyncio.create_task(ws_reader(ws))
             
             # Gracefully close the connection (optional)
             await ws.close(code=1000, reason="Normal closure")
