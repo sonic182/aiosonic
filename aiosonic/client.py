@@ -17,7 +17,7 @@ from os.path import basename
 from random import randint
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
-from urllib.parse import ParseResult, urlencode
+from urllib.parse import ParseResult, urlencode, urljoin
 from zlib import decompress as zlib_decompress
 
 from charset_normalizer import detect
@@ -520,6 +520,7 @@ class HTTPClient:
         handle_cookies: bool = False,
         verify_ssl: bool = True,
         proxy: Optional[Proxy] = None,
+        max_redirects: int = 5,
     ):
         """Initialize client options."""
         self.connector = connector or TCPConnector()
@@ -527,6 +528,7 @@ class HTTPClient:
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl
         self.proxy = proxy
+        self.max_redirects = max_redirects
 
     async def __aenter__(self):
         return self
@@ -704,6 +706,7 @@ class HTTPClient:
         timeouts: Optional[Timeouts] = None,
         follow: bool = False,
         http2: bool = False,
+        max_redirects: Optional[int] = None,
     ) -> HttpResponse:
         """Do http request.
 
@@ -754,7 +757,9 @@ class HTTPClient:
         elif data:
             body = http_parser.setup_body_request(data, headers)
 
-        max_redirects = 30
+        max_redirects = (
+            max_redirects if max_redirects is not None else self.max_redirects
+        )
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
         reconnect_times = 3
@@ -789,28 +794,25 @@ class HTTPClient:
                 if self.handle_cookies:
                     self._save_new_cookies(str(urlparsed.hostname), response)
 
-                if follow and response.status_code in {301, 302}:
-                    max_redirects -= 1
+                if self.handle_cookies:
+                    self._save_new_cookies(str(urlparsed.hostname), response)
 
-                    if max_redirects == 0:
-                        raise MaxRedirects()
-
-                    if self.handle_cookies:
-                        self._add_cookies_to_request(str(urlparsed.hostname), headers)
-
-                    parsed_full_url = http_parser.get_url_parsed(
-                        response.headers["location"]
-                    )
-
-                    # if full url, will have scheme
-                    if parsed_full_url.scheme:
-                        urlparsed = parsed_full_url
-                    else:
-                        urlparsed = http_parser.get_url_parsed(
-                            url.replace(urlparsed.path, response.headers["location"])
+                if follow and response.status_code in {301, 302, 303, 307, 308}:
+                    (urlparsed, method, body, transfer_chunked, max_redirects) = (
+                        self._handle_redirect(
+                            current_urlparsed=urlparsed,
+                            headers=headers,
+                            response=response,
+                            max_redirects=max_redirects,
+                            method=method,
+                            body=body,
+                            transfer_chunked=transfer_chunked,
                         )
+                    )
+                    # continue loop to re-issue the request with updated params
                 else:
                     return response
+
             except ConnectionDisconnected:
                 reconnect_times -= 1
             except ConnectTimeout:
@@ -818,6 +820,79 @@ class HTTPClient:
             except TimeoutException:
                 raise RequestTimeout()
         raise ConnectionDisconnected("retried 3 times unsuccessfully")
+
+    def _handle_redirect(
+        self,
+        current_urlparsed: ParseResult,
+        headers: HeadersType,
+        response: HttpResponse,
+        max_redirects: int,
+        method: str,
+        body: ParsedBodyType,
+        transfer_chunked: bool,
+    ):
+        # 1) budget
+        max_redirects -= 1
+        if max_redirects < 0:
+            raise MaxRedirects()
+
+        # 2) drain/close previous connection to avoid pool starvation
+        try:
+            if response.chunked and getattr(response, "_connection", None):
+                response._connection.keep = False  # don’t try to reuse
+        except Exception:
+            if getattr(response, "_connection", None):
+                response._connection.keep = False
+
+        # 3) get Location
+        location = response.headers.get("location")
+        if not location:
+            # No valid redirect target; just return current state (treat as terminal)
+            return current_urlparsed, method, body, transfer_chunked, max_redirects
+
+        # 4) resolve absolute/relative Location correctly
+        current_url = current_urlparsed.geturl()
+        new_url_str = urljoin(current_url, location)
+        new_urlparsed = http_parser.get_url_parsed(new_url_str)
+
+        # 5) cookies for new host (if enabled)
+        if self.handle_cookies:
+            self._add_cookies_to_request(str(new_urlparsed.hostname), headers)
+
+        # 6) switch method/body if required
+        status = response.status_code
+        original_method = method.upper()
+
+        switch_to_get = status == 303 or (
+            status in {301, 302} and original_method == "POST"
+        )
+
+        if switch_to_get:
+            method = "GET"
+            body = b""
+            transfer_chunked = False
+            # Strip entity headers that no longer apply
+            for h in ("Content-Length", "Transfer-Encoding", "Content-Type"):
+                try:
+                    del headers[h]
+                except Exception:
+                    pass
+        else:
+            # 307/308: MUST NOT change method/body.
+            # If your body was a one-shot stream, consider exposing a flag
+            # to disallow re-sends unless user opts in.
+            pass
+
+        # 7) security: drop Authorization when host changes
+        try:
+            if current_urlparsed.netloc != new_urlparsed.netloc:
+                for h in list(headers.keys()):
+                    if h.lower() == "authorization":
+                        del headers[h]
+        except Exception:
+            pass
+
+        return new_urlparsed, method, body, transfer_chunked, max_redirects
 
     async def wait_requests(self, timeout: int = 30):
         """Wait until all pending requests are done.
