@@ -794,9 +794,6 @@ class HTTPClient:
                 if self.handle_cookies:
                     self._save_new_cookies(str(urlparsed.hostname), response)
 
-                if self.handle_cookies:
-                    self._save_new_cookies(str(urlparsed.hostname), response)
-
                 if follow and response.status_code in {301, 302, 303, 307, 308}:
                     (urlparsed, method, body, transfer_chunked, max_redirects) = (
                         self._handle_redirect(
