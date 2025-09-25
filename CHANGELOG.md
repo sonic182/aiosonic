@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - MultipartFile class for specifying content type and filename in multipart uploads
 
+### Changed
+- `response.json()` no longer enforces content-type to be application/json, allowing parsing of valid JSON responses regardless of content-type header
+
 ## [0.25.0] 2025-08-28
 
 ### Added
