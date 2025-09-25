@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- MultipartFile class for specifying content type and filename in multipart uploads
 
 ## [0.25.0] 2025-08-28
 
