@@ -3,8 +3,6 @@
 Reference
 =========
 
-TODO: get better this page
-
 
 Connector and Client Client
 ===========================
@@ -86,6 +84,9 @@ Multipart Form Data
 This class can be used for sending multipart form data.
 
 .. autoclass:: aiosonic.multipart.MultipartForm
+   :members:
+|
+.. autoclass:: aiosonic.multipart.MultipartFile
    :members:
 
 Proxy Support

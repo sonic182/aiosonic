@@ -11,7 +11,18 @@ _CHUNK_SIZE = 1024 * 1024  # 1mb
 
 
 class MultipartFile:
-    """A class to represent a file in multipart data with metadata."""
+    """A class to represent a file in multipart data with metadata.
+
+    This class encapsulates a file-like object along with its filename and content type,
+    providing convenient access to file properties such as size.
+
+    Args:
+        file_obj (IOBase): The file-like object to be included in multipart data.
+        filename (Optional[str]): The name of the file. If not provided, defaults to
+            the basename of the file object's name.
+        content_type (Optional[str]): The MIME type of the file. If not provided,
+            it may be inferred or left unspecified.
+    """
 
     def __init__(
         self,
