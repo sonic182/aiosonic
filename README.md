@@ -22,6 +22,9 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - Automatic redirect following
 - Fully type-annotated
 - WebSocket support
+- HTTP proxy support
+- Sessions with cookie persistence
+- Elegant key/value cookies
 - (Nearly) 100% test coverage
 - HTTP/2 (BETA; enabled with a flag)
 
@@ -203,9 +206,9 @@ Example output:
   "httpx": "5000 requests in 7920.04 ms"
 }
 ```
+
 aiosonic is 1457.99% faster than requests
 aiosonic is -1.38% faster than aiosonic cyclic
-```
 
 > **Note:**  
 > These benchmarks are basic and machine-dependent. They are intended as a rough comparison.
@@ -213,15 +216,10 @@ aiosonic is -1.38% faster than aiosonic cyclic
 ## [TODO's](https://github.com/sonic182/aiosonic/projects/1)
 
 - **HTTP/2:**
-  - [x] GET requests
-  - [x] Requests with data sending
   - [ ] Stable HTTP/2 release
 - Better documentation
 - International domains and URLs (IDNA + cache)
 - Basic/Digest authentication
-- [x] HTTP proxy support
-- [x] Sessions with cookie persistence
-- [x] Elegant key/value cookies
 
 ## Development
 

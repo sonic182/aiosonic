@@ -21,6 +21,9 @@ Features
 - Automatic redirect following
 - Fully type-annotated code
 - WebSocket support
+- HTTP proxy support
+- Sessions with cookie persistence
+- Elegant key/value cookies
 - Comprehensive test coverage (nearly 100%)
 - HTTP/2 (BETA; enabled via a flag)
 
