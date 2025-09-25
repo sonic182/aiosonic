@@ -1,5 +1,6 @@
 import os
 from io import IOBase
+from os.path import basename
 from random import randint
 from typing import Optional, Union
 
@@ -7,6 +8,34 @@ from aiosonic.resolver import get_loop
 
 RANDOM_RANGE = (1000, 9999)
 _CHUNK_SIZE = 1024 * 1024  # 1mb
+
+
+class MultipartFile:
+    """A class to represent a file in multipart data with metadata."""
+
+    def __init__(
+        self,
+        file_obj: IOBase,
+        filename: Optional[str] = None,
+        content_type: Optional[str] = None,
+    ):
+        self.file_obj = file_obj
+        self.filename = filename or basename(file_obj.name)
+        self.content_type = content_type
+        self._size: Optional[int] = None
+
+    @property
+    def size(self) -> int:
+        """Calculate and cache the file size efficiently."""
+        if self._size is None:
+            try:
+                current_pos = self.file_obj.tell()
+                self.file_obj.seek(0, 2)
+                self._size = self.file_obj.tell()
+                self.file_obj.seek(current_pos)
+            except (OSError, AttributeError):
+                self._size = 0
+        return self._size
 
 
 class MultipartForm:
@@ -20,25 +49,25 @@ class MultipartForm:
         import asyncio
         import aiosonic
         from aiosonic.multipart import MultipartForm
-        
+
         async def upload_file():
             client = aiosonic.HTTPClient()
             form = MultipartForm()
-        
+
             # Add a text field
             form.add_field("field1", "value1")
-        
+
             # Add a file to upload
             form.add_file("file1", "path/to/your/file.txt")
-        
+
             # Make the POST request with MultipartForm directly
             url = "https://your-upload-endpoint.com/upload"
             response = await client.post(url, data=form)
-        
+
             print("Response Status:", response.status_code)
             response_data = await response.text()
             print("Response Body:", response_data)
-        
+
         if __name__ == '__main__':
             asyncio.run(upload_file())
     """
@@ -56,7 +85,7 @@ class MultipartForm:
         Args:
             name (str): The name of the field.
             value (Union[str, IOBase]): The value of the field. Can be a string or a file-like object.
-            filename (Optional[str]): The name of the file, if the value is a file-like object. 
+            filename (Optional[str]): The name of the file, if the value is a file-like object.
                                       Defaults to the file's name if not provided.
         """
         if isinstance(value, IOBase):

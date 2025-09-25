@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import re
 import sys
 from asyncio import wait_for
@@ -23,6 +24,8 @@ from zlib import decompress as zlib_decompress
 from charset_normalizer import detect
 
 from aiosonic import http_parser
+from aiosonic.multipart import MultipartFile
+
 from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -359,55 +362,107 @@ async def _send_chunks(connection: Connection, body: BodyType):
 
 
 async def _send_multipart(
-    data: Dict[str, str],
+    data: Dict[str, Union[str, IOBase, MultipartFile]],
     boundary: str,
     headers: HeadersType,
     chunk_size: int = _CHUNK_SIZE,
 ) -> bytes:
     """Send multipart data by streaming."""
-    # TODO: precalculate body size and stream request
-    # precalculate file sizes by os.path.getsize
+    # Precalculate body size
+    total_size = 0
+    for key, val in data.items():
+        # boundary
+        total_size += len((f"--{boundary}{CRLF}").encode())
 
+        if isinstance(val, IOBase):
+            # Backward compatibility: IOBase directly
+            file_obj = val
+            filename = basename(val.name) if hasattr(val, "name") else "file"
+            content_type = None
+        elif isinstance(val, MultipartFile):
+            # New: MultipartFile class
+            file_obj = val.file_obj
+            filename = val.filename
+            content_type = val.content_type
+        else:
+            # String field
+            disp = f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
+            total_size += len(disp.encode()) + len(val.encode()) + len(CRLF.encode())
+            continue
+
+        # For files
+        to_write = (
+            f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
+        )
+        if content_type:
+            to_write += f"Content-Type: {content_type}{CRLF}"
+        to_write += CRLF
+        total_size += len(to_write.encode())
+
+        # file size
+        if isinstance(val, MultipartFile):
+            file_size = val.size
+        else:
+            try:
+                file_size = os.path.getsize(file_obj.name)
+            except (OSError, AttributeError):
+                # seek to get size
+                current_pos = file_obj.tell()
+                file_obj.seek(0, 2)
+                file_size = file_obj.tell()
+                file_obj.seek(current_pos)
+        total_size += file_size
+
+    # final boundary
+    total_size += len((f"--{boundary}--").encode())
+
+    # Add Content-Length header
+    http_parser.add_header(headers, "Content-Length", str(total_size))
+
+    # Now build the body
     to_send = b""
     for key, val in data.items():
         # write --boundary + field
         to_send += (f"--{boundary}{CRLF}").encode()
 
         if isinstance(val, IOBase):
-            # TODO: Utility to accept files with multipart metadata
-            # (Content-Type, custom filename, ...),
-
-            # write Contet-Disposition
-            to_write = (
-                "Content-Disposition: form-data; "
-                + 'name="%s"; filename="%s"%s%s'
-                % (
-                    key,
-                    basename(val.name),
-                    CRLF,
-                    CRLF,
-                )
-            )
-            to_send += to_write.encode()
-
-            # read and write chunks
-            loop = get_loop()
-            while True:
-                data = await loop.run_in_executor(None, val.read, chunk_size)
-                if not data:
-                    break
-                to_send += data
-            val.close()
-
+            # Backward compatibility: IOBase directly
+            file_obj = val
+            filename = basename(val.name) if hasattr(val, "name") else "file"
+            content_type = None
+        elif isinstance(val, MultipartFile):
+            # New: MultipartFile class
+            file_obj = val.file_obj
+            filename = val.filename
+            content_type = val.content_type
         else:
+            # String field
             to_send += (
                 f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
             ).encode()
             to_send += val.encode() + CRLF.encode()
+            continue
+
+        # For files
+        to_write = (
+            f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
+        )
+        if content_type:
+            to_write += f"Content-Type: {content_type}{CRLF}"
+        to_write += CRLF
+        to_send += to_write.encode()
+
+        # read and write chunks
+        loop = get_loop()
+        while True:
+            chunk = await loop.run_in_executor(None, file_obj.read, chunk_size)
+            if not chunk:
+                break
+            to_send += chunk
+        file_obj.close()
 
     # write --boundary-- for finish
     to_send += (f"--{boundary}--").encode()
-    http_parser.add_header(headers, "Content-Length", str(len(to_send)))
     return to_send
 
 

@@ -8,13 +8,7 @@ ParamsType = Union[
 ]
 #: Data to be sent in requests, allowed types
 DataType = Union[
-    str,
-    bytes,
-    dict,
-    tuple,
-    AsyncIterator[bytes],
-    Iterator[bytes],
-    MultipartForm
+    str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes], MultipartForm
 ]
 BodyType = Union[
     str,

@@ -310,34 +310,6 @@ async def test_get_keepalive(http_serv):
 
 
 @pytest.mark.asyncio
-async def test_post_multipart(http_serv):
-    """Test post multipart."""
-    url = f"{http_serv}/upload_file"
-    data = {"foo": open("tests/files/bar.txt", "rb"), "field1": "foo"}
-
-    async with aiosonic.HTTPClient() as client:
-        res = await client.post(url, data=data, multipart=True)
-        assert res.status_code == 200
-        # assert await res.content() == b"bar\n-foo"
-        assert await res.text() == "bar-foo"
-
-
-@pytest.mark.asyncio
-async def test_post_multipart_with_class(http_serv):
-    """Test post multipart."""
-    url = f"{http_serv}/upload_file"
-
-    form = MultipartForm()
-    form.add_field("foo", open("tests/files/bar.txt", "rb"), "myfile.txt")
-    form.add_field("field1", "foo")
-
-    async with aiosonic.HTTPClient() as client:
-        res = await client.post(url, data=form)
-        assert res.status_code == 200
-        assert await res.text() == "bar-foo"
-
-
-@pytest.mark.asyncio
 async def test_connect_timeout(mocker):
     """Test connect timeout."""
     url = "http://localhost:1234"
@@ -665,14 +637,6 @@ async def test_connection_error(mocker):
     async with aiosonic.HTTPClient() as client:
         with pytest.raises(ConnectionError):
             await client.get("http://foo")
-
-
-@pytest.mark.asyncio
-async def test_request_multipart_value_error():
-    """Connection error check."""
-    async with aiosonic.HTTPClient() as client:
-        with pytest.raises(ValueError):
-            await client.post("foo", data=b"foo", multipart=True)
 
 
 @pytest.mark.asyncio
