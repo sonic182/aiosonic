@@ -195,14 +195,14 @@ python scripts/performance.py
 Example output:
 
 ```json
-doing tests...
 {
- "aiosonic": "1000 requests in 105.53 ms",
- "aiosonic cyclic": "1000 requests in 104.08 ms",
- "aiohttp": "1000 requests in 184.51 ms",
- "requests": "1000 requests in 1644.21 ms"
+  "aiohttp": "5000 requests in 558.31 ms",
+  "aiosonic": "5000 requests in 563.95 ms",
+  "requests": "5000 requests in 10306.90 ms",
+  "aiosonic_cyclic": "5000 requests in 642.15 ms",
+  "httpx": "5000 requests in 7920.04 ms"
 }
-aiosonic is 74.84% faster than aiohttp
+```
 aiosonic is 1457.99% faster than requests
 aiosonic is -1.38% faster than aiosonic cyclic
 ```
