@@ -18,7 +18,7 @@ async def test_wrapper_get_http_serv(http_serv):
     client = TestWrapperClient()
 
     response = await client.get("/")
-    assert response.strip() == "Hello, World!"
+    assert response.strip() == "Hello, world"
 
 
 @pytest.mark.asyncio

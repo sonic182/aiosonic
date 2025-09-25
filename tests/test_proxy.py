@@ -8,14 +8,11 @@ from aiosonic.proxy import Proxy
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
-async def test_proxy_request(app, aiohttp_server, proxy_serv):
+async def test_proxy_request(http_serv, proxy_serv):
     """Test proxy request."""
-    server = await aiohttp_server(app)
-
-    url = f"http://localhost:{server.port}"
+    url = http_serv
 
     async with HTTPClient(proxy=Proxy(*proxy_serv)) as client:
         res = await client.get(url)
         assert await res.text() == "Hello, world"
         assert res.status_code == 200
-        await server.close()
