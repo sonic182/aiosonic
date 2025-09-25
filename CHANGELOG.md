@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- MultipartFile class for specifying content type and filename in multipart uploads
+- MultipartFile class for specifying content type and filename in multipart uploads (now accepts both file paths and file objects with lazy file opening to avoid memory preloading)
+- MultipartForm.add_field() now supports MultipartFile instances for more control over file uploads
 
 ### Changed
 - `response.json()` no longer enforces content-type to be application/json, allowing parsing of valid JSON responses regardless of content-type header

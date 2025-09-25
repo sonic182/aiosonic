@@ -373,16 +373,24 @@ async def _send_multipart(
         # boundary
         total_size += len((f"--{boundary}{CRLF}").encode())
 
-        if isinstance(val, IOBase):
+        if isinstance(val, MultipartFile):
+            # New: MultipartFile class
+            filename = val.filename
+            content_type = val.content_type
+            file_size = val.size
+        elif isinstance(val, IOBase):
             # Backward compatibility: IOBase directly
             file_obj = val
             filename = basename(val.name) if hasattr(val, "name") else "file"
             content_type = None
-        elif isinstance(val, MultipartFile):
-            # New: MultipartFile class
-            file_obj = val.file_obj
-            filename = val.filename
-            content_type = val.content_type
+            try:
+                file_size = os.path.getsize(file_obj.name)
+            except (OSError, AttributeError):
+                # seek to get size
+                current_pos = file_obj.tell()
+                file_obj.seek(0, 2)
+                file_size = file_obj.tell()
+                file_obj.seek(current_pos)
         else:
             # String field
             disp = f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
@@ -398,18 +406,6 @@ async def _send_multipart(
         to_write += CRLF
         total_size += len(to_write.encode())
 
-        # file size
-        if isinstance(val, MultipartFile):
-            file_size = val.size
-        else:
-            try:
-                file_size = os.path.getsize(file_obj.name)
-            except (OSError, AttributeError):
-                # seek to get size
-                current_pos = file_obj.tell()
-                file_obj.seek(0, 2)
-                file_size = file_obj.tell()
-                file_obj.seek(current_pos)
         total_size += file_size
 
     # final boundary

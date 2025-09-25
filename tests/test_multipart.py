@@ -88,6 +88,98 @@ async def test_multipart_backward_compatibility(http_serv):
 
 
 @pytest.mark.asyncio
+async def test_post_multipart_with_multipartfile_class(http_serv):
+    """Test post multipart using MultipartForm with MultipartFile instance."""
+    from aiosonic.multipart import MultipartFile
+
+    url = f"{http_serv}/upload_file"
+
+    form = MultipartForm()
+    file_obj = open("tests/files/bar.txt", "rb")
+    multipart_file = MultipartFile(
+        file_obj, filename="custom_bar.txt", content_type="text/plain"
+    )
+    form.add_field("foo", multipart_file)
+    form.add_field("field1", "foo")
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=form)
+        assert res.status_code == 200
+        assert await res.text() == "bar-foo"
+
+
+@pytest.mark.asyncio
+async def test_post_multipart_with_multipartfile_path(http_serv):
+    """Test post multipart using MultipartForm with MultipartFile from file path."""
+    from aiosonic.multipart import MultipartFile
+
+    url = f"{http_serv}/upload_file"
+
+    form = MultipartForm()
+    multipart_file = MultipartFile(
+        "tests/files/bar.txt", filename="custom_bar.txt", content_type="text/plain"
+    )
+    form.add_field("foo", multipart_file)
+    form.add_field("field1", "foo")
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=form)
+        assert res.status_code == 200
+        assert await res.text() == "bar-foo"
+
+
+@pytest.mark.asyncio
+async def test_multipartfile_lazy_file_opening():
+    """Test that MultipartFile with file path doesn't open file until accessed."""
+    from aiosonic.multipart import MultipartFile
+    import os
+
+    # Test with file path - file should not be opened until file_obj is accessed
+    multipart_file = MultipartFile("tests/files/bar.txt")
+    assert multipart_file._file_obj is None  # File not opened yet
+
+    # Access file_obj - should open the file
+    with multipart_file.file_obj:
+        assert multipart_file._file_obj is not None
+        assert not multipart_file._file_obj.closed
+
+    # After context, file should be closed
+    assert multipart_file._file_obj.closed
+
+    # Test with file object - should use the provided object
+    file_obj = open("tests/files/bar.txt", "rb")
+    multipart_file2 = MultipartFile(file_obj)
+    assert multipart_file2._file_obj is file_obj  # Uses provided object
+    file_obj.close()
+
+
+@pytest.mark.asyncio
+async def test_multipartform_doesnt_open_files_during_construction():
+    """Test that MultipartForm doesn't open files during construction, only during sending."""
+    from aiosonic.multipart import MultipartForm, MultipartFile
+
+    # Create MultipartFile with file path
+    multipart_file = MultipartFile("tests/files/bar.txt")
+    assert multipart_file._file_obj is None  # File not opened yet
+
+    # Create form and add the file
+    form = MultipartForm()
+    form.add_field("file", multipart_file)
+
+    # File should still not be opened after adding to form
+    assert multipart_file._file_obj is None
+
+    # File should be opened when we access file_obj during sending
+    # Let's simulate what happens during _generate_chunks
+    file_obj = multipart_file.file_obj  # This should open the file
+    assert multipart_file._file_obj is not None
+    assert not file_obj.closed
+
+    # Clean up
+    file_obj.close()
+
+
+@pytest.mark.asyncio
 async def test_request_multipart_value_error():
     """Connection error check."""
     async with aiosonic.HTTPClient() as client:
