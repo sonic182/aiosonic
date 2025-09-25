@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] 2015-09-26
+
 ### Added
 - MultipartFile class for specifying content type and filename in multipart uploads (now accepts both file paths and file objects with lazy file opening to avoid memory preloading)
 - MultipartForm.add_field() now supports MultipartFile instances for more control over file uploads
@@ -344,7 +346,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.25.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.26.0..HEAD
+[0.26.0]: https://github.com/sonic182/aiosonic/compare/0.25.0..0.26.0
 [0.25.0]: https://github.com/sonic182/aiosonic/compare/0.24.0..0.25.0
 [0.24.0]: https://github.com/sonic182/aiosonic/compare/0.23.1..0.24.0
 [0.23.1]: https://github.com/sonic182/aiosonic/compare/0.23.0..0.23.1
