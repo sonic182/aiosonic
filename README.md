@@ -189,7 +189,7 @@ gh == gh2
 A simple performance benchmark script is included in the `tests` folder. For example:
 
 ```bash
-python tests/performance.py
+python scripts/performance.py
 ```
 
 Example output:

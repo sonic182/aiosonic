@@ -124,7 +124,7 @@ Below is a basic performance benchmark comparing aiosonic with other HTTP client
 
 .. code-block:: bash
 
- $ python tests/performance.py
+ $ python scripts/performance.py
  doing tests...
  {
   "aiosonic": "1000 requests in 105.53 ms",
