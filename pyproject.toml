@@ -58,7 +58,7 @@ pytest-mypy = {version="^0.10.3", markers="platform_python_implementation != 'Py
 pytest-sugar = "^1.0.0"
 pytest-timeout = "^2.3.1"
 requests = "^2.32.3"
-uvicorn = "^0.30.3"
+uvicorn = ">=0.30.3,<0.34.0"
 uvloop = {version=">=0.19,<0.21", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy' and python_version < '3.13.0'" }
 winloop = {version = "^0.1.6", platform = "win32"}
 
