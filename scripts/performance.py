@@ -102,7 +102,9 @@ async def performance_aiosonic(url, concurrency, pool_cls, timeouts, repeat, war
         f"Starting aiosonic test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
     )
     client = aiosonic.HTTPClient(
-        TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)}, pool_cls=pool_cls)
+        TCPConnector(
+            pool_configs={":default": PoolConfig(size=concurrency)}, pool_cls=pool_cls
+        )
     )
     return await timeit_coro(
         client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup
