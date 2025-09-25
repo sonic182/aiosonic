@@ -649,6 +649,16 @@ async def test_json_response_parsing():
     assert (await response.json()) == {"foo": "bar"}
 
 
+@pytest.mark.asyncio
+async def test_json_response_parsing_wrong_content_type():
+    """Test json response parsing with wrong content type."""
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 200 OK\r\n")
+    response._set_header("content-type", "text/plain")
+    response.body = b'{"foo": "bar"}'
+    assert (await response.json()) == {"foo": "bar"}
+
+
 class WrongEvent:
     pass
 

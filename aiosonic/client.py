@@ -208,7 +208,6 @@ class HttpResponse:
 
     async def json(self, json_decoder=loads) -> dict:
         """Read response body."""
-        assert "application/json" in self.headers["content-type"].lower()
         body = await self.content()
         return json_decoder(body)
 
