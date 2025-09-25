@@ -8,8 +8,7 @@ from urllib.parse import ParseResult
 
 from onecache import ExpirableCache
 
-from aiosonic.exceptions import (ConnectTimeout, HttpParsingError,
-                                 TimeoutException)
+from aiosonic.exceptions import ConnectTimeout, HttpParsingError, TimeoutException
 from aiosonic.pools import PoolConfig, SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
@@ -51,7 +50,7 @@ class TCPConnector:
         resolver=None,
         ttl_dns_cache=10000,
         use_dns_cache=True,
-        ):
+    ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
         self.connection_cls = connection_cls or Connection
