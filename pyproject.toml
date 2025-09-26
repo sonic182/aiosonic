@@ -41,7 +41,7 @@ onecache = "^0.7.0"
 aiodns = "^3.2.0"
 asgiref = "^3.8.1"
 black = "^24.4.2"
-click = "<8.1.0"
+click = "<8.2.0"
 h11 = ">=0.16.0"
 httptools = {version="^0.6.0", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 httpx = "^0.27.0"
