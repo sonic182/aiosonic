@@ -7,7 +7,8 @@
     "test": "tests"
   },
   "scripts": {
-    "ws-server": "node tests/nodeapps/ws_server.mjs"
+    "ws-server": "node tests/nodeapps/ws-server.mjs",
+    "sse-server": "node tests/nodeapps/sse-server.mjs"
   },
   "author": "",
   "license": "MIT",

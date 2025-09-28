@@ -23,9 +23,13 @@ def run_cmd(command: str):
     On other systems, split the command.
     """
     if sys.platform == "win32":
-        return subprocess.Popen(command, shell=True)
+        return subprocess.Popen(
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     else:
-        return subprocess.Popen(shlex.split(command))
+        return subprocess.Popen(
+            shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
 
 
 @pytest.fixture
@@ -46,6 +50,7 @@ def http2_serv():
     check_port(port)
     yield url
     proc.terminate()
+    proc.wait(timeout=5)
 
 
 @pytest.fixture(scope="session")
@@ -57,6 +62,7 @@ def http_serv():
     check_port(port)
     yield url
     proc.terminate()
+    proc.wait(timeout=5)
 
 
 @pytest.fixture(scope="session")
@@ -70,6 +76,43 @@ def proxy_serv():
     check_port(port, "127.0.0.1")
     yield (url, auth)
     proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv():
+    """Sample SSE app."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse")
+    url = f"http://localhost:{port}/sse"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_reconnect():
+    """Sample SSE app for reconnection tests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-reconnect")
+    url = f"http://localhost:{port}/sse-reconnect"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_malformed():
+    """Sample SSE app for malformed events."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-malformed")
+    url = f"http://localhost:{port}/sse-malformed"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
 
 
 @pytest.fixture(scope="session")
@@ -81,6 +124,7 @@ def ws_serv():
     check_port(port)
     yield url
     proc.terminate()
+    proc.wait(timeout=5)
 
 
 @pytest.fixture(scope="session")
@@ -92,6 +136,7 @@ def ws_serv_ssl():
     check_port(port)
     yield url
     proc.terminate()
+    proc.wait(timeout=5)
 
 
 def __is_port_in_use(address, port):

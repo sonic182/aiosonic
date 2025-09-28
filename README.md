@@ -2,7 +2,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/sonic182/aiosonic/badge.svg?branch=master)](https://coveralls.io/github/sonic182/aiosonic?branch=master)
 [![PyPI version](https://badge.fury.io/py/aiosonic.svg)](https://badge.fury.io/py/aiosonic)
 [![Documentation Status](https://readthedocs.org/projects/aiosonic/badge/?version=latest)](https://aiosonic.readthedocs.io/en/latest/?badge=latest)
-[![Discord](https://img.shields.io/discord/898929656969965648)](https://discord.gg/e7tBnYSRjj)
 
 # aiosonic - lightweight Python asyncio HTTP/WebSocket client
 
