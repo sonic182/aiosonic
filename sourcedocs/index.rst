@@ -21,6 +21,7 @@ Features
 - Automatic redirect following
 - Fully type-annotated code
 - WebSocket support
+- Server-Sent Events (SSE) support
 - HTTP proxy support
 - Sessions with cookie persistence
 - Elegant key/value cookies
@@ -116,8 +117,32 @@ This example demonstrates how to use the WebSocket support provided by aiosonic.
              # Gracefully close the connection.
              await ws.close(code=1000, reason="Normal closure")
  
- if __name__ == "__main__":
-     asyncio.run(main())
+  if __name__ == "__main__":
+      asyncio.run(main())
+
+
+SSE Example
+===========
+
+This example demonstrates how to use the Server-Sent Events (SSE) support provided by aiosonic.
+
+.. code-block:: python
+
+  import asyncio
+  from aiosonic import SSEClient
+
+  async def main():
+      # Replace with your SSE endpoint URL
+      sse_url = "http://localhost:8080/sse"
+      client = SSEClient()
+      async with client.connect(sse_url) as sse_conn:
+          async for event in sse_conn:
+              print(f"Event: {event['event']}, Data: {event['data']}")
+              if event['data'] == 'stop':
+                  break
+
+  if __name__ == "__main__":
+      asyncio.run(main())
 
 
 Benchmarks
@@ -157,8 +182,9 @@ Indices and Tables
 * :ref:`search`
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   examples
-   reference
-   websocket_client
+    examples
+    reference
+    websocket_client
+    sse_client
