@@ -1,4 +1,13 @@
-from typing import AsyncIterator, Dict, Iterator, Sequence, Tuple, Union
+from typing import (
+    AsyncIterator,
+    Dict,
+    Iterator,
+    Optional,
+    Sequence,
+    Tuple,
+    TypedDict,
+    Union,
+)
 from aiosonic.multipart import MultipartForm
 
 # TYPES
@@ -21,3 +30,12 @@ ParsedBodyType = Union[
     AsyncIterator[bytes],
     Iterator[bytes],
 ]
+
+
+class SSEEvent(TypedDict):
+    """SSE event structure."""
+
+    data: str
+    event: Optional[str]
+    id: Optional[str]
+    retry: Optional[int]

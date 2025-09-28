@@ -53,3 +53,12 @@ class ConnectionDisconnected(Exception):
 # HTTP2
 class MissingEvent(Exception):
     pass
+
+
+# SSE
+class SSEConnectionError(Exception):
+    pass
+
+
+class SSEParsingError(Exception):
+    pass
