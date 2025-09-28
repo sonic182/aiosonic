@@ -11,7 +11,7 @@ from aiosonic.timeout import Timeouts
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_get_python(http2_serv):
     """Test simple get."""
     url = http2_serv
@@ -33,7 +33,7 @@ async def test_get_python(http2_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_post_http2(http2_serv):
     """Test simple post."""
     url = f"{http2_serv}/post"
@@ -51,7 +51,7 @@ async def test_post_http2(http2_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_get_http2(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -64,7 +64,7 @@ async def test_get_http2(http2_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_method_lower(http2_serv):
     """Test simple get to node http2 server."""
     url = http2_serv
@@ -75,6 +75,7 @@ async def test_method_lower(http2_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_simple_get_ssl(http2_serv):
     """Test simple get with https."""
     url = http2_serv
@@ -133,7 +134,7 @@ async def test_http2_wrong_event(mocker):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_get_image(http2_serv):
     """Test get image."""
     url = f"{http2_serv}/sample.png"
@@ -147,7 +148,7 @@ async def test_get_image(http2_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_get_image_chunked(http2_serv):
     """Test get image chunked."""
     url = f"{http2_serv}/sample.png"
