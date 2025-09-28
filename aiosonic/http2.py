@@ -99,13 +99,21 @@ class Http2Handler(object):
             "headers": headers_param,
             "future": future,
             "data_sent": False,
+            "send_scheduled": False,
+            "send_started": False,
         }
 
         # schedule sending immediately to avoid stalls when settings already negotiated
         try:
+            # mark scheduled to avoid duplicate scheduling from SettingsAcknowledged
+            self.requests[stream_id]["send_scheduled"] = True
             self.loop.create_task(self.send_body(stream_id))
         except Exception:
-            pass
+            # ensure flag is cleared on failure
+            try:
+                self.requests[stream_id]["send_scheduled"] = False
+            except Exception:
+                pass
 
         await future
 
@@ -198,6 +206,15 @@ class Http2Handler(object):
                     dlogger.debug("response for unknown stream %s", event.stream_id)
                     continue
                 req["headers"] = event.headers
+                # If the stream is already closed (server sent headers with END_STREAM),
+                # complete the future so requests don't hang waiting for StreamEnded.
+                try:
+                    stream_obj = h2conn.streams.get(event.stream_id)
+                except Exception:
+                    stream_obj = None
+                if (not stream_obj) or getattr(stream_obj, "closed", False):
+                    if not req["future"].done():
+                        req["future"].set_result(req.get("body"))
             elif isinstance(event, h2.events.SettingsAcknowledged):
                 # After settings ack we may be allowed to send body data
                 for stream_id, req in list(self.requests.items()):
