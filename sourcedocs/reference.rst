@@ -37,6 +37,14 @@ Classes
    :members:
 |
 
+SSE Client
+==========
+
+.. autoclass:: aiosonic.SSEClient
+   :members:
+   :show-inheritance:
+
+
 
 Tiemout Class
 =============
