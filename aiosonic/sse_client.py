@@ -1,48 +1,39 @@
 import asyncio
 from json import dumps as json_dumps
 from ssl import SSLContext
-from typing import Any, AsyncIterator, Dict, Optional, Set, Union
+from typing import AsyncIterator, Optional, Set, Union
 
 from aiosonic.client import HeadersType, HTTPClient, HttpHeaders
 from aiosonic.exceptions import SSEConnectionError, SSEParsingError
-from aiosonic.timeout import Timeouts
-from aiosonic.types import DataType, ParamsType, SSEEvent
 
 # TYPES
+from aiosonic.sse_config import RequestConfig
+from aiosonic.timeout import Timeouts
+from aiosonic.types import DataType, ParamsType, SSEEvent
 
 
 class SSEConnection:
     """Manages an active SSE connection."""
 
-    def __init__(
-        self,
-        response,
-        client: HTTPClient,
-        method: str,
-        url: str,
-        headers: HeadersType,
-        params: Optional[ParamsType],
-        data: Optional[DataType],
-        json: Optional[Union[dict, list]],
-        request_kwargs: Dict[str, Any],
-        reconnect: bool,
-        retry_delay: int,
-        keep_connection: bool,
-    ):
+    def __init__(self, response, client: HTTPClient, config: RequestConfig):
         self._response = response
         self._connection = getattr(response, "_connection", None)
         self._client = client
-        self._method = method
-        self._url = url
-        # Always convert headers to dict for internal use
-        self._headers = dict(headers) if headers else {}
-        self._params = params
-        self._data = data
-        self._json = json
-        self._request_kwargs = request_kwargs
-        self._reconnect = reconnect
-        self._retry_delay = retry_delay
-        self._keep_connection = keep_connection
+        # Store the config and derive commonly used fields
+        self._config = config
+        self._method = config.method
+        self._url = config.url
+        # Always convert headers to dict for internal use (use a copy)
+        self._headers = dict(config.headers) if config.headers else {}
+        self._params = config.params
+        self._data = config.data
+        self._json = config.json
+        self._request_kwargs = (
+            dict(config.request_kwargs) if config.request_kwargs else {}
+        )
+        self._reconnect = config.reconnect
+        self._retry_delay = config.retry_delay
+        self._keep_connection = config.keep_connection
         self._last_event_id: Optional[str] = None
         self._closed = False
         self._seen_ids: Set[str] = set()
@@ -166,29 +157,23 @@ class _ConnectAwaitable:
     def __init__(
         self,
         client: HTTPClient,
-        method: str,
-        url: str,
-        headers: HeadersType,
-        params: Optional[ParamsType],
-        data: Optional[DataType],
-        json: Optional[Union[dict, list]],
-        request_kwargs: Dict[str, Any],
-        reconnect: bool,
-        retry_delay: int,
-        keep_connection: bool,
+        config: RequestConfig,
     ):
         self._client = client
-        self._method = method
-        self._url = url
-        # Always convert headers to dict for internal use
-        self._headers = dict(headers) if headers else {}
-        self._params = params
-        self._data = data
-        self._json = json
-        self._request_kwargs = request_kwargs
-        self._reconnect = reconnect
-        self._retry_delay = retry_delay
-        self._keep_connection = keep_connection
+        self._config = config
+        # make a shallow mutable copy for the awaitable (headers may be mutated per connection)
+        self._headers = dict(config.headers) if config.headers else {}
+        self._method = config.method
+        self._url = config.url
+        self._params = config.params
+        self._data = config.data
+        self._json = config.json
+        self._request_kwargs = (
+            dict(config.request_kwargs) if config.request_kwargs else {}
+        )
+        self._reconnect = config.reconnect
+        self._retry_delay = config.retry_delay
+        self._keep_connection = config.keep_connection
         self._conn_obj: Optional[SSEConnection] = None
 
     def __await__(self):
@@ -212,21 +197,13 @@ class _ConnectAwaitable:
                     )
                 content_type = response.headers.get("content-type", "")
                 if "text/event-stream" not in content_type:
-                    raise SSEConnectionError("Endpoint did not return 'text/event-stream'")
-                conn = SSEConnection(
-                    response,
-                    self._client,
-                    self._method,
-                    self._url,
-                    self._headers,
-                    self._params,
-                    self._data,
-                    self._json,
-                    self._request_kwargs,
-                    self._reconnect,
-                    self._retry_delay,
-                    self._keep_connection,
-                )
+                    raise SSEConnectionError(
+                        "Endpoint did not return 'text/event-stream'"
+                    )
+                # pass a per-connection RequestConfig copy so each connection can mutate headers
+                per_conn_config = self._config.with_headers_copy()
+                per_conn_config.request_kwargs = dict(self._request_kwargs)
+                conn = SSEConnection(response, self._client, per_conn_config)
                 self._conn_obj = conn
                 return conn
             except SSEConnectionError:
@@ -352,16 +329,17 @@ class SSEClient:
             "json_serializer": json_serializer,
         }
 
-        return _ConnectAwaitable(
-            self._client,
-            method,
-            url,
-            headers_dict,
-            params,
-            data,
-            json,
-            request_kwargs,
-            reconnect,
-            retry_delay,
-            keep_connection,
+        config = RequestConfig(
+            method=method,
+            url=url,
+            headers=headers_dict,
+            params=params,
+            data=data,
+            json=json,
+            request_kwargs=request_kwargs,
+            reconnect=reconnect,
+            retry_delay=retry_delay,
+            keep_connection=keep_connection,
         )
+
+        return _ConnectAwaitable(self._client, config)

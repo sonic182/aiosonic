@@ -1,7 +1,7 @@
 """Connection stuffs."""
 
-import time
 import ssl
+import time
 from asyncio import StreamReader, StreamWriter, open_connection
 from ssl import SSLContext
 from typing import Dict, Optional
@@ -78,7 +78,7 @@ class Connection:
 
     @property
     def is_connected(self):
-        return not self.writer is None
+        return self.writer is not None
 
     async def connect(
         self,
