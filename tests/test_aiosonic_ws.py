@@ -123,7 +123,7 @@ async def test_ws_custom_headers(ws_serv):
 
 @pytest.mark.asyncio
 async def test_ws_drop_frames(ws_serv):
-    """Test that with drop_frames enabled, extra frames are dropped (queue does not grow indefinitely)."""
+    """Test drop_frames: extra frames dropped, queue doesn't grow."""
     # Use small queues and enable drop mode.
     conn_opts = {"queue_maxsize": 2, "drop_frames": True}
     async with WebSocketClient() as client:

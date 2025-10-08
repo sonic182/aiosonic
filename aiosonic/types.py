@@ -8,6 +8,7 @@ from typing import (
     TypedDict,
     Union,
 )
+
 from aiosonic.multipart import MultipartForm
 
 # TYPES

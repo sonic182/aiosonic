@@ -47,10 +47,11 @@ def http2_serv():
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/http2.js {port}")
     url = f"https://localhost:{port}"
+
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -62,7 +63,7 @@ def http_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -76,7 +77,7 @@ def proxy_serv():
     check_port(port, "127.0.0.1")
     yield (url, auth)
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -88,7 +89,7 @@ def sse_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -100,7 +101,7 @@ def sse_serv_reconnect():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -112,7 +113,79 @@ def sse_serv_malformed():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_post():
+    """Sample SSE app for POST requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post")
+    url = f"http://localhost:{port}/sse-post"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_put():
+    """Sample SSE app for PUT requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-put")
+    url = f"http://localhost:{port}/sse-put"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_patch():
+    """Sample SSE app for PATCH requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-patch")
+    url = f"http://localhost:{port}/sse-patch"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_delete():
+    """Sample SSE app for DELETE requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-delete")
+    url = f"http://localhost:{port}/sse-delete"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_params():
+    """Sample SSE app for query parameters."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-params")
+    url = f"http://localhost:{port}/sse-params"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_post_reconnect():
+    """Sample SSE app for POST reconnection tests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post-reconnect")
+    url = f"http://localhost:{port}/sse-post-reconnect"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +197,7 @@ def ws_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -136,7 +209,7 @@ def ws_serv_ssl():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 def __is_port_in_use(address, port):

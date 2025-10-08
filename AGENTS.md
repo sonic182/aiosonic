@@ -1,12 +1,16 @@
 # Agent Instructions for aiosonic
 
 ## Build/Lint/Test Commands
+
+ALWAYS USE poetry for commands eg: `poetry run <command>` it coud be "python", py.test, black, etc.
+
 - **Build**: `poetry build` or `make build`
 - **Test all**: `poetry run py.test` or `pytest`
 - **Test single file**: `poetry run py.test tests/test_filename.py`
 - **Test single function**: `poetry run py.test tests/test_filename.py::test_function_name`
-- **Lint/Format**: `black .` (formatting), `mypy .` (type checking)
+- **Lint/Format**: `poetry run black .` (formatting), `poetry run ruff check .` (linting)
 - **CI test command**: `poetry run py.test --cov-append`
+- **Run scripts or examples**: `poetry run <file.py>`
 
 ## Code Style Guidelines
 ### Imports: Standard library → Third-party → Local (absolute imports, blank lines between groups)

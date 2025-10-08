@@ -21,7 +21,7 @@ else:
     def tcp_keepalive(sock: socket.socket) -> None:  # pragma: no cover
         pass
 
-    def keepalive_flags():
+    def keepalive_flags() -> int:
         return 0
 
 

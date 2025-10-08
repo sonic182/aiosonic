@@ -24,8 +24,6 @@ from zlib import decompress as zlib_decompress
 from charset_normalizer import detect
 
 from aiosonic import http_parser
-from aiosonic.multipart import MultipartFile
-
 from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -38,7 +36,7 @@ from aiosonic.exceptions import (
     RequestTimeout,
     TimeoutException,
 )
-from aiosonic.multipart import MultipartForm
+from aiosonic.multipart import MultipartFile, MultipartForm
 from aiosonic.proxy import Proxy
 from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
@@ -484,7 +482,6 @@ async def _do_request(
 
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args) as connection:
-
         if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
             await _proxy_connect(
                 connection, proxy, urlparsed, ssl or get_default_ssl_context()
@@ -519,7 +516,7 @@ async def _do_request(
             if not line:
                 raise HttpParsingError(f"response line parsing error: {line}")
             response._set_response_initial(line)
-        except asyncio.IncompleteReadError as exc:
+        except asyncio.IncompleteReadError:
             connection.keep = False
             raise ConnectionDisconnected()
             # raise HttpParsingError(f"response line parsing error: {exc.partial}")
@@ -766,7 +763,7 @@ class HTTPClient:
             * **headers**: headers to add in request
             * **params**: query params to add in request if not manually added
             * **data**: Data to be sent, this param is ignored for get
-            * **json**: If provided, encodes the provided json structure and appends the corresponding header.
+            * **json**: If provided, encodes json and appends header.
             * **json_serializer**: Use provided json serializer, default: json.dumps
             * **multipart**: Tell aiosonic if request is multipart
             * **verify**: parameter to indicate whether to verify ssl
