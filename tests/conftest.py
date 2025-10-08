@@ -47,10 +47,11 @@ def http2_serv():
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/http2.js {port}")
     url = f"https://localhost:{port}"
+
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -62,7 +63,7 @@ def http_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -76,7 +77,7 @@ def proxy_serv():
     check_port(port, "127.0.0.1")
     yield (url, auth)
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -88,7 +89,7 @@ def sse_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -100,7 +101,7 @@ def sse_serv_reconnect():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -112,7 +113,7 @@ def sse_serv_malformed():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +125,7 @@ def sse_serv_post():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -136,7 +137,7 @@ def sse_serv_put():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -148,7 +149,7 @@ def sse_serv_patch():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -160,7 +161,7 @@ def sse_serv_delete():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -172,7 +173,7 @@ def sse_serv_params():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -184,7 +185,7 @@ def sse_serv_post_reconnect():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -196,7 +197,7 @@ def ws_serv():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 @pytest.fixture(scope="session")
@@ -208,7 +209,7 @@ def ws_serv_ssl():
     check_port(port)
     yield url
     proc.terminate()
-    proc.wait(timeout=5)
+    proc.wait(timeout=10)
 
 
 def __is_port_in_use(address, port):
