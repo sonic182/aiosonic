@@ -116,6 +116,78 @@ def sse_serv_malformed():
 
 
 @pytest.fixture(scope="session")
+def sse_serv_post():
+    """Sample SSE app for POST requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post")
+    url = f"http://localhost:{port}/sse-post"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_put():
+    """Sample SSE app for PUT requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-put")
+    url = f"http://localhost:{port}/sse-put"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_patch():
+    """Sample SSE app for PATCH requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-patch")
+    url = f"http://localhost:{port}/sse-patch"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_delete():
+    """Sample SSE app for DELETE requests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-delete")
+    url = f"http://localhost:{port}/sse-delete"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_params():
+    """Sample SSE app for query parameters."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-params")
+    url = f"http://localhost:{port}/sse-params"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
+def sse_serv_post_reconnect():
+    """Sample SSE app for POST reconnection tests."""
+    port = __get_sample_port(3000, 4000)
+    proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post-reconnect")
+    url = f"http://localhost:{port}/sse-post-reconnect"
+    check_port(port)
+    yield url
+    proc.terminate()
+    proc.wait(timeout=5)
+
+
+@pytest.fixture(scope="session")
 def ws_serv():
     """Sample WebSocket app (non-SSL)."""
     port = __get_sample_port(3000, 4000)

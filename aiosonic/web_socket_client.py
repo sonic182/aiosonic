@@ -11,21 +11,21 @@ upgrade handshake and connecting to a WebSocket server.
 Classes:
     Message
         Represents a WebSocket message.
-    
+
     ProtocolHandler
         Base class for custom protocol encoding/decoding.
-    
+
     WebSocketConnection
         Manages a WebSocket connection, including an async iterator to
         receive normal messages.
-    
+
     WebSocketClient
         Establishes a WebSocket connection.
 
 Exceptions:
     ConnectionDisconnected
         Raised when the connection is unexpectedly closed.
-    
+
     ReadTimeout
         Raised when a read operation times out.
 """

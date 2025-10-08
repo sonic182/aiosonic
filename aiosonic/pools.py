@@ -27,13 +27,13 @@ class PoolConfig:
     max_conn_requests: Optional[int] = field(
         default=1000,
         metadata={
-            "description": "Maximum number of requests per connection before recycling (None means no limit)"
+            "description": "Maximum requests per connection before recycling (None = no limit)"
         },
     )
     max_conn_idle_ms: int = field(
         default=60000,  # 1min
         metadata={
-            "description": "Maximum time in milliseconds a connection can remain idle before being closed (None means no limit)"
+            "description": "Max idle time in ms before closing connection (None = no limit)"
         },
     )
 
@@ -66,7 +66,7 @@ class BasePool(ABC):
         pass
 
     @abstractmethod
-    async def acquire(self, urlparsed: ParseResult = None):
+    async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire a connection from the pool."""
         pass
 
@@ -118,7 +118,7 @@ class CyclicQueuePool(BasePool):
         for _ in range(self.pool_size):
             self.pool.put_nowait(connection_cls(self))
 
-    async def acquire(self, _urlparsed: ParseResult = None):
+    async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire connection."""
         # Get connection from the pool
         if not self.timeouts.pool_acquire:
@@ -162,7 +162,7 @@ class SmartPool(BasePool):
         for _ in range(self.pool_size):
             self.pool.add(connection_cls(self))
 
-    async def acquire(self, urlparsed: ParseResult = None):
+    async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire connection."""
         if not self.timeouts.pool_acquire:
             await self.sem.acquire()
@@ -210,7 +210,8 @@ class SmartPool(BasePool):
         """Get all conn and close them, this method let this pool unusable."""
         for _ in range(self.pool_size):
             conn = await self.acquire()
-            conn.close()
+            if conn is not None:
+                conn.close()
 
 
 class WsPool(BasePool):
@@ -236,7 +237,7 @@ class WsPool(BasePool):
     def _init_pool(self, connection_cls):
         self.conn_cls = connection_cls
 
-    async def acquire(self, _urlparsed: ParseResult = None):
+    async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire connection."""
         return self.conn_cls(self)
 

@@ -1,6 +1,7 @@
-""" Proxy class to be used in client."""
+"""Proxy class to be used in client."""
 
 from base64 import b64encode
+from typing import Optional
 
 
 class Proxy:
@@ -11,7 +12,7 @@ class Proxy:
         * auth (str): auth data in the format of `user:password`
     """
 
-    def __init__(self, host: str, auth: str = None):
+    def __init__(self, host: str, auth: Optional[str] = None):
         self.host = host
         self.auth = None
         if auth:

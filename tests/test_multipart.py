@@ -1,6 +1,7 @@
 import pytest
 
 import aiosonic
+from aiosonic.client import MultipartFile, _send_multipart
 from aiosonic.multipart import MultipartForm
 
 
@@ -56,8 +57,6 @@ async def test_post_multipart_with_metadata(http_serv):
 @pytest.mark.asyncio
 async def test_multipart_size_precalculation():
     """Test that multipart body size is precalculated without building body."""
-    from aiosonic.client import _send_multipart, MultipartFile
-
     # Mock data with file
     file_obj = open("tests/files/bar.txt", "rb")
     data = {
@@ -131,9 +130,6 @@ async def test_post_multipart_with_multipartfile_path(http_serv):
 @pytest.mark.asyncio
 async def test_multipartfile_lazy_file_opening():
     """Test that MultipartFile with file path doesn't open file until accessed."""
-    from aiosonic.multipart import MultipartFile
-    import os
-
     # Test with file path - file should not be opened until file_obj is accessed
     multipart_file = MultipartFile("tests/files/bar.txt")
     assert multipart_file._file_obj is None  # File not opened yet
@@ -156,8 +152,6 @@ async def test_multipartfile_lazy_file_opening():
 @pytest.mark.asyncio
 async def test_multipartform_doesnt_open_files_during_construction():
     """Test that MultipartForm doesn't open files during construction, only during sending."""
-    from aiosonic.multipart import MultipartForm, MultipartFile
-
     # Create MultipartFile with file path
     multipart_file = MultipartFile("tests/files/bar.txt")
     assert multipart_file._file_obj is None  # File not opened yet

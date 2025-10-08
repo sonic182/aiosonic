@@ -21,7 +21,6 @@ from aiosonic.exceptions import (
     RequestTimeout,
 )
 from aiosonic.http2 import Http2Handler
-from aiosonic.multipart import MultipartForm
 from aiosonic.pools import CyclicQueuePool, PoolConfig
 from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
@@ -50,7 +49,7 @@ async def test_simple_get_aiodns(http_serv, mocker):
     async def foo(*args):
         return mocker.MagicMock(addresses=["127.0.0.1"])
 
-    mock = mocker.patch("aiodns.DNSResolver.gethostbyname", new=foo)
+    mocker.patch("aiodns.DNSResolver.gethostbyname", new=foo)
     resolver = AsyncResolver(nameservers=["8.8.8.8", "8.8.4.4"])
 
     url = http_serv
@@ -660,7 +659,7 @@ async def test_json_response_parsing_wrong_content_type():
 
 
 class WrongEvent:
-    pass
+    stream_id = 1
 
 
 @pytest.mark.asyncio
