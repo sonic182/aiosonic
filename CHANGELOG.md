@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.28.0] 2025-10-21
+
 ### Changed
 - HTTP/2: consolidated test files (`test_http2.py` and `test_http2_additional.py`) into single test file for improved maintainability
 - Multipart form data: changed `_send_multipart` to return AsyncIterator for streaming multipart content instead of building in memory (improves memory efficiency for large file uploads)
@@ -359,7 +361,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.27.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.28.0..HEAD
+[0.28.0]: https://github.com/sonic182/aiosonic/compare/0.27.0..0.28.0
 [0.27.0]: https://github.com/sonic182/aiosonic/compare/0.26.0..0.27.0
 [0.26.0]: https://github.com/sonic182/aiosonic/compare/0.25.0..0.26.0
 [0.25.0]: https://github.com/sonic182/aiosonic/compare/0.24.0..0.25.0
