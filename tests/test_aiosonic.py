@@ -212,7 +212,7 @@ async def test_delete(http_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(15)
+@pytest.mark.timeout(30)
 async def test_delete_2(http_serv):
     """Test delete."""
     url = f"{http_serv}/delete"

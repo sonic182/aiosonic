@@ -3,11 +3,33 @@ from typing import TYPE_CHECKING, Optional
 
 import h2.events
 
-from aiosonic.exceptions import MissingEvent
+from aiosonic.exceptions import ConnectionDisconnected, MissingEvent
 from aiosonic.types import ParsedBodyType
 from aiosonic.utils import get_debug_logger
 
 dlogger = get_debug_logger()
+
+IGNORED_EVENTS = tuple(
+    evt
+    for evt in (
+        getattr(h2.events, "PriorityUpdated", None),
+        getattr(h2.events, "UnknownFrameReceived", None),
+        getattr(h2.events, "AlternativeServiceAvailable", None),
+        getattr(h2.events, "PushPromiseReceived", None),
+        getattr(h2.events, "PushedStreamReset", None),
+        getattr(h2.events, "PushedStreamClosed", None),
+    )
+    if evt is not None
+)
+
+DISCONNECT_EVENTS = tuple(
+    evt
+    for evt in (
+        getattr(h2.events, "GoAwayReceived", None),
+        getattr(h2.events, "ConnectionTerminated", None),
+    )
+    if evt is not None
+)
 
 if TYPE_CHECKING:
     import aiosonic
@@ -88,14 +110,24 @@ class Http2Handler(object):
     ):
         from aiosonic import HttpResponse
 
-        body = body or b""
+        if body is None:
+            normalized_body = b""
+        elif isinstance(body, bytes):
+            normalized_body = body
+        elif isinstance(body, bytearray):
+            normalized_body = bytes(body)
+        elif isinstance(body, memoryview):
+            normalized_body = body.tobytes()
+        else:
+            raise ValueError("HTTP/2 requests currently require a bytes-like body")
 
         stream_id = self.h2conn.get_next_available_stream_id()
         headers_param = headers.items() if isinstance(headers, dict) else headers
 
         future = self.loop.create_future()
         self.requests[stream_id] = {
-            "body": body,
+            "request_body": normalized_body,
+            "response_body": bytearray(),
             "headers": headers_param,
             "future": future,
             "data_sent": False,
@@ -115,14 +147,16 @@ class Http2Handler(object):
             except Exception:
                 pass
 
-        await future
-
-        res = self.requests.get(stream_id, {}).copy()
-        # cleanup stored request
         try:
-            del self.requests[stream_id]
-        except KeyError:
-            pass
+            await future
+        except Exception:
+            try:
+                del self.requests[stream_id]
+            except KeyError:
+                pass
+            raise
+
+        res = self.requests.pop(stream_id, {})
 
         response = HttpResponse()
         for key, val in res.get("headers", []):
@@ -133,13 +167,20 @@ class Http2Handler(object):
             else:
                 response._set_header(k, v)
 
-        if res.get("body"):
-            response._set_body(res["body"])
+        response_body = res.get("response_body")
+        if response_body:
+            response._set_body(bytes(response_body))
 
         return response
 
     async def reader_t(self):
         """Reader task."""
+        if not hasattr(self, "loop"):
+            self.loop = asyncio.get_event_loop()
+        if not hasattr(self, "_window_updated"):
+            self._window_updated = asyncio.Event()
+        if not hasattr(self, "requests"):
+            self.requests = {}
         read_size = 16 * 1024
 
         while True:
@@ -149,12 +190,14 @@ class Http2Handler(object):
                 break
 
             if not data:
+                self._fail_all_pending(ConnectionDisconnected())
                 break
 
             try:
                 events = self.h2conn.receive_data(data)
             except Exception:
                 dlogger.debug("h2 receive_data failed", exc_info=True)
+                self._fail_all_pending(ConnectionDisconnected())
                 break
 
             if events:
@@ -169,6 +212,8 @@ class Http2Handler(object):
 
     async def handle_events(self, events):
         """Handle http2 events."""
+        if not hasattr(self, "requests"):
+            self.requests = {}
         h2conn = self.h2conn
 
         for event in events:
@@ -181,13 +226,13 @@ class Http2Handler(object):
                 dlogger.debug(f"--- exit stream, id: {event.stream_id}")
                 req = self.requests.get(event.stream_id)
                 if req and not req["future"].done():
-                    req["future"].set_result(req["body"])
+                    req["future"].set_result(bytes(req["response_body"]))
             elif isinstance(event, h2.events.DataReceived):
                 req = self.requests.get(event.stream_id)
                 if not req:
                     dlogger.debug("data for unknown stream %s", event.stream_id)
                     continue
-                req["body"] += event.data
+                req["response_body"].extend(event.data)
 
                 if (
                     event.stream_id in h2conn.streams
@@ -214,16 +259,36 @@ class Http2Handler(object):
                     stream_obj = None
                 if (not stream_obj) or getattr(stream_obj, "closed", False):
                     if not req["future"].done():
-                        req["future"].set_result(req.get("body"))
+                        req["future"].set_result(bytes(req.get("response_body", bytearray())))
             elif isinstance(event, h2.events.SettingsAcknowledged):
                 # After settings ack we may be allowed to send body data
                 for stream_id, req in list(self.requests.items()):
-                    if not req["data_sent"]:
-                        await self.send_body(stream_id)
+                    if not req["data_sent"] and not req["send_scheduled"]:
+                        req["send_scheduled"] = True
+                        try:
+                            self.loop.create_task(self.send_body(stream_id))
+                        except Exception:
+                            req["send_scheduled"] = False
             elif isinstance(event, h2.events.WindowUpdated):
                 # notify senders waiting for window updates (don't clear here;
                 # waiters will clear after waking)
                 self._window_updated.set()
+            elif isinstance(event, h2.events.StreamReset):
+                exc = ConnectionDisconnected()
+                req = self.requests.get(event.stream_id)
+                if req and not req["future"].done():
+                    req["future"].set_exception(exc)
+            elif isinstance(event, DISCONNECT_EVENTS):
+                self._fail_all_pending(ConnectionDisconnected())
+            elif isinstance(event, h2.events.TrailersReceived):
+                req = self.requests.get(event.stream_id)
+                if req:
+                    try:
+                        req["headers"] = list(req.get("headers", [])) + list(event.headers)
+                    except Exception:
+                        pass
+            elif isinstance(event, IGNORED_EVENTS):
+                dlogger.debug("ignoring http2 event %s", event.__class__.__name__)
             elif isinstance(
                 event,
                 (
@@ -249,6 +314,10 @@ class Http2Handler(object):
                 pass
 
     async def send_body(self, stream_id):
+        if not hasattr(self, "_window_updated"):
+            self._window_updated = asyncio.Event()
+        if not hasattr(self, "requests"):
+            self.requests = {}
         def chunks(lst, n):
             for i in range(0, len(lst), n):
                 yield lst[i : i + n]
@@ -258,25 +327,52 @@ class Http2Handler(object):
             dlogger.debug("send_body called for unknown stream %s", stream_id)
             return
 
-        body = request["body"] or b""
+        request.setdefault("send_started", False)
+        request.setdefault("send_scheduled", False)
+        request.setdefault("data_sent", False)
+        if request["send_started"]:
+            return
+        request["send_started"] = True
+
+        body_bytes = request.get("request_body")
+        if body_bytes is None and "body" in request:
+            body_bytes = request["body"]
+            if isinstance(body_bytes, bytearray):
+                body_bytes = bytes(body_bytes)
+            elif isinstance(body_bytes, memoryview):
+                body_bytes = body_bytes.tobytes()
+            elif not isinstance(body_bytes, (bytes, type(None))):
+                body_bytes = b""
         headers = request["headers"]
 
-        end_stream = False if body else True
+        end_stream = False if body_bytes else True
         # send headers (end_stream if no body)
         self.h2conn.send_headers(stream_id, headers, end_stream=end_stream)
+        await self.check_to_write()
 
-        if not body:
+        if not body_bytes:
             request["data_sent"] = True
+            request["request_body"] = None
+            request["send_scheduled"] = False
             return
 
-        remaining = len(body)
+        remaining = len(body_bytes)
         offset = 0
         while remaining > 0:
             to_split = self.h2conn.local_flow_control_window(stream_id)
             if not to_split or to_split <= 0:
                 try:
-                    await asyncio.wait_for(self._window_updated.wait(), timeout=5)
+                    self._window_updated.clear()
                 except Exception:
+                    pass
+                coro = self._window_updated.wait()
+                try:
+                    await asyncio.wait_for(coro, timeout=5)
+                except Exception:
+                    try:
+                        coro.close()
+                    except Exception:
+                        pass
                     to_split = getattr(self.h2conn, "max_outbound_frame_size", 65535)
                 else:
                     to_split = self.h2conn.local_flow_control_window(stream_id)
@@ -288,8 +384,8 @@ class Http2Handler(object):
             if not to_split or to_split <= 0:
                 to_split = getattr(self.h2conn, "max_outbound_frame_size", 65535)
 
-            for chunk in chunks(body[offset : offset + remaining], to_split):
-                last = (offset + len(chunk)) >= len(body)
+            for chunk in chunks(body_bytes[offset : offset + remaining], to_split):
+                last = (offset + len(chunk)) >= len(body_bytes)
                 self.h2conn.send_data(stream_id, chunk, end_stream=last)
                 offset += len(chunk)
                 remaining -= len(chunk)
@@ -297,6 +393,9 @@ class Http2Handler(object):
                 await self.check_to_write()
 
         request["data_sent"] = True
+        if "request_body" in request:
+            request["request_body"] = None
+        request["send_scheduled"] = False
 
     def cleanup(self):
         """Cancel and schedule waiting for the reader task to finish."""
@@ -315,3 +414,10 @@ class Http2Handler(object):
             await self.reader_task
         except asyncio.CancelledError:
             pass
+
+    def _fail_all_pending(self, exc: Exception):
+        reqs = getattr(self, "requests", {}) or {}
+        for stream_id, req in list(reqs.items()):
+            future = req.get("future")
+            if future and not future.done():
+                future.set_exception(exc)

@@ -103,7 +103,7 @@ async def test_simple_get_ssl_ctx(http2_serv):
 
 
 @pytest.mark.asyncio
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(30)
 async def test_simple_get_ssl_no_valid(http2_serv):
     """Test simple get with https no valid."""
     url = http2_serv

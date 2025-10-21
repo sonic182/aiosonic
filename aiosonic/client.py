@@ -480,7 +480,9 @@ async def _do_request(
         to_send = headers_data(connection=connection)
 
         if connection.h2conn:
-            return await connection.http2_request(to_send, body)
+            response = await connection.http2_request(to_send, body)
+            connection.keep_alive()
+            return response
 
         if not connection.writer or not connection.reader:
             raise ConnectionError("Not connection writer or reader")
