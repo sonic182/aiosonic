@@ -5,7 +5,7 @@
 ALWAYS USE poetry for commands eg: `poetry run <command>` it coud be "python", py.test, black, etc.
 
 - **Build**: `poetry build` or `make build`
-- **Test all**: `poetry run py.test` or `pytest`
+- **Test all**: `poetry run py.test`
 - **Test single file**: `poetry run py.test tests/test_filename.py`
 - **Test single function**: `poetry run py.test tests/test_filename.py::test_function_name`
 - **Lint/Format**: `poetry run black .` (formatting), `poetry run ruff check .` (linting)

@@ -363,39 +363,37 @@ async def _send_multipart(
     boundary: str,
     headers: HeadersType,
     chunk_size: int = _CHUNK_SIZE,
-) -> bytes:
-    """Send multipart data by streaming."""
-    # Precalculate body size
+) -> AsyncIterator[bytes]:
+    """Asynchronous iterator that streams multipart content.
+
+    This function precalculates the total size, sets the Content-Length
+    header and returns an async iterator (async generator) that yields the
+    multipart body in chunks without building it entirely in memory.
+    """
     total_size = 0
     for key, val in data.items():
-        # boundary
         total_size += len((f"--{boundary}{CRLF}").encode())
 
         if isinstance(val, MultipartFile):
-            # New: MultipartFile class
             filename = val.filename
             content_type = val.content_type
             file_size = val.size
         elif isinstance(val, IOBase):
-            # Backward compatibility: IOBase directly
             file_obj = val
             filename = basename(val.name) if hasattr(val, "name") else "file"
             content_type = None
             try:
                 file_size = os.path.getsize(file_obj.name)
             except (OSError, AttributeError):
-                # seek to get size
                 current_pos = file_obj.tell()
                 file_obj.seek(0, 2)
                 file_size = file_obj.tell()
                 file_obj.seek(current_pos)
         else:
-            # String field
             disp = f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
             total_size += len(disp.encode()) + len(val.encode()) + len(CRLF.encode())
             continue
 
-        # For files
         to_write = (
             f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
         )
@@ -412,51 +410,43 @@ async def _send_multipart(
     # Add Content-Length header
     http_parser.add_header(headers, "Content-Length", str(total_size))
 
-    # Now build the body
-    to_send = b""
-    for key, val in data.items():
-        # write --boundary + field
-        to_send += (f"--{boundary}{CRLF}").encode()
+    async def _gen():
+        for key, val in data.items():
+            yield (f"--{boundary}{CRLF}").encode()
 
-        if isinstance(val, IOBase):
-            # Backward compatibility: IOBase directly
-            file_obj = val
-            filename = basename(val.name) if hasattr(val, "name") else "file"
-            content_type = None
-        elif isinstance(val, MultipartFile):
-            # New: MultipartFile class
-            file_obj = val.file_obj
-            filename = val.filename
-            content_type = val.content_type
-        else:
-            # String field
-            to_send += (
-                f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
-            ).encode()
-            to_send += val.encode() + CRLF.encode()
-            continue
+            if isinstance(val, IOBase):
+                file_obj = val
+                filename = basename(getattr(file_obj, "name", "file"))
+                content_type = None
+            elif isinstance(val, MultipartFile):
+                file_obj = val.file_obj
+                filename = val.filename
+                content_type = val.content_type
+            else:
+                yield (
+                    f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
+                ).encode()
+                yield val.encode() + CRLF.encode()
+                continue
 
-        # For files
-        to_write = (
-            f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
-        )
-        if content_type:
-            to_write += f"Content-Type: {content_type}{CRLF}"
-        to_write += CRLF
-        to_send += to_write.encode()
+            to_write = f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
+            if content_type:
+                to_write += f"Content-Type: {content_type}{CRLF}"
+            to_write += CRLF
+            yield to_write.encode()
 
-        # read and write chunks
-        loop = get_loop()
-        while True:
-            chunk = await loop.run_in_executor(None, file_obj.read, chunk_size)
-            if not chunk:
-                break
-            to_send += chunk
-        file_obj.close()
+            loop = get_loop()
+            while True:
+                chunk = await loop.run_in_executor(None, file_obj.read, chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+            file_obj.close()
 
-    # write --boundary-- for finish
-    to_send += (f"--{boundary}--").encode()
-    return to_send
+        # final boundary
+        yield (f"--{boundary}--").encode()
+
+    return _gen()
 
 
 async def _do_request(
@@ -490,7 +480,9 @@ async def _do_request(
         to_send = headers_data(connection=connection)
 
         if connection.h2conn:
-            return await connection.http2_request(to_send, body)
+            response = await connection.http2_request(to_send, body)
+            connection.keep_alive()
+            return response
 
         if not connection.writer or not connection.reader:
             raise ConnectionError("Not connection writer or reader")
@@ -801,6 +793,7 @@ class HTTPClient:
                 raise ValueError("data should be dict")
             boundary = "boundary-%d" % randint(*RANDOM_RANGE)
             body = await _send_multipart(data, boundary, headers)
+            transfer_chunked = False
         elif data:
             body = http_parser.setup_body_request(data, headers)
 

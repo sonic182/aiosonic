@@ -67,11 +67,17 @@ async def test_multipart_size_precalculation():
     headers = {}
 
     # This should precalculate size and set Content-Length header
-    body = await _send_multipart(data, boundary, headers)
-    assert isinstance(body, bytes)
-    assert len(body) > 0
+    body_iter = await _send_multipart(data, boundary, headers)
+    assert hasattr(body_iter, "__aiter__")
+
+    # Collect streamed chunks into bytes to validate size
+    collected = b""
+    async for chunk in body_iter:
+        collected += chunk
+
+    assert len(collected) > 0
     assert "Content-Length" in headers
-    assert headers["Content-Length"] == str(len(body))
+    assert headers["Content-Length"] == str(len(collected))
 
 
 @pytest.mark.asyncio
