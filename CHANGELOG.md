@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - SSE support: SSEClient/SSEConnection with parsing, reconnection and tests.
 
+### Changed
+- HTTP/2: fixed duplicate WindowUpdated handling, improved testability (injectable reader/writer/h2conn) and added tests for error handling, flow-control fallback and concurrent streams.
+
 ## [0.26.0] 2025-09-26
 
 ### Added
