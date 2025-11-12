@@ -124,14 +124,14 @@ if __name__ == "__main__":
 
 ## Api Wrapping
 
-You can easily wrap apis with `AioSonicBaseClient` class
+You can easily wrap APIs with `BaseClient` and override its hooks to customize the response handling.
 
 ```python
 import asyncio
 import json
-from aiosonic.base_client import AioSonicBaseClient
+from aiosonic.base_client import BaseClient
 
-class GitHubAPI(AioSonicBaseClient):
+class GitHubAPI(BaseClient):
     base_url = "https://api.github.com"
     default_headers = {
         "Accept": "application/vnd.github+json",
@@ -139,8 +139,11 @@ class GitHubAPI(AioSonicBaseClient):
         # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
     }
 
+    async def process_response(self, response):
+        body = await response.text()
+        return json.loads(body)
+
     async def users(self, username: str, **kwargs):
-        # base_url and headers are applied internally.
         return await self.get(f"/users/{username}", **kwargs)
     
     async def update_repo(self, owner: str, repo: str, description: str):
@@ -153,7 +156,7 @@ class GitHubAPI(AioSonicBaseClient):
 
 async def main():
     # You can pass an existing aiosonic.HTTPClient() instance in the constructor.
-    # If not provided, AioSonicBaseClient will create a new instance automatically.
+    # If not provided, BaseClient will create a new instance automatically.
     github = GitHubAPI()
     # Call the custom 'users' method to get data for user "sonic182"
     user_data = await github.users("sonic182")
@@ -175,7 +178,7 @@ class SingletonMixin:
             cls._instances[cls] = super().__new__(cls)
         return cls._instances[cls]
 
-class GitHubAPI(AioSonicBaseClient, SingletonMixin):
+class GitHubAPI(BaseClient, SingletonMixin):
     base_url = "https://api.github.com"
     # ... the rest of the code
 

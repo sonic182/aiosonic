@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Renamed AioSonicBaseClient to BaseClient and updated docs/tests to match
+- BaseClient no longer auto-parses JSON; override `process_response()` to customize payload handling
+
 ## [0.28.0] 2025-10-21
 
 ### Changed

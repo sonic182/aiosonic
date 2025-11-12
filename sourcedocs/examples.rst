@@ -67,35 +67,40 @@ Api Wrapping
 ============
 
 .. code-block:: python
+ 
+  import asyncio
+  import json
+  from aiosonic.base_client import BaseClient
+  
+  class GitHubAPI(BaseClient):
+      base_url = "https://api.github.com"
+      default_headers = {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          # Uncomment the next line to use an authentication token
+          # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
+      }
+  
+      async def process_response(self, response):
+          body = await response.text()
+          return json.loads(body)
+  
+      async def users(self, username: str, **kwargs):
+          return await self.get(f"/users/{username}", **kwargs)
+  
+  
+  async def main():
+      github = GitHubAPI()
+      # Call the custom 'users' method to get data for user "sonic182"
+      user_data = await github.users("sonic182")
+      print(json.dumps(user_data, indent=2))
+  
+  
+  if __name__ == '__main__':
+      asyncio.run(main())
+ 
+ This example demonstrates how to use BaseClient to define a specialized API client. The users() method hides the details of performing the underlying HTTP request so that your application code can remain clean and focused on the API semantics.
 
- import asyncio
- import json
- from aiosonic.base_client import AioSonicBaseClient
- 
- class GitHubAPI(AioSonicBaseClient):
-     base_url = "https://api.github.com"
-     default_headers = {
-         "Accept": "application/vnd.github+json",
-         "X-GitHub-Api-Version": "2022-11-28",
-         # Uncomment the next line to use an authentication token
-         # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
-     }
- 
-     async def users(self, username: str, **kwargs):
-         return await self.get(f"/users/{username}", **kwargs)
- 
- 
- async def main():
-     github = GitHubAPI()
-     # Call the custom 'users' method to get data for user "sonic182"
-     user_data = await github.users("sonic182")
-     print(json.dumps(user_data, indent=2))
- 
- 
- if __name__ == '__main__':
-     asyncio.run(main())
-
-This example demonstrates how to use the BaseClient to define a specialized API client. The users() method hides the details of performing a POST request so that your application code can remain clean and focused on the API semantics.
 
 
 Chunked Requests (Stream request or response)

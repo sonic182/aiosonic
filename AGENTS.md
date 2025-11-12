@@ -26,16 +26,16 @@ ALWAYS USE poetry for commands eg: `poetry run <command>` it coud be "python", p
 ### Class Diagram
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│   HTTPClient    │     │AioSonicBaseClient│
-│                 │     │                 │
-│ • get()         │     │ • get()         │
-│ • post()        │     │ • post()        │
-│ • put()         │     │ • put()         │
-│ • patch()       │     │ • patch()       │
-│ • delete()      │     │ • delete()      │
-│ • request()     │     │ • request()     │
-└─────────┬───────┘     └─────────────────┘
+┌─────────────────┐     ┌───────────────┐
+│   HTTPClient    │     │   BaseClient  │
+│                 │     │               │
+│ • get()         │     │ • get()       │
+│ • post()        │     │ • post()      │
+│ • put()         │     │ • put()       │
+│ • patch()       │     │ • patch()     │
+│ • delete()      │     │ • delete()    │
+│ • request()     │     │ • request()   │
+└─────────┬───────┘     └───────────────┘
           │
           │ uses
           ▼

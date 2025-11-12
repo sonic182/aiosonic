@@ -1,41 +1,29 @@
 import pytest
 
-from aiosonic.base_client import AioSonicBaseClient
+from aiosonic.base_client import BaseClient
 
 
 @pytest.mark.asyncio
 async def test_wrapper_get_http_serv(http_serv):
-    """
-    Test GET method:
-      - Verify that a relative URL is correctly combined with base_url.
-      - Ensure a GET request to "/" returns a non-empty response.
-    """
-
-    class TestWrapperClient(AioSonicBaseClient):
+    class TextClient(BaseClient):
         base_url = http_serv
-        pass
 
-    client = TestWrapperClient()
+        async def process_response(self, response):
+            return (await response.text()).strip()
+
+    client = TextClient()
 
     response = await client.get("/")
-    assert response.strip() == "Hello, world"
+    assert response == "Hello, world"
 
 
 @pytest.mark.asyncio
 async def test_wrapper_delete_http_serv(http_serv):
-    """
-    Test DELETE method on /delete endpoint:
-      - Verify that a DELETE request returns "deleted".
-    """
-
-    class TestWrapperClient2(AioSonicBaseClient):
+    class RawClient(BaseClient):
         base_url = http_serv
-        pass
 
-    client = TestWrapperClient2()
+    client = RawClient()
 
     response = await client.delete("/delete")
-    assert isinstance(response, str), "Expected a string response"
-    assert (
-        response.strip() == "deleted"
-    ), f"Expected 'deleted', got '{response.strip()}'"
+    assert response.status_code == 200
+    assert (await response.text()).strip() == "deleted"
