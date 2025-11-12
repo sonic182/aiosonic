@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] 2025-11-12
+
 ### Changed
 - Renamed AioSonicBaseClient to BaseClient and updated docs/tests to match
 - BaseClient no longer auto-parses JSON; override `process_response()` to customize payload handling
@@ -365,7 +367,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.28.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.29.0..HEAD
+[0.29.0]: https://github.com/sonic182/aiosonic/compare/0.28.0..0.29.0
 [0.28.0]: https://github.com/sonic182/aiosonic/compare/0.27.0..0.28.0
 [0.27.0]: https://github.com/sonic182/aiosonic/compare/0.26.0..0.27.0
 [0.26.0]: https://github.com/sonic182/aiosonic/compare/0.25.0..0.26.0

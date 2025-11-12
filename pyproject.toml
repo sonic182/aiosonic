@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiosonic"
-version = "0.28.0"
+version = "0.29.0"
 description = "Async HTTP/WebSocket client"
 readme = "README.md"
 license = "MIT"
