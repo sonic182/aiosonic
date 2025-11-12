@@ -1,6 +1,6 @@
 import pytest
 
-from aiosonic.base_client import BaseClient
+from aiosonic import BaseClient
 
 
 @pytest.mark.asyncio

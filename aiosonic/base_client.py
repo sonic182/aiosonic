@@ -1,6 +1,6 @@
 from typing import Optional
 
-from aiosonic import HTTPClient
+from aiosonic.client import HTTPClient
 
 
 class BaseClient:

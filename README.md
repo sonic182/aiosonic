@@ -129,7 +129,7 @@ You can easily wrap APIs with `BaseClient` and override its hooks to customize t
 ```python
 import asyncio
 import json
-from aiosonic.base_client import BaseClient
+from aiosonic import BaseClient
 
 class GitHubAPI(BaseClient):
     base_url = "https://api.github.com"
