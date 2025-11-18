@@ -36,14 +36,6 @@ DOCKER_CMD_PYPY = curl -sL https://deb.nodesource.com/setup_20.x | bash \
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-test38:
-	echo "TEST PYTHON 3.8"
-	docker run -i --rm -v $(shell pwd):/app python:3.8 bash -c "$(DOCKER_CMD)"
-
-test39:
-	echo "TEST PYTHON 3.9"
-	docker run -i --rm -v $(shell pwd):/app python:3.9 bash -c "$(DOCKER_CMD)"
-
 test310:
 	echo "TEST PYTHON 3.10"
 	docker run -i --rm -v $(shell pwd):/app python:3.10 bash -c "$(DOCKER_CMD)"
@@ -60,15 +52,11 @@ test313:
 	echo "TEST PYTHON 3.13"
 	docker run -i --rm -v $(shell pwd):/app python:3.13 bash -c "$(DOCKER_CMD)"
 
-test-pypy39:
-	echo "TEST PYPY 3.9"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.9 bash -c "$(DOCKER_CMD_PYPY)"
-
 test-pypy310:
 	echo "TEST PYPY 3.10"
 	docker run -i --rm -v $(shell pwd):/app pypy:3.10 bash -c "$(DOCKER_CMD_PYPY)"
 
-test: test38 test39 test310 test311 test312 test313 test-pypy39 test-pypy310
+test: test310 test311 test312 test313 test-pypy39 test-pypy310
 	echo "OK"
 
 clear:
