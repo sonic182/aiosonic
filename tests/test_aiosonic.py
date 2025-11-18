@@ -609,7 +609,7 @@ async def test_wait_connections_busy_timeout(mocker):
         "aiosonic.connectors.TCPConnector.wait_free_pool", new=long_connect
     )
 
-    _connect.return_value = long_connect()
+    _connect.return_value = await long_connect()
     async with aiosonic.HTTPClient() as client:
         assert not await client.wait_requests(0)
 
