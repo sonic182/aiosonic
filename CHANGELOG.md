@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] 2025-11-18
+
+### Changed
+- Dropped support for Python 3.8 and 3.9; minimum is now Python 3.10 (or PyPy 3.11+)
+- Updated CI matrix and Makefile test targets for new CPython/PyPy versions
+- Bumped development and test dependencies (aiodns, anyio, black, certifi, etc.) to newer releases
+
 ## [0.29.0] 2025-11-12
 
 ### Changed
@@ -367,7 +374,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.29.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.30.0..HEAD
+[0.30.0]: https://github.com/sonic182/aiosonic/compare/0.29.0..0.30.0
 [0.29.0]: https://github.com/sonic182/aiosonic/compare/0.28.0..0.29.0
 [0.28.0]: https://github.com/sonic182/aiosonic/compare/0.27.0..0.28.0
 [0.27.0]: https://github.com/sonic182/aiosonic/compare/0.26.0..0.27.0
