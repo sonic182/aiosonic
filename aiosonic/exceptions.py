@@ -1,8 +1,4 @@
-try:
-    # new Python 3.8 timeout exception
-    from asyncio.exceptions import TimeoutError as TimeoutException
-except ImportError:
-    pass
+from asyncio.exceptions import TimeoutError as TimeoutException
 
 
 # General

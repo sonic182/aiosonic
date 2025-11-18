@@ -29,7 +29,7 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 
 ## Requirements
 
-- Python >= 3.8 (or PyPy 3.8+)
+- Python >= 3.10 (or PyPy 3.11+)
 
 ## Installation
 

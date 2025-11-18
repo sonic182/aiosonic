@@ -31,7 +31,7 @@ Features
 Requirements
 ============
 
-- Python >= 3.8 (or PyPy 3.8+)
+- Python >= 3.10 (or PyPy 3.10+)
 
 Installation
 ============
