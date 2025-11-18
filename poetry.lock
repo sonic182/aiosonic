@@ -836,7 +836,6 @@ description = "HTTP/2 State-Machine based protocol implementation"
 optional = false
 python-versions = ">=3.6.1"
 groups = ["main"]
-markers = "python_version < \"3.14\""
 files = [
     {file = "h2-4.1.0-py3-none-any.whl", hash = "sha256:03a46bcf682256c95b5fd9e9a99c1323584c3eec6440d379b9903d709476bc6d"},
     {file = "h2-4.1.0.tar.gz", hash = "sha256:a83aca08fbe7aacb79fec788c9c0bac936343560ed9ec18b82a13a12c28d2abb"},
@@ -845,23 +844,6 @@ files = [
 [package.dependencies]
 hpack = ">=4.0,<5"
 hyperframe = ">=6.0,<7"
-
-[[package]]
-name = "h2"
-version = "4.3.0"
-description = "Pure-Python HTTP/2 protocol implementation"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-markers = "python_version == \"3.14\""
-files = [
-    {file = "h2-4.3.0-py3-none-any.whl", hash = "sha256:c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd"},
-    {file = "h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1"},
-]
-
-[package.dependencies]
-hpack = ">=4.1,<5"
-hyperframe = ">=6.1,<7"
 
 [[package]]
 name = "hpack"
@@ -1301,18 +1283,15 @@ files = [
 
 [[package]]
 name = "onecache"
-version = "0.7.2"
+version = "0.8.0"
 description = "Python cache for sync and async code"
 optional = false
 python-versions = "<3.15,>=3.8"
 groups = ["main"]
 files = [
-    {file = "onecache-0.7.2-py3-none-any.whl", hash = "sha256:49ff14b4f949ed09e9e34de3a40b3542414a52b88bd3eee18763d4058f8b8577"},
-    {file = "onecache-0.7.2.tar.gz", hash = "sha256:e5942056e49b6ba41560c561f175bcc1881abaf2bb3bc96688d3e0196d2a5721"},
+    {file = "onecache-0.8.0-py3-none-any.whl", hash = "sha256:9a1dbcf75ca8e1a537b893e37e9eba6ef4c5e416bf2b25a4956c4bb39b929c25"},
+    {file = "onecache-0.8.0.tar.gz", hash = "sha256:0041e9319c01c351a8cb7e1dfad0c028f535a5a7a5f2f249e320bc3bb2309408"},
 ]
-
-[package.dependencies]
-packaging = ">=24.1,<25.0"
 
 [[package]]
 name = "packaging"
@@ -1320,7 +1299,7 @@ version = "24.2"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "docs", "test"]
+groups = ["docs", "test"]
 files = [
     {file = "packaging-24.2-py3-none-any.whl", hash = "sha256:09abb1bccd265c01f4a3aa3f7a7db064b36514d2cba19a2f694fe6150451a759"},
     {file = "packaging-24.2.tar.gz", hash = "sha256:c228a6dc5e932d346bc5739379109d49e8853dd8223571c7c5b55260edc0b97f"},
@@ -2451,4 +2430,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.8.0,<3.15"
-content-hash = "f0910c47122843288a5417ea3a4bfca3080fa434aa7069371868a5aa8b3981a5"
+content-hash = "1646747a689269822b82ec8c9cd4334705b7db22537da82e10be282e5356e929"

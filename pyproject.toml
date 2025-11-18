@@ -35,7 +35,7 @@ packages = [
 python = ">=3.8.0,<3.15"
 charset-normalizer = ">=2.0.0,<4.0.0"
 h2 = "^4.1.0"
-onecache = "^0.7.2"
+onecache = ">=0.7.2,<0.9.0"
 
 [tool.poetry.group.test.dependencies]
 aiodns = "^3.2.0"
