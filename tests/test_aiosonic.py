@@ -460,11 +460,8 @@ async def test_close_old_keeped_conn(http_serv):
             writer = connection.writer
 
         await client.get(url2)
-        # python 3.6 doesn't have writer.is_closing
-        is_closing = getattr(writer, "is_closing", writer._transport.is_closing)
-
         # check that old writer is closed
-        assert not is_closing()
+        assert not writer.is_closing()
 
 
 @pytest.mark.asyncio
