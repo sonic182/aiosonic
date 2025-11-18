@@ -53,6 +53,7 @@ pytest-cov = "^5.0.0"
 pytest-mock = "^3.14.0"
 pytest-sugar = "^1.0.0"
 pytest-timeout = "^2.3.1"
+exceptiongroup = {version = ">=1.2.0,<2.0.0", markers = "python_version < '3.11'"}
 requests = "^2.32.3"
 uvicorn = "^0.30.3"
 uvloop = {version=">=0.19,<0.21", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy' and python_version < '3.13.0'" }
