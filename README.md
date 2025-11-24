@@ -26,6 +26,8 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - Elegant key/value cookies
 - (Nearly) 100% test coverage
 - HTTP/2 (BETA; enabled with a flag)
+- International domain names (IDNA) support
+- DNS resolution caching with configurable TTL
 
 ## Requirements
 
@@ -220,7 +222,7 @@ aiosonic is -1.38% faster than aiosonic cyclic
 - **HTTP/2:**
   - [ ] Stable HTTP/2 release
 - Better documentation
-- International domains and URLs (IDNA + cache)
+- ~~International domains and URLs (IDNA + cache)~~ ✅ Completed
 - Basic/Digest authentication
 
 ## Development
