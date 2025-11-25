@@ -1,3 +1,4 @@
+import json
 import warnings
 from typing import Optional
 
@@ -72,3 +73,14 @@ class AioSonicBaseClient(BaseClient):
             stacklevel=2,
         )
         super().__init__(http_client=http_client)
+
+    async def process_response(self, response):
+        """
+        Process the response body by attempting to decode JSON.
+        If decoding fails, return the raw text.
+        """
+        text  = await response.text()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
