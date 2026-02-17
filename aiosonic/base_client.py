@@ -66,8 +66,7 @@ class AioSonicBaseClient(BaseClient):
 
     def __init__(self, http_client: Optional[HTTPClient] = None):
         warnings.warn(
-            "AioSonicBaseClient is deprecated and will be removed in 1.x.x releases. "
-            "Use BaseClient instead.",
+            "AioSonicBaseClient is deprecated and will be removed in 1.x.x releases. Use BaseClient instead.",
             DeprecationWarning,
             stacklevel=2,
         )

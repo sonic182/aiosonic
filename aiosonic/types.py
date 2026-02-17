@@ -17,9 +17,7 @@ ParamsType = Union[
     Sequence[Tuple[str, str]],
 ]
 #: Data to be sent in requests, allowed types
-DataType = Union[
-    str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes], MultipartForm
-]
+DataType = Union[str, bytes, dict, tuple, AsyncIterator[bytes], Iterator[bytes], MultipartForm]
 BodyType = Union[
     str,
     bytes,

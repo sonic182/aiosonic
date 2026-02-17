@@ -29,9 +29,7 @@ async def test_max_conn_idle_ms(http_serv):
 
     # Create a pool with a 500ms idle timeout
     pool_config = PoolConfig(size=1, max_conn_idle_ms=500)
-    connector = TCPConnector(
-        {":default": pool_config}, connection_cls=IdleTrackingConnection
-    )
+    connector = TCPConnector({":default": pool_config}, connection_cls=IdleTrackingConnection)
 
     async with aiosonic.HTTPClient(connector) as client:
         # First request - creates connection #0

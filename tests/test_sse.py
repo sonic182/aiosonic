@@ -105,9 +105,7 @@ async def test_sse_post_request_with_json(sse_serv_post):
 async def test_sse_put_request_with_data(sse_serv_put):
     """Test PUT request with data returning SSE stream."""
     client = SSEClient()
-    async with client.connect(
-        sse_serv_put, method="PUT", data="updated content"
-    ) as sse_conn:
+    async with client.connect(sse_serv_put, method="PUT", data="updated content") as sse_conn:
         events = []
         async for event in sse_conn:
             events.append(event)
@@ -127,9 +125,7 @@ async def test_sse_put_request_with_data(sse_serv_put):
 async def test_sse_patch_request(sse_serv_patch):
     """Test PATCH request returning SSE stream."""
     client = SSEClient()
-    async with client.connect(
-        sse_serv_patch, method="PATCH", data='{"field": "new value"}'
-    ) as sse_conn:
+    async with client.connect(sse_serv_patch, method="PATCH", data='{"field": "new value"}') as sse_conn:
         events = []
         async for event in sse_conn:
             events.append(event)

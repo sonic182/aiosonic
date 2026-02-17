@@ -76,9 +76,7 @@ class TCPConnector:
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
-    async def acquire(
-        self, urlparsed: ParseResult, verify, ssl, timeouts, http2
-    ) -> "Connection":
+    async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2) -> "Connection":
         """Acquire a connection from the appropriate pool."""
         if not urlparsed.hostname:
             raise HttpParsingError("missing hostname")

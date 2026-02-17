@@ -23,21 +23,15 @@ def run_cmd(command: str):
     On other systems, split the command.
     """
     if sys.platform == "win32":
-        return subprocess.Popen(
-            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        return subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     else:
-        return subprocess.Popen(
-            shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        return subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 @pytest.fixture
 def ssl_context():
     context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-    context.load_cert_chain(
-        "tests/files/certs/server.cert", "tests/files/certs/server.key"
-    )
+    context.load_cert_chain("tests/files/certs/server.cert", "tests/files/certs/server.key")
     return context
 
 

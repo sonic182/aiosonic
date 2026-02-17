@@ -140,9 +140,7 @@ class MultipartForm:
             self.fields.append((name, value, filename))
         elif isinstance(value, IOBase):
             if not filename:
-                filename = os.path.basename(
-                    getattr(value, "name", "file")
-                )  # Default to the file's name
+                filename = os.path.basename(getattr(value, "name", "file"))  # Default to the file's name
             self.fields.append((name, value, filename))
         else:
             self.fields.append((name, value))
@@ -173,10 +171,7 @@ class MultipartForm:
         for field in self.fields:
             yield (f"--{self.boundary}\r\n").encode()
             if isinstance(field[1], (IOBase, MultipartFile)):
-                to_write = (
-                    "Content-Disposition: form-data; "
-                    + f'name="{field[0]}"; filename="{field[2]}"\r\n\r\n'
-                )
+                to_write = "Content-Disposition: form-data; " + f'name="{field[0]}"; filename="{field[2]}"\r\n\r\n'
                 yield to_write.encode()
 
                 # Read the file asynchronously

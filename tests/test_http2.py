@@ -146,6 +146,21 @@ async def test_h2_with_explicit_http2_flag(http2_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_h2_client_level_flag(http2_serv):
+    """Assert that http2=True at client level applies to all requests."""
+    url = http2_serv
+    async with aiosonic.HTTPClient(http2=True) as client:
+        res1 = await client.get(url, verify=False)
+        assert res1.status_code == 200
+        assert res1.http_version == "2", "Client-level http2=True must negotiate HTTP/2"
+
+        res2 = await client.post(url, verify=False)
+        assert res2.status_code == 200
+        assert res2.http_version == "2", "Client-level http2=True must apply to POST too"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_h2_negotiated_via_alpn(http2_serv):
     """Assert h2 is auto-negotiated via ALPN without needing http2=True.
 

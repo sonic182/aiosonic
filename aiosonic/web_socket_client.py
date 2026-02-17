@@ -299,9 +299,7 @@ class WebSocketConnection:
             msg = await asyncio.wait_for(self._pong_queue.get(), timeout=timeout)
         except asyncio.TimeoutError as exc:
             if not self.connected:
-                raise ConnectionDisconnected(
-                    "Connection was closed unexpectedly"
-                ) from exc
+                raise ConnectionDisconnected("Connection was closed unexpectedly") from exc
             raise ReadTimeout("Timed out while waiting for a pong frame") from exc
         if msg.type != MessageType.PONG:
             raise ValueError("Expected a pong message")
@@ -335,9 +333,7 @@ class WebSocketConnection:
             return await asyncio.wait_for(self._msg_queue.get(), timeout=timeout)
         except asyncio.TimeoutError as exc:
             if not self.connected:
-                raise ConnectionDisconnected(
-                    "Connection was closed unexpectedly"
-                ) from exc
+                raise ConnectionDisconnected("Connection was closed unexpectedly") from exc
             raise ReadTimeout("Timed out while waiting for a message") from exc
 
     def start_keep_alive(self, interval: float = 30.0):
@@ -422,9 +418,7 @@ class WebSocketClient:
         request += CRLF.join(f"{k}: {v}" for k, v in base_headers.items())
         request += CRLF * 2
 
-        conn = await self.connector.acquire(
-            urlparsed, verify, ssl, self.timeouts, False
-        )
+        conn = await self.connector.acquire(urlparsed, verify, ssl, self.timeouts, False)
         conn.write(request.encode())
         await conn.writer.drain()
 
@@ -432,9 +426,7 @@ class WebSocketClient:
         if not status_line.startswith(b"HTTP/1.1 101"):
             raise ConnectionError(f"WebSocket upgrade failed: {status_line.decode()}")
 
-        expected_key = base64.b64encode(
-            hashlib.sha1(f"{ws_key}{WEBSOCKET_GUID}".encode()).digest()
-        ).decode()
+        expected_key = base64.b64encode(hashlib.sha1(f"{ws_key}{WEBSOCKET_GUID}".encode()).digest()).decode()
 
         ws_protocol: Optional[str] = None
         while True:

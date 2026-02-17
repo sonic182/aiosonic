@@ -48,9 +48,7 @@ from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
 # VARIABLES
-_HTTP_RESPONSE_STATUS_LINE = re.compile(
-    r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)"
-)
+_HTTP_RESPONSE_STATUS_LINE = re.compile(r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)")
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 CRLF = "\r\n"
@@ -132,9 +130,7 @@ class HttpResponse:
             to_log_info = [[key, val] for key, val in info]
             meta_log = logparse(to_log_info)
             headers_log = logparse(self.raw_headers)
-            dlogger.debug(
-                meta_log + CRLF + "Headers:" + CRLF * 2 + headers_log + "---"
-            )  # noqa
+            dlogger.debug(meta_log + CRLF + "Headers:" + CRLF * 2 + headers_log + "---")  # noqa
 
     def _update_cookies(self, header_tuple):
         """Update jar of cookies."""
@@ -399,9 +395,7 @@ async def _send_multipart(
             total_size += len(disp.encode()) + len(val.encode()) + len(CRLF.encode())
             continue
 
-        to_write = (
-            f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
-        )
+        to_write = f'Content-Disposition: form-data; name="{key}"; filename="{filename}"{CRLF}'
         if content_type:
             to_write += f"Content-Type: {content_type}{CRLF}"
         to_write += CRLF
@@ -428,9 +422,7 @@ async def _send_multipart(
                 filename = val.filename
                 content_type = val.content_type
             else:
-                yield (
-                    f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}'
-                ).encode()
+                yield (f'Content-Disposition: form-data; name="{key}"{CRLF}{CRLF}').encode()
                 yield val.encode() + CRLF.encode()
                 continue
 
@@ -478,9 +470,7 @@ async def _do_request(
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args) as connection:
         if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
-            await _proxy_connect(
-                connection, proxy, urlparsed, ssl or get_default_ssl_context()
-            )
+            await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
 
         to_send = headers_data(connection=connection)
 
@@ -521,9 +511,7 @@ async def _do_request(
             raise ReadTimeout()
 
         # reading headers
-        await response._set_response_headers(
-            http_parser.parse_headers_iterator(connection)
-        )
+        await response._set_response_headers(http_parser.parse_headers_iterator(connection))
 
         size = response.headers.get("content-length")
         chunked = response.headers.get("transfer-encoding", "") == "chunked"
@@ -556,6 +544,8 @@ class HTTPClient:
         * **handle_cookies**: Flag to indicate if keep response cookies in
             client and send them in next requests.
         * **verify_ssl**: Flag to indicate if verify ssl certificates.
+        * **http2**: Flag to enable HTTP/2 for all requests made by this client.
+            Per-request ``http2=True`` also works and takes precedence.
     """
 
     def __init__(
@@ -565,6 +555,7 @@ class HTTPClient:
         verify_ssl: bool = True,
         proxy: Optional[Proxy] = None,
         max_redirects: int = 5,
+        http2: bool = False,
     ):
         """Initialize client options."""
         self.connector = connector or TCPConnector()
@@ -573,6 +564,7 @@ class HTTPClient:
         self.verify_ssl = verify_ssl
         self.proxy = proxy
         self.max_redirects = max_redirects
+        self.http2 = http2
 
     async def __aenter__(self):
         return self
@@ -802,11 +794,10 @@ class HTTPClient:
         elif data:
             body = http_parser.setup_body_request(data, headers)
 
-        max_redirects = (
-            max_redirects if max_redirects is not None else self.max_redirects
-        )
+        max_redirects = max_redirects if max_redirects is not None else self.max_redirects
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
+        http2 = http2 or self.http2
         reconnect_times = 3
         while reconnect_times > 0:
             headers_data = partial(
@@ -840,16 +831,14 @@ class HTTPClient:
                     self._save_new_cookies(str(urlparsed.hostname), response)
 
                 if follow and response.status_code in {301, 302, 303, 307, 308}:
-                    (urlparsed, method, body, transfer_chunked, max_redirects) = (
-                        self._handle_redirect(
-                            current_urlparsed=urlparsed,
-                            headers=headers,
-                            response=response,
-                            max_redirects=max_redirects,
-                            method=method,
-                            body=body,
-                            transfer_chunked=transfer_chunked,
-                        )
+                    (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
+                        current_urlparsed=urlparsed,
+                        headers=headers,
+                        response=response,
+                        max_redirects=max_redirects,
+                        method=method,
+                        body=body,
+                        transfer_chunked=transfer_chunked,
                     )
                     # continue loop to re-issue the request with updated params
                 else:
@@ -905,9 +894,7 @@ class HTTPClient:
         status = response.status_code
         original_method = method.upper()
 
-        switch_to_get = status == 303 or (
-            status in {301, 302} and original_method == "POST"
-        )
+        switch_to_get = status == 303 or (status in {301, 302} and original_method == "POST")
 
         if switch_to_get:
             method = "GET"
@@ -951,9 +938,7 @@ class HTTPClient:
     def _add_cookies_to_request(self, host: str, headers: HeadersType):
         """Add cookies to request."""
         host_cookies = self.cookies_map.get(host)
-        if host_cookies and not any(
-            [header.lower() == "cookie" for header, _ in headers]
-        ):
+        if host_cookies and not any([header.lower() == "cookie" for header, _ in headers]):
             cookies_str = host_cookies.output(header="Cookie:")
             for cookie_data in cookies_str.split("\r\n"):
                 http_parser.add_header(headers, *cookie_data.split(": ", 1))
@@ -964,9 +949,7 @@ class HTTPClient:
             self.cookies_map[host] = response.cookies
 
 
-async def _proxy_connect(
-    connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext
-):
+async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext):
     """Send CONNECT and upgrade connection."""
 
     port = desturl.port or (443 if desturl.scheme == "https" else 80)
@@ -985,9 +968,7 @@ async def _proxy_connect(
     connect_response = await connection.read(4096)
     if b"200 Connection established" not in connect_response:
         connection.close()
-        raise ConnectionError(
-            f"Failed to establish connection through proxy: {connect_response}"
-        )
+        raise ConnectionError(f"Failed to establish connection through proxy: {connect_response}")
 
     if sys.version_info >= (3, 11):
         await connection.upgrade(ssl_context)
@@ -1001,9 +982,7 @@ async def _proxy_connect(
 async def _update_transport(connection: Connection, ssl_context):
     transport = connection.writer.transport
     protocol = transport.get_protocol()
-    new_transport = await get_loop().start_tls(
-        transport, protocol, ssl_context, server_side=False
-    )
+    new_transport = await get_loop().start_tls(transport, protocol, ssl_context, server_side=False)
 
     writer = connection.writer
     reader = connection.reader

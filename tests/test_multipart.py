@@ -41,9 +41,7 @@ async def test_post_multipart_with_metadata(http_serv):
     url = f"{http_serv}/upload_file"
     file_obj = open("tests/files/bar.txt", "rb")
     data = {
-        "foo": MultipartFile(
-            file_obj, filename="custom_name.txt", content_type="text/plain"
-        ),
+        "foo": MultipartFile(file_obj, filename="custom_name.txt", content_type="text/plain"),
         "field1": "foo",
     }
 
@@ -101,9 +99,7 @@ async def test_post_multipart_with_multipartfile_class(http_serv):
 
     form = MultipartForm()
     file_obj = open("tests/files/bar.txt", "rb")
-    multipart_file = MultipartFile(
-        file_obj, filename="custom_bar.txt", content_type="text/plain"
-    )
+    multipart_file = MultipartFile(file_obj, filename="custom_bar.txt", content_type="text/plain")
     form.add_field("foo", multipart_file)
     form.add_field("field1", "foo")
 
@@ -121,9 +117,7 @@ async def test_post_multipart_with_multipartfile_path(http_serv):
     url = f"{http_serv}/upload_file"
 
     form = MultipartForm()
-    multipart_file = MultipartFile(
-        "tests/files/bar.txt", filename="custom_bar.txt", content_type="text/plain"
-    )
+    multipart_file = MultipartFile("tests/files/bar.txt", filename="custom_bar.txt", content_type="text/plain")
     form.add_field("foo", multipart_file)
     form.add_field("field1", "foo")
 

@@ -79,9 +79,7 @@ async def test_keep_alive_smart_pool(http_serv):
     url = http_serv
     urlparsed = urlparse(url)
 
-    connector = TCPConnector(
-        {":default": PoolConfig(size=2)}, connection_cls=MyConnection
-    )
+    connector = TCPConnector({":default": PoolConfig(size=2)}, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         res = None
         for _ in range(5):
@@ -311,9 +309,7 @@ async def test_pool_acquire_timeout(http_serv, mocker):
     """Test pool acquirere timeout."""
     url = http_serv + "/slow_request"
 
-    connector = TCPConnector(
-        {":default": PoolConfig(size=1)}, timeouts=Timeouts(pool_acquire=0.3)
-    )
+    connector = TCPConnector({":default": PoolConfig(size=1)}, timeouts=Timeouts(pool_acquire=0.3))
     async with aiosonic.HTTPClient(connector) as client:
         with pytest.raises(ConnectionPoolAcquireTimeout):
             await asyncio.gather(
@@ -433,9 +429,7 @@ async def test_close_connection(http_serv):
     """Test close connection."""
     url = http_serv + "/post"
 
-    connector = TCPConnector(
-        {":default": PoolConfig(size=1)}, connection_cls=MyConnection
-    )
+    connector = TCPConnector({":default": PoolConfig(size=1)}, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         res = await client.post(url, data=b"close")
         async with await connector.pools[":default"].acquire() as connection:
@@ -449,9 +443,7 @@ async def test_close_old_keeped_conn(http_serv):
     """Test close old conn."""
     url1 = http_serv
     url2 = http_serv
-    connector = TCPConnector(
-        {":default": PoolConfig(size=1)}, connection_cls=MyConnection
-    )
+    connector = TCPConnector({":default": PoolConfig(size=1)}, connection_cls=MyConnection)
     async with aiosonic.HTTPClient(connector) as client:
         await client.get(url1)
         # get used writer
@@ -601,9 +593,7 @@ async def test_wait_connections_busy_timeout(mocker):
         await asyncio.sleep(1)
         return True
 
-    _connect = mocker.patch(
-        "aiosonic.connectors.TCPConnector.wait_free_pool", new=long_connect
-    )
+    _connect = mocker.patch("aiosonic.connectors.TCPConnector.wait_free_pool", new=long_connect)
 
     _connect.return_value = await long_connect()
     async with aiosonic.HTTPClient() as client:

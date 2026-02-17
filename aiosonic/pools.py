@@ -26,15 +26,11 @@ class PoolConfig:
     )
     max_conn_requests: Optional[int] = field(
         default=1000,
-        metadata={
-            "description": "Maximum requests per connection before recycling (None = no limit)"
-        },
+        metadata={"description": "Maximum requests per connection before recycling (None = no limit)"},
     )
     max_conn_idle_ms: int = field(
         default=60000,  # 1min
-        metadata={
-            "description": "Max idle time in ms before closing connection (None = no limit)"
-        },
+        metadata={"description": "Max idle time in ms before closing connection (None = no limit)"},
     )
 
     def __hash__(self):
@@ -100,10 +96,7 @@ class BasePool(ABC):
         Returns:
             bool: True if the connection is idle and should be closed
         """
-        if (
-            self.conf.max_conn_idle_ms is not None
-            and conn.last_released_time is not None
-        ):
+        if self.conf.max_conn_idle_ms is not None and conn.last_released_time is not None:
             idle_time_ms = (time.monotonic() - conn.last_released_time) * 1000
             if idle_time_ms > self.conf.max_conn_idle_ms:
                 return True

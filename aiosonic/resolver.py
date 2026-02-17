@@ -47,9 +47,7 @@ class ThreadedResolver(AbstractResolver):
             self._loop = get_loop()
         return self._loop
 
-    async def resolve(
-        self, hostname: str, port: int = 0, family: int = socket.AF_INET
-    ) -> List[Dict[str, Any]]:
+    async def resolve(self, hostname: str, port: int = 0, family: int = socket.AF_INET) -> List[Dict[str, Any]]:
         infos = await self.loop.getaddrinfo(
             hostname,
             port,
@@ -64,9 +62,7 @@ class ThreadedResolver(AbstractResolver):
                 # This is essential for link-local IPv6 addresses.
                 # LL IPv6 is a VERY rare case. Strictly speaking, we should use
                 # getnameinfo() unconditionally, but performance makes sense.
-                host, _port = socket.getnameinfo(
-                    address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
-                )
+                host, _port = socket.getnameinfo(address, socket.NI_NUMERICHOST | socket.NI_NUMERICSERV)
                 port = int(_port)
             else:
                 host, port = address[:2]
@@ -97,9 +93,7 @@ class AsyncResolver(AbstractResolver):
         self._loop = get_loop()
         self._resolver = aiodns.DNSResolver(*args, loop=self._loop, **kwargs)
 
-    async def resolve(
-        self, host: str, port: int = 0, family: int = socket.AF_INET
-    ) -> List[Dict[str, Any]]:
+    async def resolve(self, host: str, port: int = 0, family: int = socket.AF_INET) -> List[Dict[str, Any]]:
         try:
             resp = await self._resolver.gethostbyname(host, family)
         except aiodns.error.DNSError as exc:

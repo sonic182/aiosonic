@@ -87,48 +87,32 @@ async def timeit_coro(func, *args, repeat=3000, warmup=100, **kwargs):
 
 async def performance_aiohttp(url, concurrency, repeat, warmup):
     """Test aiohttp performance."""
-    logger.info(
-        f"Starting aiohttp test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
-    )
-    async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(limit=concurrency)
-    ) as session:
+    logger.info(f"Starting aiohttp test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}")
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=concurrency)) as session:
         return await timeit_coro(session.get, url, repeat=repeat, warmup=warmup)
 
 
 async def performance_aiosonic(url, concurrency, pool_cls, timeouts, repeat, warmup):
     """Test aiosonic performance."""
-    logger.info(
-        f"Starting aiosonic test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
-    )
+    logger.info(f"Starting aiosonic test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}")
     client = aiosonic.HTTPClient(
-        TCPConnector(
-            pool_configs={":default": PoolConfig(size=concurrency)}, pool_cls=pool_cls
-        )
+        TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)}, pool_cls=pool_cls)
     )
-    return await timeit_coro(
-        client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup
-    )
+    return await timeit_coro(client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup)
 
 
 async def performance_httpx(url, concurrency, repeat, warmup):
     """Test httpx performance."""
-    logger.info(
-        f"Starting httpx test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
-    )
+    logger.info(f"Starting httpx test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}")
     async with httpx.AsyncClient() as client:
         return await timeit_coro(client.get, url, repeat=repeat, warmup=warmup)
 
 
 def timeit_requests(url, concurrency, repeat, warmup):
     """Timeit requests using threads, with warmup iterations."""
-    logger.info(
-        f"Starting requests test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}"
-    )
+    logger.info(f"Starting requests test with concurrency={concurrency}, repeat={repeat}, warmup={warmup}")
     session = requests.Session()
-    adapter = requests.adapters.HTTPAdapter(
-        pool_connections=concurrency, pool_maxsize=concurrency
-    )
+    adapter = requests.adapters.HTTPAdapter(pool_connections=concurrency, pool_maxsize=concurrency)
     session.mount("http://", adapter)
 
     for _ in range(warmup):
@@ -150,13 +134,9 @@ async def do_tests(url, repeat, warmup, concurrency):
     logger.info("Running performance tests...")
     results = {}
     results["aiohttp"] = await performance_aiohttp(url, concurrency, repeat, warmup)
-    results["aiosonic"] = await performance_aiosonic(
-        url, concurrency, None, None, repeat, warmup
-    )
+    results["aiosonic"] = await performance_aiosonic(url, concurrency, None, None, repeat, warmup)
     results["requests"] = timeit_requests(url, concurrency, repeat, warmup)
-    results["aiosonic_cyclic"] = await performance_aiosonic(
-        url, concurrency, CyclicQueuePool, None, repeat, warmup
-    )
+    results["aiosonic_cyclic"] = await performance_aiosonic(url, concurrency, CyclicQueuePool, None, repeat, warmup)
 
     try:
         results["httpx"] = await performance_httpx(url, concurrency, repeat, warmup)
@@ -166,25 +146,15 @@ async def do_tests(url, repeat, warmup, concurrency):
 
     logger.info(
         json.dumps(
-            {
-                k: f"{repeat} requests in {v:.2f} ms"
-                for k, v in results.items()
-                if not k.endswith("_error")
-            },
+            {k: f"{repeat} requests in {v:.2f} ms" for k, v in results.items() if not k.endswith("_error")},
             indent=4,
         )
     )
 
     if "httpx" in results and "httpx_error" not in results:
-        logger.info(
-            f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx"
-        )
-    logger.info(
-        f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp"
-    )
-    logger.info(
-        f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests"
-    )
+        logger.info(f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx")
+    logger.info(f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp")
+    logger.info(f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests")
     logger.info(
         f"aiosonic is {((results['aiosonic_cyclic'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiosonic cyclic"
     )
@@ -229,9 +199,7 @@ class ServerProcess:
 
 def main():
     """Start the performance test."""
-    parser = argparse.ArgumentParser(
-        description="Run performance tests for HTTP clients."
-    )
+    parser = argparse.ArgumentParser(description="Run performance tests for HTTP clients.")
     parser.add_argument(
         "--warmup",
         type=int,
@@ -244,9 +212,7 @@ def main():
         default=3000,
         help="Number of test iterations (default: 3000)",
     )
-    parser.add_argument(
-        "--concurrency", type=int, default=25, help="Concurrency level (default: 25)"
-    )
+    parser.add_argument("--concurrency", type=int, default=25, help="Concurrency level (default: 25)")
     args = parser.parse_args()
 
     port = random.randint(1000, 9000)

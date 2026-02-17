@@ -28,9 +28,7 @@ class SSEConnection:
         self._params = config.params
         self._data = config.data
         self._json = config.json
-        self._request_kwargs = (
-            dict(config.request_kwargs) if config.request_kwargs else {}
-        )
+        self._request_kwargs = dict(config.request_kwargs) if config.request_kwargs else {}
         self._reconnect = config.reconnect
         self._retry_delay = config.retry_delay
         self._keep_connection = config.keep_connection
@@ -61,10 +59,7 @@ class SSEConnection:
                             self._seen_ids.add(eid)
                             self._last_event_id = eid
                         # Deduplicate by last yielded data to avoid dupes after reconnect
-                        if (
-                            hasattr(self, "_last_yielded_data")
-                            and self._last_yielded_data is not None
-                        ):
+                        if hasattr(self, "_last_yielded_data") and self._last_yielded_data is not None:
                             if event.get("data") == self._last_yielded_data:
                                 # skip this duplicate
                                 continue
@@ -89,9 +84,7 @@ class SSEConnection:
                 if self._response.status_code != 200 or "text/event-stream" not in (
                     self._response.headers.get("content-type", "")
                 ):
-                    raise SSEConnectionError(
-                        f"Failed to reconnect to SSE endpoint: {self._response.status_code}"
-                    )
+                    raise SSEConnectionError(f"Failed to reconnect to SSE endpoint: {self._response.status_code}")
                 buffer = b""
             except SSEParsingError:
                 raise
@@ -168,9 +161,7 @@ class _ConnectAwaitable:
         self._params = config.params
         self._data = config.data
         self._json = config.json
-        self._request_kwargs = (
-            dict(config.request_kwargs) if config.request_kwargs else {}
-        )
+        self._request_kwargs = dict(config.request_kwargs) if config.request_kwargs else {}
         self._reconnect = config.reconnect
         self._retry_delay = config.retry_delay
         self._keep_connection = config.keep_connection
@@ -192,14 +183,10 @@ class _ConnectAwaitable:
                     **self._request_kwargs,
                 )
                 if response.status_code != 200:
-                    raise SSEConnectionError(
-                        f"Failed to connect to SSE endpoint: {response.status_code}"
-                    )
+                    raise SSEConnectionError(f"Failed to connect to SSE endpoint: {response.status_code}")
                 content_type = response.headers.get("content-type", "")
                 if "text/event-stream" not in content_type:
-                    raise SSEConnectionError(
-                        "Endpoint did not return 'text/event-stream'"
-                    )
+                    raise SSEConnectionError("Endpoint did not return 'text/event-stream'")
                 # pass a per-connection RequestConfig copy so each connection can mutate headers
                 per_conn_config = self._config.with_headers_copy()
                 per_conn_config.request_kwargs = dict(self._request_kwargs)
