@@ -1,5 +1,6 @@
 """Connection stuffs."""
 
+import asyncio
 import ssl
 import time
 from asyncio import StreamReader, StreamWriter, open_connection
@@ -68,6 +69,7 @@ class Connection:
         self.temp_key: Optional[str] = None
         self.requests_count = 0
         self.background_tasks = set()
+        self._connect_lock = asyncio.Lock()
 
         self.h2conn: Optional[h2.connection.H2Connection] = None
         self.h2handler: Optional[Http2Handler] = None
@@ -97,8 +99,9 @@ class Connection:
             ssl_context (SSLContext): The SSL context to use for secure connections.
             http2 (bool, optional): Whether to use HTTP/2 protocol. Defaults to False.
         """
-        self._verify = verify
-        await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
+        async with self._connect_lock:
+            self._verify = verify
+            await self._connect(urlparsed, verify, ssl_context, dns_info, http2)
 
     def write(self, data: bytes):
         """Write data to the socket.
@@ -210,7 +213,8 @@ class Connection:
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        if not (self.key and key == self.key and not is_closing() and self.__max_cons_made()):
+        conn_key = self.key or self.temp_key
+        if not (conn_key and key == conn_key and not is_closing() and self.__max_cons_made()):
             self.close()
 
             if urlparsed.scheme in ["https", "wss"]:
@@ -311,7 +315,9 @@ class Connection:
             return await self.h2handler.request(headers, body)
 
     def __max_cons_made(self):
-        return self.pool.conf.max_conn_requests and self.requests_count <= self.pool.conf.max_conn_requests
+        if self.pool.conf.max_conn_requests is None:
+            return True
+        return self.requests_count <= self.pool.conf.max_conn_requests
 
     async def __aenter__(self):
         """Get connection from pool."""

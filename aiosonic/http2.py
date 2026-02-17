@@ -60,6 +60,7 @@ class Http2Handler(object):
         self._window_updated = asyncio.Event()
         self._max_streams = 100
         self._stream_sem = asyncio.Semaphore(self._max_streams)
+        self._request_lock = asyncio.Lock()
         self._closing = False
 
         self.writer.write(h2conn.data_to_send())
@@ -129,33 +130,37 @@ class Http2Handler(object):
         if not hasattr(self, "_stream_sem"):
             self._stream_sem = asyncio.Semaphore(self._max_streams if hasattr(self, "_max_streams") else 100)
 
+        if not hasattr(self, "_request_lock"):
+            self._request_lock = asyncio.Lock()
+
         await self._stream_sem.acquire()
         try:
-            stream_id = self.h2conn.get_next_available_stream_id()
-            headers_param = headers.items() if isinstance(headers, dict) else headers
+            async with self._request_lock:
+                stream_id = self.h2conn.get_next_available_stream_id()
+                headers_param = headers.items() if isinstance(headers, dict) else headers
 
-            future = self.loop.create_future()
-            self.requests[stream_id] = {
-                "request_body": normalized_body,
-                "response_body": bytearray(),
-                "headers": headers_param,
-                "future": future,
-                "data_sent": False,
-                "send_scheduled": False,
-                "send_started": False,
-            }
+                future = self.loop.create_future()
+                self.requests[stream_id] = {
+                    "request_body": normalized_body,
+                    "response_body": bytearray(),
+                    "headers": headers_param,
+                    "future": future,
+                    "data_sent": False,
+                    "send_scheduled": False,
+                    "send_started": False,
+                }
 
-            # schedule sending immediately to avoid stalls when settings already negotiated
-            try:
-                # mark scheduled to avoid duplicate scheduling from SettingsAcknowledged
-                self.requests[stream_id]["send_scheduled"] = True
-                self.loop.create_task(self.send_body(stream_id))
-            except Exception:
-                # ensure flag is cleared on failure
+                # schedule sending immediately to avoid stalls when settings already negotiated
                 try:
-                    self.requests[stream_id]["send_scheduled"] = False
+                    # mark scheduled to avoid duplicate scheduling from SettingsAcknowledged
+                    self.requests[stream_id]["send_scheduled"] = True
+                    await self.send_body(stream_id)
                 except Exception:
-                    pass
+                    # ensure flag is cleared on failure
+                    try:
+                        self.requests[stream_id]["send_scheduled"] = False
+                    except Exception:
+                        pass
 
             try:
                 await future
@@ -247,7 +252,7 @@ class Http2Handler(object):
                     and event.flow_controlled_length
                 ):
                     h2conn.increment_flow_control_window(event.flow_controlled_length, event.stream_id)
-                dlogger.info(f"Flow increment: {event.flow_controlled_length}")
+                dlogger.debug(f"Flow increment: {event.flow_controlled_length}")
                 if event.flow_controlled_length:
                     h2conn.increment_flow_control_window(event.flow_controlled_length)
             elif isinstance(event, h2.events.ResponseReceived):

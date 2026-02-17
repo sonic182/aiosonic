@@ -248,3 +248,48 @@ class WsPool(BasePool):
     async def cleanup(self) -> None:
         """Get all conn and close them, this method let this pool unusable."""
         pass
+
+
+class Http2MultiplexPool(BasePool):
+    """Host-aware shared connection factory for HTTP/2 multiplexing.
+
+    Keeps one shared connection per target host and returns that same
+    connection for concurrent acquire calls. This allows HTTP/2 multiplexing
+    while remaining safe for workloads that target multiple hosts.
+    """
+
+    def _init_pool(self, connection_cls):
+        self.conn_cls = connection_cls
+        self.connections = {}
+
+    def _host_key(self, urlparsed: Optional[ParseResult]) -> str:
+        if not urlparsed or not urlparsed.hostname:
+            return ":default"
+        port = urlparsed.port or (443 if urlparsed.scheme in ["https", "wss"] else 80)
+        return f"{urlparsed.scheme}://{urlparsed.hostname}:{port}"
+
+    async def acquire(self, urlparsed: Optional[ParseResult] = None):
+        """Acquire a shared connection for the target host."""
+        key = self._host_key(urlparsed)
+        conn = self.connections.get(key)
+        if conn is None:
+            conn = self.conn_cls(self)
+            self.connections[key] = conn
+        return conn
+
+    def release(self, conn) -> None:
+        """Release shared connection."""
+        return None
+
+    def free_conns(self) -> int:
+        return len(self.connections)
+
+    def is_all_free(self):
+        """Indicates if all pool is free."""
+        return True
+
+    async def cleanup(self) -> None:
+        """Close all shared host connections."""
+        for conn in self.connections.values():
+            conn.close()
+        self.connections.clear()

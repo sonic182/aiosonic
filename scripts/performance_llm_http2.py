@@ -16,7 +16,7 @@ from urllib.request import urlopen
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
-from aiosonic.pools import PoolConfig
+from aiosonic.pools import Http2MultiplexPool, PoolConfig
 from aiosonic.timeout import Timeouts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -79,15 +79,21 @@ async def run_scenario(
     pool_size: int,
     http2: bool,
     sock_read_timeout: float,
+    debug: bool = False,
 ) -> Dict[str, float | int | str]:
     """Run one benchmark scenario and return metrics."""
-    connector = TCPConnector(pool_configs={":default": PoolConfig(size=pool_size)})
+    pool_cls = Http2MultiplexPool if http2 else None
+    connector = TCPConnector(pool_configs={":default": PoolConfig(size=pool_size)}, pool_cls=pool_cls)
     client = aiosonic.HTTPClient(connector=connector, http2=http2)
     limiter = asyncio.Semaphore(task_concurrency)
     version_counter: Dict[str, int] = {}
+    completed = 0
 
-    async def one_request() -> None:
+    async def one_request(req_id: int) -> None:
+        nonlocal completed
         async with limiter:
+            if debug:
+                logger.info("[%s] start request id=%s", "h2" if http2 else "h1", req_id)
             response = await client.get(
                 url,
                 verify=False,
@@ -97,9 +103,20 @@ async def run_scenario(
                 raise RuntimeError(f"Unexpected status code: {response.status_code}")
             version = response.http_version
             version_counter[version] = version_counter.get(version, 0) + 1
+            completed += 1
+            if debug:
+                logger.info(
+                    "[%s] done request id=%s version=%s completed=%s/%s",
+                    "h2" if http2 else "h1",
+                    req_id,
+                    version,
+                    completed,
+                    requests_count,
+                )
 
     start = time.perf_counter()
-    await asyncio.gather(*[one_request() for _ in range(requests_count)])
+    tasks = [one_request(i) for i in range(requests_count)]
+    await asyncio.gather(*tasks)
     elapsed = time.perf_counter() - start
     await connector.cleanup()
 
@@ -125,6 +142,7 @@ async def benchmark(args):
         pool_size=args.h1_pool_size,
         http2=False,
         sock_read_timeout=read_timeout,
+        debug=args.debug,
     )
 
     logger.info("Scenario 2: HTTP/2 with pool size=%s", args.h2_pool_size)
@@ -135,6 +153,7 @@ async def benchmark(args):
         pool_size=args.h2_pool_size,
         http2=True,
         sock_read_timeout=read_timeout,
+        debug=args.debug,
     )
 
     improvement = ((h1_result["elapsed_seconds"] / h2_result["elapsed_seconds"]) - 1) * 100
@@ -160,6 +179,7 @@ def parse_args():
     parser.add_argument("--min-delay", type=int, default=5, help="Server min delay in seconds")
     parser.add_argument("--max-delay", type=int, default=15, help="Server max delay in seconds")
     parser.add_argument("--port", type=int, default=random.randint(9001, 14000), help="Server port")
+    parser.add_argument("--debug", action="store_true", help="Enable verbose benchmark and aiosonic logs")
     return parser.parse_args()
 
 
@@ -169,6 +189,9 @@ def main():
         raise RuntimeError("Node.js is required. Install it first (e.g. brew install node).")
 
     args = parse_args()
+    if args.debug:
+        logging.getLogger("aiosonic").setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     if args.min_delay <= 0 or args.max_delay < args.min_delay:
         raise ValueError("Invalid delay bounds")
 
