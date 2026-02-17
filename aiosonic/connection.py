@@ -13,6 +13,7 @@ import h2.connection
 import h2.events
 
 from aiosonic.exceptions import (
+    ConnectionDisconnected,
     HttpParsingError,
     MissingReaderException,
     MissingWriterException,
@@ -114,7 +115,12 @@ class Connection:
         """
         if not self.writer:
             raise MissingWriterException("writer not set.")
-        self.writer.write(data)
+        try:
+            self.writer.write(data)
+        except OSError as exc:
+            self.keep = False
+            self.close()
+            raise ConnectionDisconnected() from exc
 
     async def readline(self):
         """Read data from the socket until a line break is encountered.
