@@ -290,26 +290,31 @@ async def test_cleanup_cancels_reader_task(mocker):
 
 
 @pytest.mark.asyncio
-async def test_send_body_flow_control_fallback(mocker, monkeypatch):
-    """When window is zero and wait_for times out, send_body falls back to max frame size."""
+async def test_send_body_waits_for_window_then_sends(mocker):
+    """send_body must wait for a non-zero flow-control window before sending data.
+
+    The sender must block while the window is 0 and only proceed once
+    _window_updated is set (simulating a WindowUpdated event from the peer).
+    Data must never be sent while the window is exhausted.
+    """
     mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda self: None)
     handler = Http2Handler()
     handler.loop = asyncio.get_event_loop()
+    handler._window_updated = asyncio.Event()
 
-    # Prepare a fake h2conn
     class FakeH2:
         def __init__(self):
             self.max_outbound_frame_size = 4
             self._sent = []
+            self._window = 0
 
         def local_flow_control_window(self, stream_id):
-            return 0
+            return self._window
 
         def data_to_send(self):
             return b""
 
         def send_headers(self, stream_id, headers, end_stream=False):
-            # no-op
             pass
 
         def send_data(self, stream_id, chunk, end_stream=False):
@@ -318,7 +323,6 @@ async def test_send_body_flow_control_fallback(mocker, monkeypatch):
     fake = FakeH2()
     handler.h2conn = fake
 
-    # stub writer to avoid actual IO
     class DummyWriter:
         def write(self, data):
             pass
@@ -328,7 +332,6 @@ async def test_send_body_flow_control_fallback(mocker, monkeypatch):
 
     handler.writer = DummyWriter()
 
-    # create request with body larger than max_outbound_frame_size
     stream_id = 1
     body = b"abcdefgh"  # 8 bytes
     handler.requests = {
@@ -340,17 +343,16 @@ async def test_send_body_flow_control_fallback(mocker, monkeypatch):
         }
     }
 
-    # Make asyncio.wait_for raise immediately to trigger fallback
-    def fake_wait_for(coro, timeout):
-        raise asyncio.TimeoutError()
+    async def open_window():
+        await asyncio.sleep(0.01)
+        fake._window = 65535
+        handler._window_updated.set()
 
-    monkeypatch.setattr(asyncio, "wait_for", fake_wait_for)
-
-    await handler.send_body(stream_id)
+    await asyncio.gather(handler.send_body(stream_id), open_window())
 
     assert handler.requests[stream_id]["data_sent"] is True
-    # Expect data to be sent in chunks of at most 4 bytes
     assert fake._sent == [b"abcd", b"efgh"]
+    assert b"".join(fake._sent) == body
 
 
 @pytest.mark.asyncio

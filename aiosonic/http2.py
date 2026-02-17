@@ -350,38 +350,20 @@ class Http2Handler(object):
 
         remaining = len(body_bytes)
         offset = 0
+        max_frame = getattr(self.h2conn, "max_outbound_frame_size", 65535)
         while remaining > 0:
-            to_split = self.h2conn.local_flow_control_window(stream_id)
-            if not to_split or to_split <= 0:
-                try:
-                    self._window_updated.clear()
-                except Exception:
-                    pass
-                coro = self._window_updated.wait()
-                try:
-                    await asyncio.wait_for(coro, timeout=5)
-                except Exception:
-                    try:
-                        coro.close()
-                    except Exception:
-                        pass
-                    to_split = getattr(self.h2conn, "max_outbound_frame_size", 65535)
-                else:
-                    to_split = self.h2conn.local_flow_control_window(stream_id)
-                    try:
-                        self._window_updated.clear()
-                    except Exception:
-                        pass
+            win = self.h2conn.local_flow_control_window(stream_id)
+            while win <= 0:
+                self._window_updated.clear()
+                await self._window_updated.wait()
+                win = self.h2conn.local_flow_control_window(stream_id)
 
-            if not to_split or to_split <= 0:
-                to_split = getattr(self.h2conn, "max_outbound_frame_size", 65535)
-
+            to_split = min(win, max_frame)
             for chunk in chunks(body_bytes[offset : offset + remaining], to_split):
                 last = (offset + len(chunk)) >= len(body_bytes)
                 self.h2conn.send_data(stream_id, chunk, end_stream=last)
                 offset += len(chunk)
                 remaining -= len(chunk)
-                # ensure bytes are flushed
                 await self.check_to_write()
 
         request["data_sent"] = True
