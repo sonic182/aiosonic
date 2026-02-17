@@ -1,6 +1,8 @@
 import asyncio
 import ssl
 
+import h2.events
+import h2.settings
 import pytest
 
 import aiosonic
@@ -421,3 +423,69 @@ async def test_concurrent_streams(mocker):
 
     assert sent_streams[1] == b"AAAAAAA"
     assert sent_streams[3] == b"BBBBBBB"
+
+
+@pytest.mark.asyncio
+async def test_stream_semaphore_limits_concurrency(mocker):
+    """_stream_sem must block request() when max concurrent streams are in-flight."""
+    mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda self: None)
+    handler = Http2Handler()
+    handler.loop = asyncio.get_event_loop()
+    handler.requests = {}
+    handler._max_streams = 1
+    handler._stream_sem = asyncio.Semaphore(1)
+
+    acquired_order = []
+
+    original_acquire = handler._stream_sem.acquire
+
+    async def tracking_acquire():
+        acquired_order.append("acquire")
+        return await original_acquire()
+
+    handler._stream_sem.acquire = tracking_acquire
+
+    # Manually occupy the semaphore (simulates one stream in-flight)
+    await handler._stream_sem.acquire()
+    assert handler._stream_sem._value == 0
+
+    # A second acquire must block until released
+    released = asyncio.Event()
+
+    async def waiter():
+        await handler._stream_sem.acquire()
+        released.set()
+        handler._stream_sem.release()
+
+    task = asyncio.get_event_loop().create_task(waiter())
+    await asyncio.sleep(0.01)
+    assert not released.is_set(), "Second acquire must block while semaphore is held"
+
+    handler._stream_sem.release()
+    await asyncio.wait_for(task, timeout=1)
+    assert released.is_set(), "Second acquire must proceed after release"
+
+
+@pytest.mark.asyncio
+async def test_remote_settings_updates_max_streams(mocker):
+    """RemoteSettingsChanged with MAX_CONCURRENT_STREAMS must update _max_streams and semaphore."""
+    mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda self: None)
+    mocker.patch("aiosonic.http2.Http2Handler.h2conn")
+    handler = Http2Handler()
+    handler.loop = asyncio.get_event_loop()
+    handler.connection = mocker.MagicMock()
+    handler.requests = {}
+    handler._max_streams = 100
+    handler._stream_sem = asyncio.Semaphore(100)
+
+    class FakeSetting:
+        def __init__(self, value):
+            self.new_value = value
+
+    event = h2.events.RemoteSettingsChanged()
+    event.changed_settings = {h2.settings.SettingCodes.MAX_CONCURRENT_STREAMS: FakeSetting(10)}
+
+    await handler.handle_events([event])
+
+    assert handler._max_streams == 10
+    assert handler._stream_sem._value == 10

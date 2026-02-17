@@ -2,6 +2,7 @@ import asyncio
 from typing import TYPE_CHECKING, Optional
 
 import h2.events
+import h2.settings
 
 from aiosonic.exceptions import ConnectionDisconnected, MissingEvent
 from aiosonic.types import ParsedBodyType
@@ -57,6 +58,8 @@ class Http2Handler(object):
         self.requests = {}
 
         self._window_updated = asyncio.Event()
+        self._max_streams = 100
+        self._stream_sem = asyncio.Semaphore(self._max_streams)
 
         self.writer.write(h2conn.data_to_send())
         try:
@@ -119,42 +122,49 @@ class Http2Handler(object):
         else:
             raise ValueError("HTTP/2 requests currently require a bytes-like body")
 
-        stream_id = self.h2conn.get_next_available_stream_id()
-        headers_param = headers.items() if isinstance(headers, dict) else headers
+        if not hasattr(self, "_stream_sem"):
+            self._stream_sem = asyncio.Semaphore(self._max_streams if hasattr(self, "_max_streams") else 100)
 
-        future = self.loop.create_future()
-        self.requests[stream_id] = {
-            "request_body": normalized_body,
-            "response_body": bytearray(),
-            "headers": headers_param,
-            "future": future,
-            "data_sent": False,
-            "send_scheduled": False,
-            "send_started": False,
-        }
-
-        # schedule sending immediately to avoid stalls when settings already negotiated
+        await self._stream_sem.acquire()
         try:
-            # mark scheduled to avoid duplicate scheduling from SettingsAcknowledged
-            self.requests[stream_id]["send_scheduled"] = True
-            self.loop.create_task(self.send_body(stream_id))
-        except Exception:
-            # ensure flag is cleared on failure
+            stream_id = self.h2conn.get_next_available_stream_id()
+            headers_param = headers.items() if isinstance(headers, dict) else headers
+
+            future = self.loop.create_future()
+            self.requests[stream_id] = {
+                "request_body": normalized_body,
+                "response_body": bytearray(),
+                "headers": headers_param,
+                "future": future,
+                "data_sent": False,
+                "send_scheduled": False,
+                "send_started": False,
+            }
+
+            # schedule sending immediately to avoid stalls when settings already negotiated
             try:
-                self.requests[stream_id]["send_scheduled"] = False
+                # mark scheduled to avoid duplicate scheduling from SettingsAcknowledged
+                self.requests[stream_id]["send_scheduled"] = True
+                self.loop.create_task(self.send_body(stream_id))
             except Exception:
-                pass
+                # ensure flag is cleared on failure
+                try:
+                    self.requests[stream_id]["send_scheduled"] = False
+                except Exception:
+                    pass
 
-        try:
-            await future
-        except Exception:
             try:
-                del self.requests[stream_id]
-            except KeyError:
-                pass
-            raise
+                await future
+            except Exception:
+                try:
+                    del self.requests[stream_id]
+                except KeyError:
+                    pass
+                raise
 
-        res = self.requests.pop(stream_id, {})
+            res = self.requests.pop(stream_id, {})
+        finally:
+            self._stream_sem.release()
 
         response = HttpResponse()
         for key, val in res.get("headers", []):
@@ -280,13 +290,15 @@ class Http2Handler(object):
                         pass
             elif isinstance(event, IGNORED_EVENTS):
                 dlogger.debug("ignoring http2 event %s", event.__class__.__name__)
-            elif isinstance(
-                event,
-                (
-                    h2.events.PingReceived,
-                    h2.events.RemoteSettingsChanged,
-                ),
-            ):
+            elif isinstance(event, h2.events.RemoteSettingsChanged):
+                new_max = event.changed_settings.get(h2.settings.SettingCodes.MAX_CONCURRENT_STREAMS)
+                if new_max is not None:
+                    new_limit = int(new_max.new_value)
+                    if new_limit != self._max_streams:
+                        inflight = self._max_streams - self._stream_sem._value
+                        self._max_streams = new_limit
+                        self._stream_sem._value = max(0, new_limit - inflight)
+            elif isinstance(event, h2.events.PingReceived):
                 pass
             else:
                 raise MissingEvent(f"another event {event.__class__.__name__}")
