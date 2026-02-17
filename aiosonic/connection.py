@@ -210,23 +210,17 @@ class Connection:
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        if not (
-            self.key and key == self.key and not is_closing() and self.__max_cons_made()
-        ):
+        if not (self.key and key == self.key and not is_closing() and self.__max_cons_made()):
             self.close()
 
             if urlparsed.scheme in ["https", "wss"]:
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (
-                443 if urlparsed.scheme in ["https", "ws"] else 80
-            )
+            port = urlparsed.port or (443 if urlparsed.scheme in ["https", "ws"] else 80)
             dns_info_copy["port"] = port
 
-            self.reader, self.writer = await open_connection(
-                **dns_info_copy, ssl=ssl_context
-            )
+            self.reader, self.writer = await open_connection(**dns_info_copy, ssl=ssl_context)
 
             self.temp_key = key
             await self._connection_made()
@@ -277,7 +271,7 @@ class Connection:
         if self.reader:
             try:
                 self.writer._transport.abort()
-            except:
+            except Exception:
                 pass
 
             self.reader, self.writer = None, None
@@ -298,9 +292,7 @@ class Connection:
             raise MissingWriterException()
         await self.writer.start_tls(ssl_context)
 
-    async def http2_request(
-        self, headers: Dict[str, str], body: Optional[ParsedBodyType]
-    ):
+    async def http2_request(self, headers: Dict[str, str], body: Optional[ParsedBodyType]):
         """Send an HTTP/2 request.
 
         Args:
@@ -314,10 +306,7 @@ class Connection:
             return await self.h2handler.request(headers, body)
 
     def __max_cons_made(self):
-        return (
-            self.pool.conf.max_conn_requests
-            and self.requests_count <= self.pool.conf.max_conn_requests
-        )
+        return self.pool.conf.max_conn_requests and self.requests_count <= self.pool.conf.max_conn_requests
 
     async def __aenter__(self):
         """Get connection from pool."""
@@ -330,11 +319,12 @@ class Connection:
         else:
             self.key = None
             self.h2conn = None
+            if self.h2handler:  # pragma: no cover
+                self.h2handler.cleanup()
+            self.h2handler = None
 
         if not self.blocked:
             self.release()
-            if self.h2handler:  # pragma: no cover
-                self.h2handler.cleanup()
 
 
 def get_default_ssl_context(verify=True, http2=False):
@@ -371,9 +361,7 @@ def _get_http2_ssl_context():
 
     # RFC 7540 Section 9.2: Implementations of HTTP/2 MUST use TLS version 1.2
     # or higher. Disable TLS 1.1 and lower.
-    ctx.options |= (
-        ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
-    )
+    ctx.options |= ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3 | ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1
 
     # RFC 7540 Section 9.2.1: A deployment of HTTP/2 over TLS 1.2 MUST disable
     # compression.

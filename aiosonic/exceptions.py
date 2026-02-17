@@ -1,4 +1,4 @@
-from asyncio.exceptions import TimeoutError as TimeoutException
+from asyncio.exceptions import TimeoutError as TimeoutException  # noqa: F401
 
 
 # General

@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import platform
-import ssl
 from urllib.parse import urlparse
 
 import pytest

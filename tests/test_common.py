@@ -8,7 +8,7 @@ from aiosonic.http_parser import add_header, add_headers
 
 def test_headers_retrival():
     """Test reading header with more than one ":" char ocurrence."""
-    sample_header = b'Report-To: { "group": "wm_nel", "max_age": 86400, "endpoints": [{ "url": "https://intake-logging.wikimedia.org/v1/events?stream=w3c.reportingapi.network_error&schema_uri=/w3c/reportingapi/network_error/1.0.0" }] }\r\n'
+    sample_header = b'Report-To: { "group": "wm_nel", "max_age": 86400, "endpoints": [{ "url": "https://intake-logging.wikimedia.org/v1/events?stream=w3c.reportingapi.network_error&schema_uri=/w3c/reportingapi/network_error/1.0.0" }] }\r\n'  # noqa: E501
     assert len(HttpHeaders._clear_line(sample_header)) == 2
 
 

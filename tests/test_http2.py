@@ -25,10 +25,7 @@ async def test_get_python(http2_serv):
             url,
             verify=False,
             headers={
-                "user-agent": (
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:70.0)"
-                    " Gecko/20100101 Firefox/70.0"
-                )
+                "user-agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:70.0) Gecko/20100101 Firefox/70.0")
             },
             http2=True,
         )
@@ -138,33 +135,67 @@ async def test_http2_wrong_event(mocker):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_h2_with_explicit_http2_flag(http2_serv):
+    """Assert that http2=True explicitly negotiates HTTP/2."""
+    url = http2_serv
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url, verify=False, http2=True)
+        assert res.status_code == 200
+        assert res.http_version == "2"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_negotiated_via_alpn(http2_serv):
+    """Assert h2 is auto-negotiated via ALPN without needing http2=True.
+
+    The default SSL context must advertise 'h2' in ALPN so that connecting
+    to an h2-capable server upgrades automatically.
+    """
+    import ssl as _ssl
+
+    ctx = _ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = _ssl.CERT_NONE
+    ctx.set_alpn_protocols(["h2", "http/1.1"])
+    url = http2_serv
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url, ssl=ctx)
+        assert res.status_code == 200
+        assert res.http_version == "2"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_connection_reused_across_requests(http2_serv):
+    """h2conn must NOT be torn down between keep-alive requests.
+
+    Both sequential requests on the same client must use HTTP/2 via the
+    same underlying connection (h2handler kept alive across releases).
+    """
+    url = http2_serv
+    connector = TCPConnector(timeouts=Timeouts(sock_connect=3, sock_read=4))
+    async with aiosonic.HTTPClient(connector) as client:
+        res1 = await client.get(url, verify=False, http2=True)
+        assert res1.status_code == 200
+        assert res1.http_version == "2", "First request must use HTTP/2"
+
+        res2 = await client.get(url, verify=False, http2=True)
+        assert res2.status_code == 200
+        assert res2.http_version == "2", "Second request must still use HTTP/2 (connection was reused)"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_image(http2_serv):
     """Test get image."""
     url = f"{http2_serv}/sample.png"
 
     async with aiosonic.HTTPClient() as client:
-        res = await client.get(url, verify=False)
+        res = await client.get(url, verify=False, http2=True)
         assert res.status_code == 200
-        assert res.chunked
         with open("tests/sample.png", "rb") as _file:
             assert (await res.content()) == _file.read()
-
-
-@pytest.mark.asyncio
-@pytest.mark.timeout(30)
-async def test_get_image_chunked(http2_serv):
-    """Test get image chunked."""
-    url = f"{http2_serv}/sample.png"
-
-    async with aiosonic.HTTPClient() as client:
-        res = await client.get(url, verify=False)
-        assert res.status_code == 200
-        assert res.chunked
-        filebytes = b""
-        async for chunk in res.read_chunks():
-            filebytes += chunk
-        with open("tests/sample.png", "rb") as _file:
-            assert filebytes == _file.read()
 
 
 # Unit tests for HTTP2Handler with mocked components

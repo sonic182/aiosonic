@@ -105,9 +105,7 @@ class Http2Handler(object):
     def h2conn(self, value):
         self._h2conn = value
 
-    async def request(
-        self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]
-    ):
+    async def request(self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]):
         from aiosonic import HttpResponse
 
         if body is None:
@@ -217,11 +215,6 @@ class Http2Handler(object):
         h2conn = self.h2conn
 
         for event in events:
-            try:
-                sid = getattr(event, "stream_id", None)
-            except Exception:
-                sid = None
-
             if isinstance(event, h2.events.StreamEnded):
                 dlogger.debug(f"--- exit stream, id: {event.stream_id}")
                 req = self.requests.get(event.stream_id)
@@ -239,9 +232,7 @@ class Http2Handler(object):
                     and not h2conn.streams[event.stream_id].closed
                     and event.flow_controlled_length
                 ):
-                    h2conn.increment_flow_control_window(
-                        event.flow_controlled_length, event.stream_id
-                    )
+                    h2conn.increment_flow_control_window(event.flow_controlled_length, event.stream_id)
                 dlogger.info(f"Flow increment: {event.flow_controlled_length}")
                 if event.flow_controlled_length:
                     h2conn.increment_flow_control_window(event.flow_controlled_length)
@@ -318,6 +309,7 @@ class Http2Handler(object):
             self._window_updated = asyncio.Event()
         if not hasattr(self, "requests"):
             self.requests = {}
+
         def chunks(lst, n):
             for i in range(0, len(lst), n):
                 yield lst[i : i + n]

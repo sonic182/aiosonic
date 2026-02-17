@@ -2,13 +2,13 @@
 
 ## Build/Lint/Test Commands
 
-ALWAYS USE poetry for commands eg: `poetry run <command>` it coud be "python", py.test, black, etc.
+ALWAYS USE poetry for commands eg: `poetry run <command>` it could be "python", py.test, ruff, etc.
 
 - **Build**: `poetry build` or `make build`
 - **Test all**: `poetry run py.test`
 - **Test single file**: `poetry run py.test tests/test_filename.py`
 - **Test single function**: `poetry run py.test tests/test_filename.py::test_function_name`
-- **Lint/Format**: `poetry run black .` (formatting), `poetry run ruff check .` (linting)
+- **Lint/Format**: `poetry run ruff format .` (formatting), `poetry run ruff check .` (linting)
 - **CI test command**: `poetry run py.test --cov-append`
 - **Run scripts or examples**: `poetry run <file.py>`
 
@@ -19,7 +19,7 @@ ALWAYS USE poetry for commands eg: `poetry run <command>` it coud be "python", p
 ### Error Handling: Custom exceptions in exceptions.py, descriptive messages, appropriate try/except
 ### Documentation: Google/NumPy docstring format for all classes and public methods
 ### Comments: DO NOT ADD ***ANY*** COMMENTS in "aiosonic" package functions or classes
-### Formatting: Black formatter (88 char lines, 4 space indent, no trailing whitespace)
+### Formatting: Ruff formatter (119 char lines, 4 space indent, no trailing whitespace)
 
 ## HTTP Client Architecture
 

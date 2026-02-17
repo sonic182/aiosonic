@@ -151,6 +151,11 @@ class HttpResponse:
         return int(self.response_initial["code"])
 
     @property
+    def http_version(self) -> str:
+        """Get the negotiated HTTP version string (e.g. '2', '1.1', '1.0')."""
+        return self.response_initial.get("version", "")
+
+    @property
     def ok(self) -> bool:
         """Returns True if :attr:`status_code` is 2xx range, False if not."""
         return 200 <= self.status_code <= 299
