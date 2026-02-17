@@ -215,6 +215,11 @@ class Connection:
 
             if urlparsed.scheme in ["https", "wss"]:
                 ssl_context = ssl_context or get_default_ssl_context(verify, http2)
+                if http2 and ssl_context:
+                    try:
+                        ssl_context.set_alpn_protocols(["h2", "http/1.1"])
+                    except Exception:
+                        pass
             else:
                 del dns_info_copy["server_hostname"]
             port = urlparsed.port or (443 if urlparsed.scheme in ["https", "ws"] else 80)

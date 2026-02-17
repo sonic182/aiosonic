@@ -161,21 +161,36 @@ async def test_h2_client_level_flag(http2_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
-async def test_h2_negotiated_via_alpn(http2_serv):
-    """Assert h2 is auto-negotiated via ALPN without needing http2=True.
+async def test_h2_verify_false_applies_to_h2_ssl_context(http2_serv):
+    """verify=False must disable cert verification even when http2=True.
 
-    The default SSL context must advertise 'h2' in ALPN so that connecting
-    to an h2-capable server upgrades automatically.
+    Bug: get_default_ssl_context returns early from the http2 branch before
+    applying the verify=False override, so self-signed certs are rejected.
+    """
+    url = http2_serv
+    async with aiosonic.HTTPClient(http2=True) as client:
+        res = await client.get(url, verify=False)
+        assert res.status_code == 200
+        assert res.http_version == "2"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_custom_ssl_ctx_gets_alpn(http2_serv):
+    """A user-supplied ssl context must have 'h2' added to ALPN when http2=True.
+
+    Bug: custom contexts passed via ssl= don't advertise h2 in ALPN, so
+    the TLS handshake never negotiates h2 and the connection silently falls
+    back to HTTP/1.1.
     """
     import ssl as _ssl
 
     ctx = _ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = _ssl.CERT_NONE
-    ctx.set_alpn_protocols(["h2", "http/1.1"])
     url = http2_serv
     async with aiosonic.HTTPClient() as client:
-        res = await client.get(url, ssl=ctx)
+        res = await client.get(url, ssl=ctx, http2=True)
         assert res.status_code == 200
         assert res.http_version == "2"
 
