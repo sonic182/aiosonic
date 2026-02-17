@@ -7,7 +7,7 @@ import pytest
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
-from aiosonic.exceptions import MissingEvent
+from aiosonic.exceptions import ConnectionDisconnected, MissingEvent
 from aiosonic.http2 import Http2Handler
 from aiosonic.timeout import Timeouts
 
@@ -489,3 +489,46 @@ async def test_remote_settings_updates_max_streams(mocker):
 
     assert handler._max_streams == 10
     assert handler._stream_sem._value == 10
+
+
+@pytest.mark.asyncio
+async def test_disconnect_event_marks_connection_non_reusable(mocker):
+    """ConnectionTerminated should fail pending streams and mark connection closing."""
+    mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda self, connection: None)
+    handler = Http2Handler(mocker.MagicMock())
+    handler.loop = asyncio.get_event_loop()
+    handler.connection = mocker.MagicMock()
+    handler.connection.keep = True
+    handler.h2conn = mocker.MagicMock()
+
+    fut = handler.loop.create_future()
+    handler.requests = {
+        1: {
+            "future": fut,
+            "response_body": bytearray(),
+            "headers": [],
+            "data_sent": False,
+            "send_scheduled": False,
+        }
+    }
+
+    event = h2.events.ConnectionTerminated()
+    await handler.handle_events([event])
+
+    assert handler.connection.keep is False
+    assert fut.done()
+    assert isinstance(fut.exception(), ConnectionDisconnected)
+
+
+@pytest.mark.asyncio
+async def test_request_rejected_when_connection_is_closing(mocker):
+    """No new streams should be accepted after disconnect has been observed."""
+    mocker.patch("aiosonic.http2.Http2Handler.__init__", lambda self, connection: None)
+    handler = Http2Handler(mocker.MagicMock())
+    handler.loop = asyncio.get_event_loop()
+    handler._max_streams = 1
+    handler._stream_sem = asyncio.Semaphore(1)
+    handler._closing = True
+
+    with pytest.raises(ConnectionDisconnected):
+        await handler.request([], b"")

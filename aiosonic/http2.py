@@ -60,6 +60,7 @@ class Http2Handler(object):
         self._window_updated = asyncio.Event()
         self._max_streams = 100
         self._stream_sem = asyncio.Semaphore(self._max_streams)
+        self._closing = False
 
         self.writer.write(h2conn.data_to_send())
         try:
@@ -110,6 +111,9 @@ class Http2Handler(object):
 
     async def request(self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]):
         from aiosonic import HttpResponse
+
+        if getattr(self, "_closing", False):
+            raise ConnectionDisconnected()
 
         if body is None:
             normalized_body = b""
@@ -280,6 +284,11 @@ class Http2Handler(object):
                 if req and not req["future"].done():
                     req["future"].set_exception(exc)
             elif isinstance(event, DISCONNECT_EVENTS):
+                self._closing = True
+                try:
+                    self.connection.keep = False
+                except Exception:
+                    pass
                 self._fail_all_pending(ConnectionDisconnected())
             elif isinstance(event, h2.events.TrailersReceived):
                 req = self.requests.get(event.stream_id)

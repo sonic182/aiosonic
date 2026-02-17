@@ -156,7 +156,8 @@ async def do_tests(url, repeat, warmup, concurrency):
     logger.info(f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp")
     logger.info(f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests")
     logger.info(
-        f"aiosonic is {((results['aiosonic_cyclic'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiosonic cyclic"
+        "aiosonic is %.2f%% faster than aiosonic cyclic",
+        ((results["aiosonic_cyclic"] / results["aiosonic"]) - 1) * 100,
     )
 
     return results

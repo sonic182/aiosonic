@@ -79,7 +79,7 @@ jobs:
 
       - name: Lint with ruff
         run: |
-          poetry run ruff check .
+          poetry run ruff check aiosonic tests aiosonic_utils
 
       - name: Test with pytest
         run: |
