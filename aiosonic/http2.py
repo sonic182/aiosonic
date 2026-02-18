@@ -394,12 +394,6 @@ class Http2Handler(object):
         req["headers"] = event.headers
         if not req["future"].done():
             req["future"].set_result(None)
-        try:
-            stream_obj = self.h2conn.streams.get(event.stream_id)
-        except Exception:
-            stream_obj = None
-        if (not stream_obj) or getattr(stream_obj, "closed", False):
-            req["chunk_queue"].put_nowait(None)
 
     def _on_settings_acknowledged(self) -> None:
         for stream_id, req in list(self.requests.items()):
