@@ -232,6 +232,25 @@ async def test_get_image(http2_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_stream_request_body_h2(http2_serv):
+    """Async-iterator request body must be sent and echoed back correctly over HTTP/2."""
+    url = f"{http2_serv}/posted"
+
+    async def body_gen():
+        yield b"foo"
+        yield b"bar"
+        yield b"baz"
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=body_gen(), verify=False, http2=True)
+        assert res.status_code == 200
+        assert res.http_version == "2"
+        text = await res.text()
+        assert text == "foobarbaz"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_image_stream_h2(http2_serv):
     """HTTP/2 image download via read_chunks() must produce the same bytes as content()."""
     url = f"{http2_serv}/sample.png"

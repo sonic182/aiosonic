@@ -22,7 +22,7 @@ function onRequest(req, res) {
       req.on('end', () => {
         console.log("--- end chunk")
         res.writeHead(200, { 'content-type': 'text/plain' });
-        res.end('Hello World')
+        res.end(data)
       })
     break;
 

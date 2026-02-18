@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, AsyncIterator, Dict, Iterator, List, Optional, Union
 
 import h2.events
 import h2.settings
@@ -37,29 +37,27 @@ if TYPE_CHECKING:
     from aiosonic.connection import Connection
 
 
-def _normalize_body(body: Optional[ParsedBodyType]) -> bytes:
+def _normalize_body(body: Optional[ParsedBodyType]) -> Union[bytes, AsyncIterator[bytes], Iterator[bytes]]:
     if body is None:
         return b""
-    if isinstance(body, bytes):
+    if isinstance(body, (bytes, bytearray, memoryview)):
+        return bytes(body) if not isinstance(body, bytes) else body
+    if isinstance(body, (AsyncIterator, Iterator)):
         return body
-    if isinstance(body, bytearray):
-        return bytes(body)
-    if isinstance(body, memoryview):
-        return body.tobytes()
-    raise ValueError("HTTP/2 requests currently require a bytes-like body")
+    raise ValueError("HTTP/2 body must be bytes-like or an (async) iterator")
 
 
-def _resolve_body_bytes(request: dict) -> bytes:
+def _resolve_body(request: dict) -> Union[bytes, AsyncIterator[bytes], Iterator[bytes]]:
     body = request.get("request_body")
-    if body is None and "body" in request:
-        body = request["body"]
-        if isinstance(body, bytearray):
-            body = bytes(body)
-        elif isinstance(body, memoryview):
-            body = body.tobytes()
-        elif not isinstance(body, (bytes, type(None))):
-            body = b""
-    return body or b""
+    if body is None:
+        body = request.get("body")
+    if body is None:
+        return b""
+    if isinstance(body, (bytes, bytearray, memoryview)):
+        return bytes(body) if not isinstance(body, bytes) else body
+    if isinstance(body, (AsyncIterator, Iterator)):
+        return body
+    return b""
 
 
 def _build_response(res: dict, queue, sem_release, flow_cb) -> "aiosonic.HttpResponse":
@@ -147,7 +145,7 @@ class Http2Handler(object):
     def h2conn(self, value):
         self._h2conn = value
 
-    def _register_stream(self, stream_id: int, headers, body: bytes) -> asyncio.Future:
+    def _register_stream(self, stream_id: int, headers, body: Union[bytes, AsyncIterator, Iterator]) -> asyncio.Future:
         headers_future = self.loop.create_future()
         chunk_queue: asyncio.Queue = asyncio.Queue()
         self.requests[stream_id] = {
@@ -231,18 +229,19 @@ class Http2Handler(object):
             return
         request["send_started"] = True
 
-        body_bytes = _resolve_body_bytes(request)
+        body = _resolve_body(request)
         headers = request["headers"]
+        has_body = bool(body) if isinstance(body, bytes) else True
 
-        await self._send_headers(stream_id, headers, end_stream=not body_bytes)
+        await self._send_headers(stream_id, headers, end_stream=not has_body)
 
-        if not body_bytes:
+        if not has_body:
             request["data_sent"] = True
             request["request_body"] = None
             request["send_scheduled"] = False
             return
 
-        await self._send_data(stream_id, body_bytes)
+        await self._send_data(stream_id, body)
 
         request["data_sent"] = True
         request["request_body"] = None
@@ -252,7 +251,15 @@ class Http2Handler(object):
         self.h2conn.send_headers(stream_id, headers, end_stream=end_stream)
         await self.check_to_write()
 
-    async def _send_data(self, stream_id: int, body_bytes: bytes) -> None:
+    async def _send_data(self, stream_id: int, body: Union[bytes, AsyncIterator[bytes], Iterator[bytes]]) -> None:
+        if isinstance(body, bytes):
+            await self._send_bytes(stream_id, body)
+        elif isinstance(body, AsyncIterator):
+            await self._send_async_iter(stream_id, body)
+        else:
+            await self._send_sync_iter(stream_id, body)
+
+    async def _send_bytes(self, stream_id: int, body_bytes: bytes) -> None:
         max_frame = getattr(self.h2conn, "max_outbound_frame_size", 65535)
         remaining = len(body_bytes)
         offset = 0
@@ -269,6 +276,17 @@ class Http2Handler(object):
             offset += to_send
             remaining -= to_send
             await self.check_to_write()
+
+    async def _send_async_iter(self, stream_id: int, body: AsyncIterator[bytes]) -> None:
+        chunks = []
+        async for chunk in body:
+            if chunk:
+                chunks.append(chunk if isinstance(chunk, bytes) else bytes(chunk))
+        await self._send_bytes(stream_id, b"".join(chunks))
+
+    async def _send_sync_iter(self, stream_id: int, body: Iterator[bytes]) -> None:
+        chunks = [chunk if isinstance(chunk, bytes) else bytes(chunk) for chunk in body if chunk]
+        await self._send_bytes(stream_id, b"".join(chunks))
 
     async def _wait_for_window(self, stream_id: int) -> None:
         while self.h2conn.local_flow_control_window(stream_id) <= 0:

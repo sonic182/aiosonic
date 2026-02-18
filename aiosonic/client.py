@@ -592,7 +592,7 @@ class HTTPClient:
         http2: bool = False,
     ):
         """Initialize client options."""
-        self.connector = connector or TCPConnector()
+        self.connector = connector or TCPConnector(http2=http2)
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl

@@ -9,7 +9,7 @@ from urllib.parse import ParseResult
 from onecache import ExpirableCache
 
 from aiosonic.exceptions import ConnectTimeout, HttpParsingError, TimeoutException
-from aiosonic.pools import PoolConfig, SmartPool
+from aiosonic.pools import BasePool, Http2MultiplexPool, PoolConfig, SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
 
@@ -32,13 +32,16 @@ class TCPConnector:
         connection_cls:
             Connection class to be used. Defaults to Connection.
         pool_cls:
-            Pool class to be used. Defaults to SmartPool.
+            Pool class to be used. Defaults to SmartPool, or Http2MultiplexPool when http2=True.
         resolver:
             DNS resolver to be used. Defaults to DefaultResolver.
         ttl_dns_cache (int):
             TTL in milliseconds for DNS cache. Defaults to 10000 (10 seconds).
         use_dns_cache (bool):
             Flag to indicate usage of DNS cache. Defaults to True.
+        http2 (bool):
+            When True and pool_cls is not explicitly provided, defaults pool_cls to
+            Http2MultiplexPool. Defaults to False.
     """
 
     def __init__(
@@ -50,11 +53,12 @@ class TCPConnector:
         resolver=None,
         ttl_dns_cache=10000,
         use_dns_cache=True,
+        http2: bool = False,
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
         self.connection_cls = connection_cls or Connection
-        self.pool_cls = pool_cls or SmartPool
+        self.pool_cls = pool_cls or (Http2MultiplexPool if http2 else SmartPool)
         self.timeouts = timeouts or Timeouts()
 
         if pool_configs is None:
@@ -67,7 +71,7 @@ class TCPConnector:
 
         # Pre-create pools based on provided pool_configs keys.
         # Keys are expected to be in the form "<scheme>://<host>" or ":default".
-        self.pools: Dict[str, SmartPool] = {}
+        self.pools: Dict[str, BasePool] = {}
         for key, config in self.pool_configs.items():
             self.pools[key] = self.pool_cls(config, self.connection_cls, self.timeouts)
 

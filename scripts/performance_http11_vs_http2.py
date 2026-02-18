@@ -16,7 +16,7 @@ from urllib.request import urlopen
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
-from aiosonic.pools import Http2MultiplexPool, PoolConfig
+from aiosonic.pools import PoolConfig
 from aiosonic.timeout import Timeouts
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -82,8 +82,7 @@ async def run_scenario(
     debug: bool = False,
 ) -> Dict[str, float | int | str]:
     """Run one benchmark scenario and return metrics."""
-    pool_cls = Http2MultiplexPool if http2 else None
-    connector = TCPConnector(pool_configs={":default": PoolConfig(size=pool_size)}, pool_cls=pool_cls)
+    connector = TCPConnector(pool_configs={":default": PoolConfig(size=pool_size)}, http2=http2)
     client = aiosonic.HTTPClient(connector=connector, http2=http2)
     limiter = asyncio.Semaphore(task_concurrency)
     version_counter: Dict[str, int] = {}
