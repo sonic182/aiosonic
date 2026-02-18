@@ -230,6 +230,32 @@ async def test_get_image(http2_serv):
             assert (await res.content()) == _file.read()
 
 
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_get_image_stream_h2(http2_serv):
+    """HTTP/2 image download via read_chunks() must produce the same bytes as content()."""
+    url = f"{http2_serv}/sample.png"
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(url, verify=False, http2=True)
+        assert res.status_code == 200
+        assert res.http_version == "2"
+        assert res.chunked is True
+
+        chunks = []
+        async for chunk in res.read_chunks():
+            assert isinstance(chunk, bytes)
+            chunks.append(chunk)
+
+        streamed = b"".join(chunks)
+
+    with open("tests/sample.png", "rb") as f:
+        expected = f.read()
+
+    assert len(chunks) >= 1
+    assert streamed == expected
+
+
 # Unit tests for HTTP2Handler with mocked components
 
 
@@ -505,7 +531,7 @@ async def test_disconnect_event_marks_connection_non_reusable(mocker):
     handler.requests = {
         1: {
             "future": fut,
-            "response_body": bytearray(),
+            "chunk_queue": asyncio.Queue(),
             "headers": [],
             "data_sent": False,
             "send_scheduled": False,

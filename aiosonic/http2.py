@@ -62,7 +62,7 @@ def _resolve_body_bytes(request: dict) -> bytes:
     return body or b""
 
 
-def _build_response(res: dict) -> "aiosonic.HttpResponse":
+def _build_response(res: dict, queue, sem_release, flow_cb) -> "aiosonic.HttpResponse":
     from aiosonic import HttpResponse
 
     response = HttpResponse()
@@ -74,10 +74,7 @@ def _build_response(res: dict) -> "aiosonic.HttpResponse":
         else:
             response._set_header(k, v)
 
-    response_body = res.get("response_body")
-    if response_body:
-        response._set_body(bytes(response_body))
-
+    response._set_h2_queue(queue, sem_release, flow_cb)
     return response
 
 
@@ -151,17 +148,18 @@ class Http2Handler(object):
         self._h2conn = value
 
     def _register_stream(self, stream_id: int, headers, body: bytes) -> asyncio.Future:
-        future = self.loop.create_future()
+        headers_future = self.loop.create_future()
+        chunk_queue: asyncio.Queue = asyncio.Queue()
         self.requests[stream_id] = {
             "request_body": body,
-            "response_body": bytearray(),
             "headers": headers,
-            "future": future,
+            "future": headers_future,
+            "chunk_queue": chunk_queue,
             "data_sent": False,
             "send_scheduled": True,
             "send_started": False,
         }
-        return future
+        return headers_future
 
     def _deregister_stream(self, stream_id: int) -> dict:
         return self.requests.pop(stream_id, {})
@@ -177,29 +175,48 @@ class Http2Handler(object):
         headers_param = headers.items() if isinstance(headers, dict) else headers
 
         await self._stream_sem.acquire()
+        stream_id = self.h2conn.get_next_available_stream_id()
+        headers_future = self._register_stream(stream_id, headers_param, normalized_body)
+
         try:
-            stream_id = self.h2conn.get_next_available_stream_id()
-            future = self._register_stream(stream_id, headers_param, normalized_body)
-
+            await self._send_stream(stream_id)
+        except Exception:
             try:
-                await self._send_stream(stream_id)
+                self.requests[stream_id]["send_scheduled"] = False
             except Exception:
-                try:
-                    self.requests[stream_id]["send_scheduled"] = False
-                except Exception:
-                    pass
+                pass
 
-            try:
-                await future
-            except Exception:
-                self.requests.pop(stream_id, None)
-                raise
-
-            res = self._deregister_stream(stream_id)
-        finally:
+        try:
+            await headers_future
+        except Exception:
+            self.requests.pop(stream_id, None)
             self._stream_sem.release()
+            raise
 
-        return _build_response(res)
+        req = self.requests.get(stream_id, {})
+        chunk_queue = req.get("chunk_queue", asyncio.Queue())
+        sem_release = self._make_sem_release(stream_id)
+        flow_cb = self._make_flow_cb(stream_id)
+        return _build_response(req, chunk_queue, sem_release, flow_cb)
+
+    def _make_sem_release(self, stream_id: int):
+        def release():
+            self._stream_sem.release()
+            self.requests.pop(stream_id, None)
+
+        return release
+
+    def _make_flow_cb(self, stream_id: int):
+        def flow_cb(length: int):
+            try:
+                h2conn = self.h2conn
+                h2conn.increment_flow_control_window(length, stream_id)
+                h2conn.increment_flow_control_window(length)
+                self.loop.create_task(self.check_to_write())
+            except Exception:
+                pass
+
+        return flow_cb
 
     async def _send_stream(self, stream_id: int) -> None:
         request = self.requests.get(stream_id)
@@ -334,8 +351,11 @@ class Http2Handler(object):
     def _on_stream_ended(self, event: h2.events.StreamEnded) -> None:
         dlogger.debug(f"--- exit stream, id: {event.stream_id}")
         req = self.requests.get(event.stream_id)
-        if req and not req["future"].done():
-            req["future"].set_result(bytes(req["response_body"]))
+        if not req:
+            return
+        if not req["future"].done():
+            req["future"].set_result(None)
+        req["chunk_queue"].put_nowait(None)
 
     def _on_data_received(self, event: h2.events.DataReceived) -> None:
         req = self.requests.get(event.stream_id)
@@ -343,18 +363,9 @@ class Http2Handler(object):
             dlogger.debug("data for unknown stream %s", event.stream_id)
             return
 
-        req["response_body"].extend(event.data)
-
-        h2conn = self.h2conn
-        if (
-            event.stream_id in h2conn.streams
-            and not h2conn.streams[event.stream_id].closed
-            and event.flow_controlled_length
-        ):
-            h2conn.increment_flow_control_window(event.flow_controlled_length, event.stream_id)
-        dlogger.debug(f"Flow increment: {event.flow_controlled_length}")
-        if event.flow_controlled_length:
-            h2conn.increment_flow_control_window(event.flow_controlled_length)
+        if event.data:
+            req["chunk_queue"].put_nowait(bytes(event.data))
+            dlogger.debug(f"queued {len(event.data)} bytes for stream {event.stream_id}")
 
     def _on_response_received(self, event: h2.events.ResponseReceived) -> None:
         req = self.requests.get(event.stream_id)
@@ -363,13 +374,14 @@ class Http2Handler(object):
             return
 
         req["headers"] = event.headers
+        if not req["future"].done():
+            req["future"].set_result(None)
         try:
             stream_obj = self.h2conn.streams.get(event.stream_id)
         except Exception:
             stream_obj = None
         if (not stream_obj) or getattr(stream_obj, "closed", False):
-            if not req["future"].done():
-                req["future"].set_result(bytes(req.get("response_body", bytearray())))
+            req["chunk_queue"].put_nowait(None)
 
     def _on_settings_acknowledged(self) -> None:
         for stream_id, req in list(self.requests.items()):
@@ -435,6 +447,9 @@ class Http2Handler(object):
             future = req.get("future")
             if future and not future.done():
                 future.set_exception(exc)
+            queue = req.get("chunk_queue")
+            if queue:
+                queue.put_nowait(None)
 
     # kept for backward compatibility with tests that call send_body directly
     async def send_body(self, stream_id: int) -> None:

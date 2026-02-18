@@ -100,6 +100,9 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
+        self._h2_chunk_queue = None
+        self._h2_sem_release = None
+        self._h2_flow_cb = None
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
@@ -140,6 +143,13 @@ class HttpResponse:
     def _set_connection(self, connection: Connection):
         """Set header to response."""
         self._connection = connection
+
+    def _set_h2_queue(self, queue, sem_release, flow_cb):
+        """Attach an HTTP/2 per-stream chunk queue to this response."""
+        self._h2_chunk_queue = queue
+        self._h2_sem_release = sem_release
+        self._h2_flow_cb = flow_cb
+        self.chunked = True
 
     @property
     def status_code(self) -> int:
@@ -212,6 +222,22 @@ class HttpResponse:
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
         """Read chunks from chunked response."""
+        if self._h2_chunk_queue is not None:
+            try:
+                while not self.chunks_readed:
+                    chunk = await self._h2_chunk_queue.get()
+                    if chunk is None:
+                        break
+                    if self._h2_flow_cb:
+                        self._h2_flow_cb(len(chunk))
+                    yield chunk
+                self.chunks_readed = True
+            finally:
+                if self._h2_sem_release:
+                    self._h2_sem_release()
+                    self._h2_sem_release = None
+            return
+
         if not self._connection:
             raise ConnectionError("missing connection, possible already read response.")
         try:
@@ -231,7 +257,15 @@ class HttpResponse:
                 self._connection = None
 
     def __del__(self):
-        # clean it
+        if self._h2_chunk_queue is not None:
+            queue = self._h2_chunk_queue
+            self._h2_chunk_queue = None
+            while not queue.empty():
+                queue.get_nowait()
+            if self._h2_sem_release:
+                self._h2_sem_release()
+                self._h2_sem_release = None
+            return
         if self._connection and self._connection.blocked:
             response_read = self.body
             self._connection.ensure_released(response_read)
