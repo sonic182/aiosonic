@@ -4,8 +4,9 @@ import asyncio
 import ssl
 import time
 from asyncio import StreamReader, StreamWriter, open_connection
+from contextlib import contextmanager
 from ssl import SSLContext
-from typing import Dict, Optional
+from typing import Dict, Iterator, NoReturn, Optional, Tuple, Type
 from urllib.parse import ParseResult
 
 import h2.config
@@ -115,12 +116,20 @@ class Connection:
         """
         if not self.writer:
             raise MissingWriterException("writer not set.")
-        try:
+        with self._handle_connection_disconnected((OSError,)):
             self.writer.write(data)
-        except OSError as exc:
-            self.keep = False
-            self.close()
-            raise ConnectionDisconnected() from exc
+
+    @contextmanager
+    def _handle_connection_disconnected(self, exceptions: Tuple[Type[BaseException], ...]) -> Iterator[None]:
+        try:
+            yield
+        except exceptions as exc:
+            self._raise_connection_disconnected(exc)
+
+    def _raise_connection_disconnected(self, exc: BaseException) -> NoReturn:
+        self.keep = False
+        self.close()
+        raise ConnectionDisconnected() from exc
 
     async def readline(self):
         """Read data from the socket until a line break is encountered.
@@ -133,7 +142,8 @@ class Connection:
         """
         if not self.reader:
             raise MissingReaderException("reader not set.")
-        return await self.reader.readline()
+        with self._handle_connection_disconnected((BrokenPipeError, ConnectionResetError)):
+            return await self.reader.readline()
 
     async def readexactly(self, size: int):
         """Read exactly the specified number of bytes from the socket.
@@ -149,7 +159,8 @@ class Connection:
         """
         if not self.reader:
             raise MissingReaderException("reader not set.")
-        return await self.reader.readexactly(size)
+        with self._handle_connection_disconnected((BrokenPipeError, ConnectionResetError)):
+            return await self.reader.readexactly(size)
 
     async def read(self, size: int = -1):
         """Read up to the specified number of bytes from the socket.
@@ -166,7 +177,8 @@ class Connection:
         """
         if not self.reader:
             raise MissingReaderException("reader not set.")
-        return await self.reader.read(size)
+        with self._handle_connection_disconnected((BrokenPipeError, ConnectionResetError)):
+            return await self.reader.read(size)
 
     async def readuntil(self, separator: bytes = b"\n"):
         """Read data from the socket until the specified separator is encountered.
@@ -182,7 +194,8 @@ class Connection:
         """
         if not self.reader:
             raise MissingReaderException("reader not set.")
-        return await self.reader.readuntil(separator)
+        with self._handle_connection_disconnected((BrokenPipeError, ConnectionResetError)):
+            return await self.reader.readuntil(separator)
 
     async def _connect(
         self,
