@@ -38,7 +38,7 @@ const app = async (req, res) => {
     const delay = randomDelay();
     await new Promise((resolve) => setTimeout(resolve, delay));
     const payload = JSON.stringify({
-      text: 'synthetic llm response',
+      text: 'synthetic benchmark response',
       latency_ms: delay,
       http_version: req.httpVersion,
     });
@@ -69,5 +69,5 @@ const server = http2.createSecureServer(
 );
 
 server.listen(port, '0.0.0.0', () => {
-  process.stdout.write(`llm-bench-server listening on https://0.0.0.0:${port}\n`);
+  process.stdout.write(`http-bench-server listening on https://0.0.0.0:${port}\n`);
 });

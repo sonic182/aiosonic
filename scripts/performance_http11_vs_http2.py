@@ -1,4 +1,4 @@
-"""Benchmark HTTP/1.1 pool vs HTTP/2 multiplexing for LLM-like latency."""
+"""Benchmark HTTP/1.1 pooling vs HTTP/2 multiplexing under synthetic latency."""
 
 import argparse
 import asyncio
@@ -28,8 +28,8 @@ def is_tool(name: str) -> bool:
     return which(name) is not None
 
 
-class NodeLLMServer:
-    """Context manager to run the local Node.js LLM-like server."""
+class NodeBenchmarkServer:
+    """Context manager to run the local Node.js benchmark server."""
 
     def __init__(self, script_path: Path, port: int, min_delay_ms: int, max_delay_ms: int):
         self.script_path = script_path
@@ -69,7 +69,7 @@ class NodeLLMServer:
                         return
             except URLError:
                 time.sleep(0.2)
-        raise RuntimeError("LLM benchmark server did not start in time")
+        raise RuntimeError("Benchmark server did not start in time")
 
 
 async def run_scenario(
@@ -156,7 +156,9 @@ async def benchmark(args):
         debug=args.debug,
     )
 
-    improvement = ((h1_result["elapsed_seconds"] / h2_result["elapsed_seconds"]) - 1) * 100
+    h1_elapsed = float(h1_result["elapsed_seconds"])
+    h2_elapsed = float(h2_result["elapsed_seconds"])
+    improvement = ((h1_elapsed / h2_elapsed) - 1) * 100
 
     logger.info("--- Results ---")
     logger.info("HTTP/1.1: %s", json.dumps(h1_result, indent=2))
@@ -166,7 +168,7 @@ async def benchmark(args):
 
 def parse_args():
     """Parse CLI arguments."""
-    parser = argparse.ArgumentParser(description="Benchmark HTTP/1.1 vs HTTP/2 for LLM-like latency")
+    parser = argparse.ArgumentParser(description="Benchmark HTTP/1.1 vs HTTP/2 under synthetic latency")
     parser.add_argument("--requests", type=int, default=1000, help="Total requests per scenario")
     parser.add_argument(
         "--task-concurrency",
@@ -196,11 +198,11 @@ def main():
         raise ValueError("Invalid delay bounds")
 
     repo_root = Path(__file__).resolve().parent.parent
-    node_script = repo_root / "scripts" / "llm_http2_server.mjs"
+    node_script = repo_root / "scripts" / "http_benchmark_server.mjs"
     if not node_script.exists():
         raise FileNotFoundError(f"Missing server script: {node_script}")
 
-    with NodeLLMServer(
+    with NodeBenchmarkServer(
         script_path=node_script,
         port=args.port,
         min_delay_ms=args.min_delay * 1000,
