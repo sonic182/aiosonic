@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import h2.events
 import h2.settings
@@ -37,6 +37,50 @@ if TYPE_CHECKING:
     from aiosonic.connection import Connection
 
 
+def _normalize_body(body: Optional[ParsedBodyType]) -> bytes:
+    if body is None:
+        return b""
+    if isinstance(body, bytes):
+        return body
+    if isinstance(body, bytearray):
+        return bytes(body)
+    if isinstance(body, memoryview):
+        return body.tobytes()
+    raise ValueError("HTTP/2 requests currently require a bytes-like body")
+
+
+def _resolve_body_bytes(request: dict) -> bytes:
+    body = request.get("request_body")
+    if body is None and "body" in request:
+        body = request["body"]
+        if isinstance(body, bytearray):
+            body = bytes(body)
+        elif isinstance(body, memoryview):
+            body = body.tobytes()
+        elif not isinstance(body, (bytes, type(None))):
+            body = b""
+    return body or b""
+
+
+def _build_response(res: dict) -> "aiosonic.HttpResponse":
+    from aiosonic import HttpResponse
+
+    response = HttpResponse()
+    for key, val in res.get("headers", []):
+        k = key.decode() if isinstance(key, (bytes, bytearray)) else key
+        v = val.decode() if isinstance(val, (bytes, bytearray)) else val
+        if k == ":status":
+            response.response_initial = {"version": "2", "code": v}
+        else:
+            response._set_header(k, v)
+
+    response_body = res.get("response_body")
+    if response_body:
+        response._set_body(bytes(response_body))
+
+    return response
+
+
 class Http2Handler(object):
     """HTTP/2 handler attached to a Connection.
 
@@ -55,7 +99,7 @@ class Http2Handler(object):
         self.loop = asyncio.get_event_loop()
         h2conn.initiate_connection()
 
-        self.requests = {}
+        self.requests: Dict[int, dict] = {}
 
         self._window_updated = asyncio.Event()
         self._max_streams = 100
@@ -72,7 +116,6 @@ class Http2Handler(object):
 
     @property
     def writer(self):
-        # prefer explicitly set writer (tests/mocks), fallback to connection
         w = getattr(self, "_writer", None)
         if w is not None:
             return w
@@ -85,7 +128,6 @@ class Http2Handler(object):
 
     @property
     def reader(self):
-        # prefer explicitly set reader (tests/mocks), fallback to connection
         r = getattr(self, "_reader", None)
         if r is not None:
             return r
@@ -98,7 +140,6 @@ class Http2Handler(object):
 
     @property
     def h2conn(self):
-        # prefer explicitly set h2conn (tests/mocks), fallback to connection
         h = getattr(self, "_h2conn", None)
         if h is not None:
             return h
@@ -109,44 +150,39 @@ class Http2Handler(object):
     def h2conn(self, value):
         self._h2conn = value
 
-    async def request(self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]):
-        from aiosonic import HttpResponse
+    def _register_stream(self, stream_id: int, headers, body: bytes) -> asyncio.Future:
+        future = self.loop.create_future()
+        self.requests[stream_id] = {
+            "request_body": body,
+            "response_body": bytearray(),
+            "headers": headers,
+            "future": future,
+            "data_sent": False,
+            "send_scheduled": True,
+            "send_started": False,
+        }
+        return future
 
+    def _deregister_stream(self, stream_id: int) -> dict:
+        return self.requests.pop(stream_id, {})
+
+    async def request(self, headers: "aiosonic.HeadersType", body: Optional[ParsedBodyType]):
         if getattr(self, "_closing", False):
             raise ConnectionDisconnected()
 
-        if body is None:
-            normalized_body = b""
-        elif isinstance(body, bytes):
-            normalized_body = body
-        elif isinstance(body, bytearray):
-            normalized_body = bytes(body)
-        elif isinstance(body, memoryview):
-            normalized_body = body.tobytes()
-        else:
-            raise ValueError("HTTP/2 requests currently require a bytes-like body")
-
         if not hasattr(self, "_stream_sem"):
-            self._stream_sem = asyncio.Semaphore(self._max_streams if hasattr(self, "_max_streams") else 100)
+            self._stream_sem = asyncio.Semaphore(getattr(self, "_max_streams", 100))
+
+        normalized_body = _normalize_body(body)
+        headers_param = headers.items() if isinstance(headers, dict) else headers
 
         await self._stream_sem.acquire()
         try:
             stream_id = self.h2conn.get_next_available_stream_id()
-            headers_param = headers.items() if isinstance(headers, dict) else headers
-
-            future = self.loop.create_future()
-            self.requests[stream_id] = {
-                "request_body": normalized_body,
-                "response_body": bytearray(),
-                "headers": headers_param,
-                "future": future,
-                "data_sent": False,
-                "send_scheduled": True,
-                "send_started": False,
-            }
+            future = self._register_stream(stream_id, headers_param, normalized_body)
 
             try:
-                await self.send_body(stream_id)
+                await self._send_stream(stream_id)
             except Exception:
                 try:
                     self.requests[stream_id]["send_scheduled"] = False
@@ -156,33 +192,83 @@ class Http2Handler(object):
             try:
                 await future
             except Exception:
-                try:
-                    del self.requests[stream_id]
-                except KeyError:
-                    pass
+                self.requests.pop(stream_id, None)
                 raise
 
-            res = self.requests.pop(stream_id, {})
+            res = self._deregister_stream(stream_id)
         finally:
             self._stream_sem.release()
 
-        response = HttpResponse()
-        for key, val in res.get("headers", []):
-            k = key.decode() if isinstance(key, (bytes, bytearray)) else key
-            v = val.decode() if isinstance(val, (bytes, bytearray)) else val
-            if k == ":status":
-                response.response_initial = {"version": "2", "code": v}
-            else:
-                response._set_header(k, v)
+        return _build_response(res)
 
-        response_body = res.get("response_body")
-        if response_body:
-            response._set_body(bytes(response_body))
+    async def _send_stream(self, stream_id: int) -> None:
+        request = self.requests.get(stream_id)
+        if not request:
+            dlogger.debug("_send_stream called for unknown stream %s", stream_id)
+            return
 
-        return response
+        request.setdefault("send_started", False)
+        request.setdefault("send_scheduled", False)
+        request.setdefault("data_sent", False)
+        if request["send_started"]:
+            return
+        request["send_started"] = True
 
-    async def reader_t(self):
-        """Reader task."""
+        body_bytes = _resolve_body_bytes(request)
+        headers = request["headers"]
+
+        await self._send_headers(stream_id, headers, end_stream=not body_bytes)
+
+        if not body_bytes:
+            request["data_sent"] = True
+            request["request_body"] = None
+            request["send_scheduled"] = False
+            return
+
+        await self._send_data(stream_id, body_bytes)
+
+        request["data_sent"] = True
+        request["request_body"] = None
+        request["send_scheduled"] = False
+
+    async def _send_headers(self, stream_id: int, headers, end_stream: bool) -> None:
+        self.h2conn.send_headers(stream_id, headers, end_stream=end_stream)
+        await self.check_to_write()
+
+    async def _send_data(self, stream_id: int, body_bytes: bytes) -> None:
+        max_frame = getattr(self.h2conn, "max_outbound_frame_size", 65535)
+        remaining = len(body_bytes)
+        offset = 0
+
+        while remaining > 0:
+            await self._wait_for_window(stream_id)
+
+            win = self.h2conn.local_flow_control_window(stream_id)
+            to_send = min(win, max_frame, remaining)
+            chunk = body_bytes[offset : offset + to_send]
+            last = (offset + to_send) >= len(body_bytes)
+
+            self.h2conn.send_data(stream_id, chunk, end_stream=last)
+            offset += to_send
+            remaining -= to_send
+            await self.check_to_write()
+
+    async def _wait_for_window(self, stream_id: int) -> None:
+        while self.h2conn.local_flow_control_window(stream_id) <= 0:
+            self._window_updated.clear()
+            await self._window_updated.wait()
+
+    async def check_to_write(self) -> None:
+        data_to_send = self.h2conn.data_to_send()
+        if data_to_send:
+            dlogger.debug(("writing data", data_to_send))
+            self.writer.write(data_to_send)
+            try:
+                await self.writer.drain()
+            except Exception:
+                pass
+
+    async def reader_t(self) -> None:
         if not hasattr(self, "loop"):
             self.loop = asyncio.get_event_loop()
         if not hasattr(self, "_window_updated"):
@@ -218,196 +304,138 @@ class Http2Handler(object):
                 else:
                     await self.check_to_write()
 
-    async def handle_events(self, events):
-        """Handle http2 events."""
-        if not hasattr(self, "requests"):
-            self.requests = {}
-        h2conn = self.h2conn
-
+    async def handle_events(self, events: List) -> None:
         for event in events:
             if isinstance(event, h2.events.StreamEnded):
-                dlogger.debug(f"--- exit stream, id: {event.stream_id}")
-                req = self.requests.get(event.stream_id)
-                if req and not req["future"].done():
-                    req["future"].set_result(bytes(req["response_body"]))
+                self._on_stream_ended(event)
             elif isinstance(event, h2.events.DataReceived):
-                req = self.requests.get(event.stream_id)
-                if not req:
-                    dlogger.debug("data for unknown stream %s", event.stream_id)
-                    continue
-                req["response_body"].extend(event.data)
-
-                if (
-                    event.stream_id in h2conn.streams
-                    and not h2conn.streams[event.stream_id].closed
-                    and event.flow_controlled_length
-                ):
-                    h2conn.increment_flow_control_window(event.flow_controlled_length, event.stream_id)
-                dlogger.debug(f"Flow increment: {event.flow_controlled_length}")
-                if event.flow_controlled_length:
-                    h2conn.increment_flow_control_window(event.flow_controlled_length)
+                self._on_data_received(event)
             elif isinstance(event, h2.events.ResponseReceived):
-                req = self.requests.get(event.stream_id)
-                if not req:
-                    dlogger.debug("response for unknown stream %s", event.stream_id)
-                    continue
-                req["headers"] = event.headers
-                # If the stream is already closed (server sent headers with END_STREAM),
-                # complete the future so requests don't hang waiting for StreamEnded.
-                try:
-                    stream_obj = h2conn.streams.get(event.stream_id)
-                except Exception:
-                    stream_obj = None
-                if (not stream_obj) or getattr(stream_obj, "closed", False):
-                    if not req["future"].done():
-                        req["future"].set_result(bytes(req.get("response_body", bytearray())))
+                self._on_response_received(event)
             elif isinstance(event, h2.events.SettingsAcknowledged):
-                # After settings ack we may be allowed to send body data
-                for stream_id, req in list(self.requests.items()):
-                    if not req["data_sent"] and not req["send_scheduled"]:
-                        req["send_scheduled"] = True
-                        try:
-                            self.loop.create_task(self.send_body(stream_id))
-                        except Exception:
-                            req["send_scheduled"] = False
+                self._on_settings_acknowledged()
             elif isinstance(event, h2.events.WindowUpdated):
-                # notify senders waiting for window updates (don't clear here;
-                # waiters will clear after waking)
-                self._window_updated.set()
+                self._on_window_updated()
             elif isinstance(event, h2.events.StreamReset):
-                exc = ConnectionDisconnected()
-                req = self.requests.get(event.stream_id)
-                if req and not req["future"].done():
-                    req["future"].set_exception(exc)
+                self._on_stream_reset(event)
             elif isinstance(event, DISCONNECT_EVENTS):
-                self._closing = True
-                try:
-                    self.connection.keep = False
-                except Exception:
-                    pass
-                self._fail_all_pending(ConnectionDisconnected())
+                self._on_disconnect()
             elif isinstance(event, h2.events.TrailersReceived):
-                req = self.requests.get(event.stream_id)
-                if req:
-                    try:
-                        req["headers"] = list(req.get("headers", [])) + list(event.headers)
-                    except Exception:
-                        pass
+                self._on_trailers_received(event)
             elif isinstance(event, IGNORED_EVENTS):
                 dlogger.debug("ignoring http2 event %s", event.__class__.__name__)
             elif isinstance(event, h2.events.RemoteSettingsChanged):
-                new_max = event.changed_settings.get(h2.settings.SettingCodes.MAX_CONCURRENT_STREAMS)
-                if new_max is not None:
-                    new_limit = int(new_max.new_value)
-                    if new_limit != self._max_streams:
-                        inflight = self._max_streams - self._stream_sem._value
-                        self._max_streams = new_limit
-                        self._stream_sem._value = max(0, new_limit - inflight)
+                self._on_remote_settings_changed(event)
             elif isinstance(event, h2.events.PingReceived):
                 pass
             else:
                 raise MissingEvent(f"another event {event.__class__.__name__}")
 
-    async def check_to_write(self):
-        """Writer task."""
-        h2conn = self.h2conn
-        data_to_send = h2conn.data_to_send()
+    def _on_stream_ended(self, event: h2.events.StreamEnded) -> None:
+        dlogger.debug(f"--- exit stream, id: {event.stream_id}")
+        req = self.requests.get(event.stream_id)
+        if req and not req["future"].done():
+            req["future"].set_result(bytes(req["response_body"]))
 
-        if data_to_send:
-            dlogger.debug(("writing data", data_to_send))
-            self.writer.write(data_to_send)
+    def _on_data_received(self, event: h2.events.DataReceived) -> None:
+        req = self.requests.get(event.stream_id)
+        if not req:
+            dlogger.debug("data for unknown stream %s", event.stream_id)
+            return
+
+        req["response_body"].extend(event.data)
+
+        h2conn = self.h2conn
+        if (
+            event.stream_id in h2conn.streams
+            and not h2conn.streams[event.stream_id].closed
+            and event.flow_controlled_length
+        ):
+            h2conn.increment_flow_control_window(event.flow_controlled_length, event.stream_id)
+        dlogger.debug(f"Flow increment: {event.flow_controlled_length}")
+        if event.flow_controlled_length:
+            h2conn.increment_flow_control_window(event.flow_controlled_length)
+
+    def _on_response_received(self, event: h2.events.ResponseReceived) -> None:
+        req = self.requests.get(event.stream_id)
+        if not req:
+            dlogger.debug("response for unknown stream %s", event.stream_id)
+            return
+
+        req["headers"] = event.headers
+        try:
+            stream_obj = self.h2conn.streams.get(event.stream_id)
+        except Exception:
+            stream_obj = None
+        if (not stream_obj) or getattr(stream_obj, "closed", False):
+            if not req["future"].done():
+                req["future"].set_result(bytes(req.get("response_body", bytearray())))
+
+    def _on_settings_acknowledged(self) -> None:
+        for stream_id, req in list(self.requests.items()):
+            if not req["data_sent"] and not req["send_scheduled"]:
+                req["send_scheduled"] = True
+                try:
+                    self.loop.create_task(self._send_stream(stream_id))
+                except Exception:
+                    req["send_scheduled"] = False
+
+    def _on_window_updated(self) -> None:
+        self._window_updated.set()
+
+    def _on_stream_reset(self, event: h2.events.StreamReset) -> None:
+        req = self.requests.get(event.stream_id)
+        if req and not req["future"].done():
+            req["future"].set_exception(ConnectionDisconnected())
+
+    def _on_disconnect(self) -> None:
+        self._closing = True
+        try:
+            self.connection.keep = False
+        except Exception:
+            pass
+        self._fail_all_pending(ConnectionDisconnected())
+
+    def _on_trailers_received(self, event: h2.events.TrailersReceived) -> None:
+        req = self.requests.get(event.stream_id)
+        if req:
             try:
-                await self.writer.drain()
+                req["headers"] = list(req.get("headers", [])) + list(event.headers)
             except Exception:
                 pass
 
-    async def send_body(self, stream_id):
-        if not hasattr(self, "_window_updated"):
-            self._window_updated = asyncio.Event()
-        if not hasattr(self, "requests"):
-            self.requests = {}
+    def _on_remote_settings_changed(self, event: h2.events.RemoteSettingsChanged) -> None:
+        new_max = event.changed_settings.get(h2.settings.SettingCodes.MAX_CONCURRENT_STREAMS)
+        if new_max is not None:
+            new_limit = int(new_max.new_value)
+            if new_limit != self._max_streams:
+                inflight = self._max_streams - self._stream_sem._value
+                self._max_streams = new_limit
+                self._stream_sem._value = max(0, new_limit - inflight)
 
-        def chunks(lst, n):
-            for i in range(0, len(lst), n):
-                yield lst[i : i + n]
-
-        request = self.requests.get(stream_id)
-        if not request:
-            dlogger.debug("send_body called for unknown stream %s", stream_id)
-            return
-
-        request.setdefault("send_started", False)
-        request.setdefault("send_scheduled", False)
-        request.setdefault("data_sent", False)
-        if request["send_started"]:
-            return
-        request["send_started"] = True
-
-        body_bytes = request.get("request_body")
-        if body_bytes is None and "body" in request:
-            body_bytes = request["body"]
-            if isinstance(body_bytes, bytearray):
-                body_bytes = bytes(body_bytes)
-            elif isinstance(body_bytes, memoryview):
-                body_bytes = body_bytes.tobytes()
-            elif not isinstance(body_bytes, (bytes, type(None))):
-                body_bytes = b""
-        headers = request["headers"]
-
-        end_stream = False if body_bytes else True
-        self.h2conn.send_headers(stream_id, headers, end_stream=end_stream)
-        await self.check_to_write()
-
-        if not body_bytes:
-            request["data_sent"] = True
-            request["request_body"] = None
-            request["send_scheduled"] = False
-            return
-
-        remaining = len(body_bytes)
-        offset = 0
-        max_frame = getattr(self.h2conn, "max_outbound_frame_size", 65535)
-        while remaining > 0:
-            win = self.h2conn.local_flow_control_window(stream_id)
-            while win <= 0:
-                self._window_updated.clear()
-                await self._window_updated.wait()
-                win = self.h2conn.local_flow_control_window(stream_id)
-
-            to_split = min(win, max_frame)
-            for chunk in chunks(body_bytes[offset : offset + remaining], to_split):
-                last = (offset + len(chunk)) >= len(body_bytes)
-                self.h2conn.send_data(stream_id, chunk, end_stream=last)
-                offset += len(chunk)
-                remaining -= len(chunk)
-            await self.check_to_write()
-
-        request["data_sent"] = True
-        if "request_body" in request:
-            request["request_body"] = None
-        request["send_scheduled"] = False
-
-    def cleanup(self):
-        """Cancel and schedule waiting for the reader task to finish."""
+    def cleanup(self) -> None:
         try:
             self.reader_task.cancel()
         except Exception:
             pass
-        # schedule a background task to await the cancelled task
         try:
             self.loop.create_task(self._wait_reader_cancel())
         except Exception:
             pass
 
-    async def _wait_reader_cancel(self):
+    async def _wait_reader_cancel(self) -> None:
         try:
             await self.reader_task
         except asyncio.CancelledError:
             pass
 
-    def _fail_all_pending(self, exc: Exception):
+    def _fail_all_pending(self, exc: Exception) -> None:
         reqs = getattr(self, "requests", {}) or {}
         for stream_id, req in list(reqs.items()):
             future = req.get("future")
             if future and not future.done():
                 future.set_exception(exc)
+
+    # kept for backward compatibility with tests that call send_body directly
+    async def send_body(self, stream_id: int) -> None:
+        await self._send_stream(stream_id)
