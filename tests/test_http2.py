@@ -275,6 +275,70 @@ async def test_get_image_stream_h2(http2_serv):
     assert streamed == expected
 
 
+def test_h2_custom_connector_requires_explicit_http2_flag_on_client():
+    """Regression: TCPConnector(http2=True) does NOT propagate http2 to HTTPClient.
+
+    http2=True must be passed to HTTPClient explicitly. Without it, client.http2
+    stays False: ALPN never advertises h2, TLS negotiates HTTP/1.1, and
+    Http2MultiplexPool's shared connection is used for HTTP/1.1 reads. Concurrent
+    requests then crash with RuntimeError because asyncio StreamReader.readuntil()
+    cannot be awaited by two coroutines simultaneously.
+    """
+    from aiosonic.pools import Http2MultiplexPool
+
+    connector = TCPConnector(http2=True)
+    assert connector.pool_cls is Http2MultiplexPool
+
+    wrong = aiosonic.HTTPClient(connector)
+    assert wrong.http2 is False, "footgun: http2 is not inferred from the connector"
+
+    correct = aiosonic.HTTPClient(connector, http2=True)
+    assert correct.http2 is True
+    assert correct.connector.pool_cls is Http2MultiplexPool
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_multiplexing_concurrent_requests(http2_serv):
+    """10 concurrent requests must all complete over a single shared TCP connection.
+
+    Verifies two traits at once:
+    - Multiplexing: parallel streams interleaved on one connection.
+    - Single connection per host: Http2MultiplexPool opens exactly one TCP connection
+      regardless of how many streams are in flight simultaneously.
+    """
+    url = http2_serv
+    async with aiosonic.HTTPClient(http2=True) as client:
+        responses = await asyncio.gather(*[client.get(url, verify=False) for _ in range(10)])
+        texts = [await res.text() for res in responses]
+        pool = client.connector.pools[":default"]
+
+    for res, text in zip(responses, texts):
+        assert res.status_code == 200
+        assert res.http_version == "2"
+        assert text == "Hello World"
+
+    assert len(pool.connections) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(60)
+async def test_h2_flow_control_large_body(http2_serv):
+    """POST a 1 MB body and verify the server echoes it back intact.
+
+    Exercises the window-wait send loop in Http2Handler._send_bytes() under real
+    flow-control backpressure from the Node server.
+    """
+    url = f"{http2_serv}/posted"
+    body = b"x" * (1024 * 1024)
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=body, verify=False, http2=True)
+
+    assert res.status_code == 200
+    assert res.http_version == "2"
+    assert await res.content() == body
+
+
 # Unit tests for HTTP2Handler with mocked components
 
 

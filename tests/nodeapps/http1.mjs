@@ -245,7 +245,7 @@ const requestListener = async function(req, res) {
 
 // Create and start the server.
 const server = http.createServer(requestListener);
-server.keepAliveTimeout = 2;
+server.keepAliveTimeout = 5000;
 const myArgs = process.argv.slice(2);
 server.listen(myArgs[0]);
 console.log(`--- LISTENING ON PORT ${myArgs[0]}`);
