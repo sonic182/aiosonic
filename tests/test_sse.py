@@ -7,6 +7,7 @@ from aiosonic.sse_config import RequestConfig
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_connection(sse_serv):
     """Test basic SSE connection and event parsing."""
     client = SSEClient()
@@ -30,6 +31,7 @@ async def test_sse_connection(sse_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_reconnection(sse_serv_reconnect):
     """Test SSE client with reconnection logic."""
     client = SSEClient()
@@ -48,6 +50,7 @@ async def test_sse_reconnection(sse_serv_reconnect):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_no_reconnection(sse_serv_reconnect):
     """Test SSE client without reconnection logic."""
     client = SSEClient()
@@ -63,6 +66,7 @@ async def test_sse_no_reconnection(sse_serv_reconnect):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_parsing_error(sse_serv_malformed):
     """Test SSE client with malformed events."""
     client = SSEClient()
@@ -74,6 +78,7 @@ async def test_sse_parsing_error(sse_serv_malformed):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_connection_error(http_serv):
     """Test SSE client with a non-SSE endpoint."""
     client = SSEClient()
@@ -82,6 +87,7 @@ async def test_sse_connection_error(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_post_request_with_json(sse_serv_post):
     """Test POST request with JSON body returning SSE stream."""
     client = SSEClient()
@@ -104,6 +110,7 @@ async def test_sse_post_request_with_json(sse_serv_post):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_put_request_with_data(sse_serv_put):
     """Test PUT request with data returning SSE stream."""
     client = SSEClient()
@@ -124,6 +131,7 @@ async def test_sse_put_request_with_data(sse_serv_put):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_patch_request(sse_serv_patch):
     """Test PATCH request returning SSE stream."""
     client = SSEClient()
@@ -144,6 +152,7 @@ async def test_sse_patch_request(sse_serv_patch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_delete_request(sse_serv_delete):
     """Test DELETE request returning SSE stream."""
     client = SSEClient()
@@ -164,6 +173,7 @@ async def test_sse_delete_request(sse_serv_delete):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_get_with_query_params(sse_serv_params):
     """Test GET request with query parameters returning SSE stream."""
     client = SSEClient()
@@ -188,6 +198,7 @@ async def test_sse_get_with_query_params(sse_serv_params):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_post_reconnection_with_body(sse_serv_post_reconnect):
     """Test POST request reconnection preserving request body."""
     client = SSEClient()
@@ -211,6 +222,7 @@ async def test_sse_post_reconnection_with_body(sse_serv_post_reconnect):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_sse_keep_connection(sse_serv):
     """Test SSE client with keep_connection=True does not close the connection."""
     client = SSEClient()

@@ -29,6 +29,7 @@ logging.getLogger("aiosonic").setLevel(logging.DEBUG)
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_simple_get(http_serv):
     """Test simple get."""
     url = http_serv
@@ -42,6 +43,7 @@ async def test_simple_get(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_simple_get_aiodns(http_serv, mocker):
     """Test simple get with aiodns"""
 
@@ -74,6 +76,7 @@ class MyConnection(Connection):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_keep_alive_smart_pool(http_serv):
     """Test keepalive smart pool."""
     url = http_serv
@@ -92,6 +95,7 @@ async def test_keep_alive_smart_pool(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_keep_alive_cyclic_pool(http_serv):
     """Test keepalive cyclic pool."""
     url = http_serv
@@ -111,6 +115,7 @@ async def test_keep_alive_cyclic_pool(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_with_params(http_serv):
     """Test get with params."""
     url = http_serv
@@ -123,6 +128,7 @@ async def test_get_with_params(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_with_params_in_url(http_serv):
     """Test get with params."""
     url = http_serv + "?foo=bar"
@@ -134,6 +140,7 @@ async def test_get_with_params_in_url(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_with_params_tuple(http_serv):
     """Test get with params as tuple."""
     url = http_serv
@@ -146,6 +153,7 @@ async def test_get_with_params_tuple(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_post_form_urlencoded(http_serv):
     """Test post form urlencoded."""
     url = http_serv + "/post"
@@ -158,6 +166,7 @@ async def test_post_form_urlencoded(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_post_tuple_form_urlencoded(http_serv):
     """Test post form urlencoded tuple."""
     url = http_serv + "/post"
@@ -170,6 +179,7 @@ async def test_post_tuple_form_urlencoded(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_post_json(http_serv):
     """Test post json."""
     url = http_serv + "/post_json"
@@ -182,6 +192,7 @@ async def test_post_json(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_put_patch(http_serv):
     """Test put."""
     url = http_serv + "/put_patch"
@@ -198,6 +209,7 @@ async def test_put_patch(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_delete(http_serv):
     """Test delete."""
     url = http_serv + "/delete"
@@ -262,6 +274,7 @@ async def test_connect_timeout(mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_read_timeout(http_serv, mocker):
     """Test read timeout."""
     url = http_serv + "/slow_request"
@@ -272,6 +285,7 @@ async def test_read_timeout(http_serv, mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_timeouts_overriden(http_serv, mocker):
     """Test timeouts overriden."""
     url = http_serv + "/slow_request"
@@ -305,6 +319,7 @@ async def test_request_timeout(http_serv, mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_pool_acquire_timeout(http_serv, mocker):
     """Test pool acquirere timeout."""
     url = http_serv + "/slow_request"
@@ -319,6 +334,7 @@ async def test_pool_acquire_timeout(http_serv, mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_chunked_response(http_serv):
     """Test get chunked response."""
     url = http_serv + "/chunked"
@@ -343,6 +359,7 @@ async def test_get_chunked_response(http_serv):
     reason="this test freezes testing on PyPy",
 )
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_chunked_response_and_not_read_it(http_serv):
     """Test get chunked response and not read it.
 
@@ -365,6 +382,7 @@ async def test_get_chunked_response_and_not_read_it(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_read_chunks_by_text_method(http_serv):
     """Test read chunks by text method."""
     url = http_serv + "/chunked"
@@ -377,6 +395,7 @@ async def test_read_chunks_by_text_method(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_body_gzip(http_serv):
     """Test simple get."""
     url = http_serv + "/gzip"
@@ -389,6 +408,7 @@ async def test_get_body_gzip(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_body_deflate(http_serv):
     """Test simple get."""
     url = http_serv + "/deflate"
@@ -401,6 +421,7 @@ async def test_get_body_deflate(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_post_chunked(http_serv):
     """Test post chunked."""
     url = http_serv + "/post"
@@ -425,6 +446,7 @@ async def test_post_chunked(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_close_connection(http_serv):
     """Test close connection."""
     url = http_serv + "/post"
@@ -439,6 +461,7 @@ async def test_close_connection(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_close_old_keeped_conn(http_serv):
     """Test close old conn."""
     url1 = http_serv
@@ -456,6 +479,7 @@ async def test_close_old_keeped_conn(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_redirect(http_serv):
     """Test follow redirect."""
     url = http_serv + "/get_redirect"
@@ -475,6 +499,7 @@ async def test_get_redirect(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_max_redirects(http_serv):
     """Test simple get."""
     url = http_serv + "/max_redirects"
@@ -566,6 +591,7 @@ async def test_http2_wrong_event(mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_no_hostname(http_serv):
     """Test simple get."""
     url = "http://:" + http_serv.split(":")[2]
@@ -605,6 +631,7 @@ async def test_wait_connections_busy_timeout(mocker):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_get_with_cookies(http_serv):
     """Test simple get."""
     url = http_serv + "/cookies"

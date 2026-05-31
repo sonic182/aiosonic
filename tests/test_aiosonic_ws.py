@@ -9,6 +9,7 @@ from aiosonic.exceptions import ReadTimeout
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_connect(ws_serv):
     """Test basic WebSocket connection."""
     async with WebSocketClient() as client:
@@ -19,6 +20,7 @@ async def test_ws_connect(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_send_receive_text(ws_serv):
     """Test sending and receiving text messages."""
     async with WebSocketClient() as client:
@@ -29,6 +31,7 @@ async def test_ws_send_receive_text(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_send_receive_json(ws_serv):
     """Test sending and receiving JSON messages."""
     test_data = {"message": "Hello", "type": "greeting"}
@@ -42,6 +45,7 @@ async def test_ws_send_receive_json(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_send_receive_bytes(ws_serv):
     """Test sending and receiving binary messages."""
     test_bytes = b"Hello Binary WebSocket"
@@ -54,6 +58,7 @@ async def test_ws_send_receive_bytes(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_ping_pong(ws_serv):
     """Test WebSocket ping/pong functionality."""
     async with WebSocketClient() as client:
@@ -64,6 +69,7 @@ async def test_ws_ping_pong(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_close_codes(ws_serv):
     """Test WebSocket close with different status codes."""
     async with WebSocketClient() as client:
@@ -74,6 +80,7 @@ async def test_ws_close_codes(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_receive_timeout(ws_serv):
     """Test WebSocket receive timeout."""
     async with WebSocketClient() as client:
@@ -100,6 +107,7 @@ async def test_ws_concurrent_messages(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_subprotocol_negotiation(ws_serv):
     """Test WebSocket subprotocol negotiation."""
     async with WebSocketClient() as client:
@@ -108,6 +116,7 @@ async def test_ws_subprotocol_negotiation(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_custom_headers(ws_serv):
     """Test WebSocket connection with custom headers."""
     headers = {"X-Custom-Header": "test-value", "Authorization": "Bearer token123"}
@@ -122,6 +131,7 @@ async def test_ws_custom_headers(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_drop_frames(ws_serv):
     """Test drop_frames: extra frames dropped, queue doesn't grow."""
     # Use small queues and enable drop mode.
@@ -146,6 +156,7 @@ async def test_ws_drop_frames(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_large_payload_2byte(ws_serv):
     """Send a message > 125 bytes to exercise the 2-byte extended payload length path."""
     payload = "x" * 200
@@ -157,6 +168,7 @@ async def test_ws_large_payload_2byte(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_large_payload_8byte(ws_serv):
     """Send a message > 65535 bytes to exercise the 8-byte extended payload length path."""
     payload = "x" * 70000
@@ -168,6 +180,7 @@ async def test_ws_large_payload_8byte(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_send_protocol_no_handler(ws_serv):
     async with WebSocketClient() as client:
         async with await client.connect(ws_serv) as ws:
@@ -176,6 +189,7 @@ async def test_ws_send_protocol_no_handler(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_receive_protocol_no_handler(ws_serv):
     async with WebSocketClient() as client:
         async with await client.connect(ws_serv) as ws:
@@ -194,6 +208,7 @@ async def test_ws_receive_text_wrong_type(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_receive_bytes_wrong_type(ws_serv):
     """Server echoes text when we send text; calling receive_bytes should raise ValueError."""
     async with WebSocketClient() as client:

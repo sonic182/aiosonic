@@ -4,6 +4,7 @@ from aiosonic import BaseClient, HTTPClient
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_wrapper_get_http_serv(http_serv):
     class TextClient(BaseClient):
         base_url = http_serv
@@ -18,6 +19,7 @@ async def test_wrapper_get_http_serv(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_wrapper_delete_http_serv(http_serv):
     class RawClient(BaseClient):
         base_url = http_serv
@@ -41,6 +43,7 @@ def test_default_http_client_created():
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_unsupported_method(http_serv):
     class RawClient(BaseClient):
         base_url = http_serv
@@ -51,6 +54,7 @@ async def test_unsupported_method(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_post_method(http_serv):
     class RawClient(BaseClient):
         base_url = http_serv
@@ -61,6 +65,7 @@ async def test_post_method(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_put_method(http_serv):
     class RawClient(BaseClient):
         base_url = http_serv
@@ -71,6 +76,7 @@ async def test_put_method(http_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_patch_method(http_serv):
     class RawClient(BaseClient):
         base_url = http_serv
