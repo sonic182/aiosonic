@@ -1,6 +1,7 @@
 import asyncio
 import json
 import ssl
+import sys
 
 import pytest
 
@@ -90,6 +91,7 @@ async def test_ws_receive_timeout(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_concurrent_messages(ws_serv):
     """Test handling multiple concurrent messages."""
     async with WebSocketClient() as client:
@@ -169,6 +171,7 @@ async def test_ws_large_payload_2byte(ws_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="large WebSocket frames hang on WindowsSelectorEventLoop")
 async def test_ws_large_payload_8byte(ws_serv):
     """Send a message > 65535 bytes to exercise the 8-byte extended payload length path."""
     payload = "x" * 70000
@@ -198,6 +201,7 @@ async def test_ws_receive_protocol_no_handler(ws_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_receive_text_wrong_type(ws_serv):
     """Server echoes binary when we send bytes; calling receive_text should raise ValueError."""
     async with WebSocketClient() as client:
