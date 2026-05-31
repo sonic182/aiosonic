@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] 2026-05-31
+
+### Added
+- HTTP/2 usage examples in README (client-level and per-request flags, HTTPS requirement note).
+- HTTP/2 known limitations section in README (no server push, no cleartext h2c).
+- Integration tests for HTTP/2 multiplexing, concurrent-stream pool reuse, and large-body flow control.
+- Expanded test coverage for WebSocket, SSE, connection pooling, DNS resolver, TCP helpers, and `BaseClient`.
+
+### Changed
+- HTTP/2 promoted from BETA to stable.
+- Dropped PyPy 3.10 from CI (pyo3 ≥ 0.28 requires PyPy ≥ 3.11); CI and Makefile now test PyPy 3.11 only.
+- Skip HTTP/2 concurrent-stream and large-body tests on Windows (`WindowsSelectorEventLoopPolicy` incompatibility).
+
+### Removed
+- `AioSonicBaseClient` deprecated alias (introduced in 0.30.1, scheduled for removal in 1.x).
+
 ## [0.31.1] 2026-02-20
 
 ### Fixed
@@ -406,7 +422,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/0.31.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.0..HEAD
+[1.0.0]: https://github.com/sonic182/aiosonic/compare/0.31.1..1.0.0
 [0.31.1]: https://github.com/sonic182/aiosonic/compare/0.31.0..0.31.1
 [0.31.0]: https://github.com/sonic182/aiosonic/compare/0.30.1..0.31.0
 [0.30.1]: https://github.com/sonic182/aiosonic/compare/0.30.0..0.30.1
