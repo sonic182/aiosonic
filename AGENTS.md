@@ -27,6 +27,15 @@ Detect and use the appropriate runner by checking in this order:
 - **CI test command**: `<runner> py.test --cov-append`
 - **Run scripts or examples**: `<runner> python <file.py>`
 
+## After Applying Code Changes
+
+After finishing a set of code changes, always run these checks in order:
+
+1. **Lint**: `<runner> ruff check aiosonic tests aiosonic_utils`
+2. **Tests**: `<runner> py.test`
+
+Fix any lint errors or test failures before considering the task done.
+
 ## Code Style Guidelines
 
 - **Imports**: Standard library → Third-party → Local (absolute imports, blank lines between groups)

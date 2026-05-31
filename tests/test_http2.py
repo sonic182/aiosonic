@@ -300,7 +300,10 @@ def test_h2_custom_connector_requires_explicit_http2_flag_on_client():
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
-@pytest.mark.skipif(sys.platform == "win32", reason="concurrent HTTP/2 streams deadlock with WindowsSelectorEventLoopPolicy")
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="concurrent HTTP/2 streams deadlock with WindowsSelectorEventLoopPolicy",
+)
 async def test_h2_multiplexing_concurrent_requests(http2_serv):
     """10 concurrent requests must all complete over a single shared TCP connection.
 
