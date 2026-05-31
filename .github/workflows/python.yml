@@ -30,8 +30,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -40,46 +43,27 @@ jobs:
         with:
           node-version: 20
 
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/pip
-            ~/Library/Caches/pip
-            ~\AppData\Local\pip\Cache
-          key: ${{ runner.os }}-${{ matrix.python-version }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.python-version }}-pip-
-
       - name: Install Rust (for PyPy)
         if: ${{ startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux' }}
         run: |
           curl https://sh.rustup.rs -sSf | sh -s -- -y
           . "$HOME/.cargo/env"
 
-      # Install Python dependencies using Poetry.
-      # This step always installs dependencies for CPython.
-      # For PyPy, we only run this step on Linux because PyPy is not supported on Windows or macOS.
       - name: Install Python dependencies
         if: ${{ !startsWith(matrix.python-version, 'pypy') || (startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux') }}
-        run: |
-          python -m pip install --upgrade pip
-          pip install poetry
-          poetry install
+        run: uv sync
 
-      # Run npm install in the tests folder by setting the working-directory.
       - name: Install npm dependencies
         if: ${{ !startsWith(matrix.python-version, 'pypy') || (startsWith(matrix.python-version, 'pypy') && runner.os == 'Linux') }}
         run: npm install
         working-directory: tests
 
       - name: Lint with ruff
-        run: |
-          poetry run ruff check aiosonic tests aiosonic_utils
+        run: uv run ruff check aiosonic tests aiosonic_utils
 
       - name: Test with pytest
-        run: |
-          poetry run py.test --cov-append
+        run: uv run py.test --cov-append
         env:
-          COV_CORE_SOURCE: src 
-          COV_CORE_CONFIG: .coveragerc 
+          COV_CORE_SOURCE: src
+          COV_CORE_CONFIG: .coveragerc
           COV_CORE_DATAFILE: .coverage.eager
