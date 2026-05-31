@@ -1,6 +1,5 @@
 """Fixtures and more."""
 
-import asyncio
 import datetime
 import random
 import shlex
@@ -10,10 +9,6 @@ import sys
 from time import sleep
 
 import pytest
-
-# On Windows, use the WindowsSelectorEventLoopPolicy.
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def run_cmd(command: str):
