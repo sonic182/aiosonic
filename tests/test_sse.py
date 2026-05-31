@@ -1,7 +1,9 @@
 import pytest
 
 from aiosonic import SSEClient
-from aiosonic.exceptions import SSEConnectionError, SSEParsingError
+from aiosonic.exceptions import SSEConnectionError, SSEParsingError  # noqa: F401
+from aiosonic.sse_client import SSEConnection
+from aiosonic.sse_config import RequestConfig
 
 
 @pytest.mark.asyncio
@@ -222,3 +224,12 @@ async def test_sse_keep_connection(sse_serv):
         assert len(events) == 2
         # After exiting context, connection should not be closed
         # We can't directly check, but ensure no exceptions and behavior is as expected
+
+
+def test_sse_parse_invalid_retry():
+    """SSEConnection._parse_event raises SSEParsingError for a non-numeric retry value."""
+    config = RequestConfig(method="GET", url="http://example.com")
+    conn = SSEConnection.__new__(SSEConnection)
+    conn._config = config
+    with pytest.raises(SSEParsingError, match="retry"):
+        conn._parse_event("retry: abc\n\n")

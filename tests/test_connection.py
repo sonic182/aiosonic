@@ -5,6 +5,7 @@ import pytest
 import aiosonic
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
+from aiosonic.exceptions import MissingReaderException, MissingWriterException
 from aiosonic.pools import PoolConfig
 
 
@@ -66,3 +67,61 @@ async def test_max_conn_idle_ms(http_serv):
         # Verify a new connection was created
         async with await connector.pools[":default"].acquire() as conn:
             assert conn.id > conn1_id
+
+
+def test_is_connected_false_before_connect():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    assert not conn.is_connected
+
+
+@pytest.mark.asyncio
+async def test_write_without_writer():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    with pytest.raises(MissingWriterException):
+        conn.write(b"data")
+
+
+@pytest.mark.asyncio
+async def test_readline_without_reader():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    with pytest.raises(MissingReaderException):
+        await conn.readline()
+
+
+@pytest.mark.asyncio
+async def test_readexactly_without_reader():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    with pytest.raises(MissingReaderException):
+        await conn.readexactly(4)
+
+
+@pytest.mark.asyncio
+async def test_read_without_reader():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    with pytest.raises(MissingReaderException):
+        await conn.read(4)
+
+
+@pytest.mark.asyncio
+async def test_readuntil_without_reader():
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    with pytest.raises(MissingReaderException):
+        await conn.readuntil(b"\n")
