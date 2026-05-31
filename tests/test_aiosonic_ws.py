@@ -169,17 +169,30 @@ async def test_ws_large_payload_2byte(ws_serv):
             assert payload in response
 
 
-@pytest.mark.asyncio
-@pytest.mark.timeout(30)
-@pytest.mark.skipif(sys.platform == "win32", reason="large WebSocket frames hang on WindowsSelectorEventLoop")
-async def test_ws_large_payload_8byte(ws_serv):
-    """Send a message > 65535 bytes to exercise the 8-byte extended payload length path."""
-    payload = "x" * 70000
-    async with WebSocketClient() as client:
-        async with await client.connect(ws_serv) as ws:
-            await ws.send_text(payload)
-            response = await ws.receive_text()
-            assert payload in response
+class TestWSLargePayload8Byte:
+    """The 8-byte extended-length path needs the Proactor loop on Windows.
+
+    conftest forces WindowsSelectorEventLoopPolicy, whose select()-based write
+    readiness stalls on large frames. The Proactor loop (the Windows default)
+    handles them, so override the policy just for this test.
+    """
+
+    @pytest.fixture(scope="class")
+    def event_loop_policy(self):
+        if sys.platform == "win32":
+            return asyncio.WindowsProactorEventLoopPolicy()
+        return asyncio.DefaultEventLoopPolicy()
+
+    @pytest.mark.asyncio
+    @pytest.mark.timeout(30)
+    async def test_ws_large_payload_8byte(self, ws_serv):
+        """Send a message > 65535 bytes to exercise the 8-byte extended payload length path."""
+        payload = "x" * 70000
+        async with WebSocketClient() as client:
+            async with await client.connect(ws_serv) as ws:
+                await ws.send_text(payload)
+                response = await ws.receive_text()
+                assert payload in response
 
 
 @pytest.mark.asyncio
