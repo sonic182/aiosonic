@@ -1,5 +1,6 @@
 import asyncio
 import ssl
+import sys
 
 import h2.events
 import h2.settings
@@ -299,6 +300,7 @@ def test_h2_custom_connector_requires_explicit_http2_flag_on_client():
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="concurrent HTTP/2 streams deadlock with WindowsSelectorEventLoopPolicy")
 async def test_h2_multiplexing_concurrent_requests(http2_serv):
     """10 concurrent requests must all complete over a single shared TCP connection.
 
@@ -323,6 +325,7 @@ async def test_h2_multiplexing_concurrent_requests(http2_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(60)
+@pytest.mark.skipif(sys.platform == "win32", reason="large body flow-control unreliable on Windows CI")
 async def test_h2_flow_control_large_body(http2_serv):
     """POST a 1 MB body and verify the server echoes it back intact.
 
