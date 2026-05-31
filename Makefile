@@ -52,11 +52,11 @@ test313:
 	echo "TEST PYTHON 3.13"
 	docker run -i --rm -v $(shell pwd):/app python:3.13 bash -c "$(DOCKER_CMD)"
 
-test-pypy310:
-	echo "TEST PYPY 3.10"
-	docker run -i --rm -v $(shell pwd):/app pypy:3.10 bash -c "$(DOCKER_CMD_PYPY)"
+test-pypy311:
+	echo "TEST PYPY 3.11"
+	docker run -i --rm -v $(shell pwd):/app pypy:3.11 bash -c "$(DOCKER_CMD_PYPY)"
 
-test: test310 test311 test312 test313 test-pypy39 test-pypy310
+test: test310 test311 test312 test313 test-pypy311
 	echo "OK"
 
 clear:
