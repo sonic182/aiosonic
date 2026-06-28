@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import platform
+import sys
 from urllib.parse import urlparse
 
 import pytest
@@ -44,6 +45,7 @@ async def test_simple_get(http_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="pycares/aiodns cleanup hangs on Windows CI")
 async def test_simple_get_aiodns(http_serv, mocker):
     """Test simple get with aiodns"""
 
@@ -55,12 +57,15 @@ async def test_simple_get_aiodns(http_serv, mocker):
 
     url = http_serv
 
-    connector = aiosonic.TCPConnector(resolver=resolver)
-    async with aiosonic.HTTPClient(connector) as client:
-        res = await client.get(url)
-        assert res.status_code == 200
-        assert await res.content() == b"Hello, world"
-        assert await res.text() == "Hello, world"
+    try:
+        connector = aiosonic.TCPConnector(resolver=resolver)
+        async with aiosonic.HTTPClient(connector) as client:
+            res = await client.get(url)
+            assert res.status_code == 200
+            assert await res.content() == b"Hello, world"
+            assert await res.text() == "Hello, world"
+    finally:
+        await resolver.close()
 
 
 class MyConnection(Connection):
