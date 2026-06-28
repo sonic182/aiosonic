@@ -1,5 +1,6 @@
 """Fixtures and more."""
 
+import asyncio
 import datetime
 import random
 import shlex
@@ -35,7 +36,7 @@ def http2_serv():
     """Sample HTTP/2 app."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/http2.js {port}")
-    url = f"https://localhost:{port}"
+    url = f"https://127.0.0.1:{port}"
 
     check_port(port)
     yield url
@@ -48,7 +49,7 @@ def http_serv():
     """Sample HTTP/1 app."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/http1.mjs {port}")
-    url = f"http://localhost:{port}"
+    url = f"http://127.0.0.1:{port}"
     check_port(port)
     yield url
     proc.terminate()
@@ -74,7 +75,7 @@ def sse_serv():
     """Sample SSE app."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse")
-    url = f"http://localhost:{port}/sse"
+    url = f"http://127.0.0.1:{port}/sse"
     check_port(port)
     yield url
     proc.terminate()
@@ -86,7 +87,7 @@ def sse_serv_reconnect():
     """Sample SSE app for reconnection tests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-reconnect")
-    url = f"http://localhost:{port}/sse-reconnect"
+    url = f"http://127.0.0.1:{port}/sse-reconnect"
     check_port(port)
     yield url
     proc.terminate()
@@ -98,7 +99,7 @@ def sse_serv_malformed():
     """Sample SSE app for malformed events."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-malformed")
-    url = f"http://localhost:{port}/sse-malformed"
+    url = f"http://127.0.0.1:{port}/sse-malformed"
     check_port(port)
     yield url
     proc.terminate()
@@ -110,7 +111,7 @@ def sse_serv_post():
     """Sample SSE app for POST requests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post")
-    url = f"http://localhost:{port}/sse-post"
+    url = f"http://127.0.0.1:{port}/sse-post"
     check_port(port)
     yield url
     proc.terminate()
@@ -122,7 +123,7 @@ def sse_serv_put():
     """Sample SSE app for PUT requests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-put")
-    url = f"http://localhost:{port}/sse-put"
+    url = f"http://127.0.0.1:{port}/sse-put"
     check_port(port)
     yield url
     proc.terminate()
@@ -134,7 +135,7 @@ def sse_serv_patch():
     """Sample SSE app for PATCH requests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-patch")
-    url = f"http://localhost:{port}/sse-patch"
+    url = f"http://127.0.0.1:{port}/sse-patch"
     check_port(port)
     yield url
     proc.terminate()
@@ -146,7 +147,7 @@ def sse_serv_delete():
     """Sample SSE app for DELETE requests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-delete")
-    url = f"http://localhost:{port}/sse-delete"
+    url = f"http://127.0.0.1:{port}/sse-delete"
     check_port(port)
     yield url
     proc.terminate()
@@ -158,7 +159,7 @@ def sse_serv_params():
     """Sample SSE app for query parameters."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-params")
-    url = f"http://localhost:{port}/sse-params"
+    url = f"http://127.0.0.1:{port}/sse-params"
     check_port(port)
     yield url
     proc.terminate()
@@ -170,7 +171,7 @@ def sse_serv_post_reconnect():
     """Sample SSE app for POST reconnection tests."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/sse-server.mjs {port} /sse-post-reconnect")
-    url = f"http://localhost:{port}/sse-post-reconnect"
+    url = f"http://127.0.0.1:{port}/sse-post-reconnect"
     check_port(port)
     yield url
     proc.terminate()
@@ -182,7 +183,7 @@ def ws_serv():
     """Sample WebSocket app (non-SSL)."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port}")
-    url = f"ws://localhost:{port}"
+    url = f"ws://127.0.0.1:{port}"
     check_port(port)
     yield url
     proc.terminate()
@@ -194,7 +195,7 @@ def ws_serv_ssl():
     """Sample secure WebSocket app (SSL)."""
     port = __get_sample_port(3000, 4000)
     proc = run_cmd(f"node tests/nodeapps/ws-server.mjs {port} ssl")
-    url = f"wss://localhost:{port}"
+    url = f"wss://127.0.0.1:{port}"
     check_port(port)
     yield url
     proc.terminate()
@@ -217,7 +218,7 @@ def __is_port_in_use(address, port):
 def __get_sample_port(_from, to):
     port = random.randint(_from, to)
     max_wait = utcnow() + datetime.timedelta(seconds=3)
-    while __is_port_in_use("localhost", port):
+    while __is_port_in_use("127.0.0.1", port):
         sleep(0.2)
         port = random.randint(_from, to)
         if utcnow() > max_wait:
@@ -225,7 +226,7 @@ def __get_sample_port(_from, to):
     return port
 
 
-def check_port(port, hostname="localhost", timeout_seconds=10):
+def check_port(port, hostname="127.0.0.1", timeout_seconds=10):
     """Check if a port is listening."""
     max_wait = utcnow() + datetime.timedelta(seconds=timeout_seconds)
     while not __is_port_in_use(hostname, port):
@@ -239,3 +240,10 @@ def utcnow():
         return datetime.datetime.now(datetime.UTC)
     else:
         return datetime.datetime.utcnow()
+
+
+@pytest.fixture(scope="session")
+def event_loop_policy():
+    if sys.platform == "win32":
+        return asyncio.WindowsSelectorEventLoopPolicy()
+    return asyncio.DefaultEventLoopPolicy()

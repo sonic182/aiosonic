@@ -128,6 +128,9 @@ class TCPConnector:
         for pool in self.pools.values():
             await pool.cleanup()
 
+        if self.resolver is not None:
+            await self.resolver.close()
+
     async def __resolve_dns(self, host: str, port: int):
         key = f"{host}-{port}"
         dns_data = self.cache.get(key)

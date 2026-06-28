@@ -55,4 +55,14 @@ async def test_async_resolver_close():
         mock_aiodns.DNSResolver.return_value = mock_resolver
         resolver = AsyncResolver()
         await resolver.close()
+        mock_resolver.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_async_resolver_cancel_fallback():
+    mock_resolver = MagicMock(spec=["cancel"])  # no close attribute
+    with patch("aiosonic.resolver.aiodns") as mock_aiodns:
+        mock_aiodns.DNSResolver.return_value = mock_resolver
+        resolver = AsyncResolver()
+        await resolver.close()
         mock_resolver.cancel.assert_called_once()

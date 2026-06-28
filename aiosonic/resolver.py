@@ -118,7 +118,12 @@ class AsyncResolver(AbstractResolver):
         return hosts
 
     async def close(self) -> None:
-        self._resolver.cancel()
+        if hasattr(self._resolver, "close"):
+            result = self._resolver.close()
+            if result is not None and hasattr(result, "__await__"):
+                await result
+        else:
+            self._resolver.cancel()
 
 
 _DefaultType = Type[Union[AsyncResolver, ThreadedResolver]]
