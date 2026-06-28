@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import platform
-import sys
 from urllib.parse import urlparse
 
 import pytest
@@ -45,7 +44,6 @@ async def test_simple_get(http_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
-@pytest.mark.skipif(sys.platform == "win32", reason="pycares/aiodns cleanup hangs on Windows CI")
 async def test_simple_get_aiodns(http_serv, mocker):
     """Test simple get with aiodns"""
 

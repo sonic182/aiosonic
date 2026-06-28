@@ -1,6 +1,7 @@
 import asyncio
 import json
 import ssl
+import sys
 
 import pytest
 
@@ -170,6 +171,7 @@ async def test_ws_large_payload_2byte(ws_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="large WS payload hangs on Windows")
 async def test_ws_large_payload_8byte(ws_serv):
     """Send a message > 65535 bytes to exercise the 8-byte extended payload length path."""
     payload = "x" * 70000

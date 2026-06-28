@@ -79,3 +79,4 @@ jobs:
           COV_CORE_SOURCE: src
           COV_CORE_CONFIG: .coveragerc
           COV_CORE_DATAFILE: .coverage.eager
+          AIOSONIC_DEBUG: 1

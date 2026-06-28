@@ -47,6 +47,9 @@ from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import ConnectionDisconnected, ReadTimeout
 from aiosonic.pools import WsPool
 from aiosonic.timeout import Timeouts
+from aiosonic.utils import get_debug_logger
+
+dlogger = get_debug_logger()
 
 CRLF = "\r\n"
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -174,6 +177,7 @@ class WebSocketConnection:
         self.protocol_handler = protocol_handler
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
         self._keep_alive_task = None
+        dlogger.debug("WebSocketConnection created, dispatch task: %s", id(self))
 
     async def _build_frame(self, opcode: int, payload: bytes) -> bytes:
         fin_and_opcode = 0x80 | (opcode & 0x0F)
@@ -196,6 +200,7 @@ class WebSocketConnection:
         return bytes(header) + bytes(masked_payload)
 
     async def _send_frame(self, opcode: int, payload: bytes):
+        dlogger.debug("_send_frame opcode=%s len=%s", opcode, len(payload))
         frame = await self._build_frame(opcode, payload)
         async with self._send_lock:
             self.conn.write(frame)
@@ -213,6 +218,8 @@ class WebSocketConnection:
         elif payload_length == 127:
             ext = await self.conn.readexactly(8)
             payload_length = struct.unpack(">Q", ext)[0]
+
+        dlogger.debug("_read_frame opcode=%s mask=%s payload_length=%s", opcode, mask, payload_length)
 
         if mask:
             masking_key = await self.conn.readexactly(4)
@@ -241,9 +248,11 @@ class WebSocketConnection:
                 try:
                     opcode, payload = await self._read_frame()
                 except asyncio.IncompleteReadError:
+                    dlogger.debug("_frame_dispatch_loop: IncompleteReadError, disconnecting")
                     self.connected = False
                     break
 
+                dlogger.debug("_frame_dispatch_loop: received opcode=%s payload_len=%s", opcode, len(payload))
                 if opcode == self.OPCODE_TEXT:
                     msg = Message.create_text(payload.decode("utf-8"))
                     await self._enqueue(self._msg_queue, msg)
@@ -263,6 +272,7 @@ class WebSocketConnection:
                     break
                 # Optionally handle OPCODE_PING if desired.
         except Exception:
+            dlogger.debug("_frame_dispatch_loop: exception, disconnecting", exc_info=True)
             self.connected = False
 
     async def send_text(self, message: str):
@@ -306,6 +316,7 @@ class WebSocketConnection:
         return msg.raw_data
 
     async def close(self, code: int = 1000, reason: str = ""):
+        dlogger.debug("close code=%s reason=%s", code, reason)
         self.stop_keep_alive()
         payload = struct.pack(">H", code) + reason.encode("utf-8")
         if len(payload) > 125:

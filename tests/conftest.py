@@ -1,7 +1,8 @@
 """Fixtures and more."""
 
-import asyncio
 import datetime
+import logging
+import os
 import random
 import shlex
 import ssl
@@ -10,6 +11,10 @@ import sys
 from time import sleep
 
 import pytest
+
+
+if os.environ.get("AIOSONIC_DEBUG"):
+    logging.getLogger("aiosonic").setLevel(logging.DEBUG)
 
 
 def run_cmd(command: str):
@@ -240,10 +245,3 @@ def utcnow():
         return datetime.datetime.now(datetime.UTC)
     else:
         return datetime.datetime.utcnow()
-
-
-@pytest.fixture(scope="session")
-def event_loop_policy():
-    if sys.platform == "win32":
-        return asyncio.WindowsSelectorEventLoopPolicy()
-    return asyncio.DefaultEventLoopPolicy()
