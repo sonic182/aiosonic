@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import platform
 from urllib.parse import urlparse
 
@@ -23,9 +22,6 @@ from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool, PoolConfig
 from aiosonic.resolver import AsyncResolver
 from aiosonic.timeout import Timeouts
-
-# setup debug logger
-logging.getLogger("aiosonic").setLevel(logging.DEBUG)
 
 
 @pytest.mark.asyncio
