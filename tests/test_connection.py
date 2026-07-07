@@ -1,4 +1,6 @@
 import asyncio
+from urllib.parse import urlparse
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -125,3 +127,44 @@ async def test_readuntil_without_reader():
     conn = Connection(pool)
     with pytest.raises(MissingReaderException):
         await conn.readuntil(b"\n")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("url", "expected_port", "expects_tls"),
+    [
+        ("https://example.com/resource", 443, True),
+        ("wss://example.com/socket", 443, True),
+        ("http://example.com/resource", 80, False),
+        ("ws://example.com/socket", 80, False),
+    ],
+)
+async def test_connect_uses_expected_default_port_and_tls_for_scheme(mocker, url, expected_port, expects_tls):
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    reader = object()
+    writer = MagicMock()
+    writer.get_extra_info.return_value = None
+    open_connection = mocker.patch(
+        "aiosonic.connection.open_connection",
+        new=mocker.AsyncMock(return_value=(reader, writer)),
+    )
+
+    await conn.connect(
+        urlparse(url),
+        {"hostname": "example.com", "family": 0, "proto": 0, "flags": 0},
+        verify=True,
+        ssl_context=None,
+    )
+
+    assert open_connection.await_count == 1
+    kwargs = open_connection.await_args.kwargs
+    assert kwargs["port"] == expected_port
+    if expects_tls:
+        assert kwargs["server_hostname"] == "example.com"
+        assert kwargs["ssl"] is not None
+    else:
+        assert "server_hostname" not in kwargs
+        assert kwargs["ssl"] is None

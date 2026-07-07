@@ -76,6 +76,12 @@ def test_h2_pool_host_key_https():
     assert pool._host_key(parsed) == "https://example.com:443"
 
 
+def test_h2_pool_host_key_wss():
+    pool = make_h2_pool()
+    parsed = urlparse("wss://example.com/path")
+    assert pool._host_key(parsed) == "wss://example.com:443"
+
+
 def test_h2_pool_host_key_explicit_port():
     pool = make_h2_pool()
     parsed = urlparse("https://example.com:8443/path")
