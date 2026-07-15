@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] 2026-07-15
+
+### Fixed
+- Default initial window for http2 64kb -> 4MiB
+- new Http2Config dataclass for configuring max streams and initial window size in http2
+
 ## [1.0.1] 2026-07-07
 
 ### Fixed
@@ -428,7 +434,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.1..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.2..HEAD
+[1.0.2]: https://github.com/sonic182/aiosonic/compare/1.0.1..1.0.2
 [1.0.1]: https://github.com/sonic182/aiosonic/compare/1.0.0..1.0.1
 [1.0.0]: https://github.com/sonic182/aiosonic/compare/0.31.1..1.0.0
 [0.31.1]: https://github.com/sonic182/aiosonic/compare/0.31.0..0.31.1
