@@ -267,7 +267,7 @@ class Connection:
         if negotiated_protocol == "h2":  # pragma: no cover
             config = h2.config.H2Configuration()
             self.h2conn = h2.connection.H2Connection(config=config)
-            self.h2handler = Http2Handler(self)
+            self.h2handler = Http2Handler(self, self.pool.http2_config)
 
     def keep_alive(self) -> None:
         """Check if keep alive."""

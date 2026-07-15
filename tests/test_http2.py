@@ -9,7 +9,7 @@ import pytest
 import aiosonic
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import ConnectionDisconnected, MissingEvent
-from aiosonic.http2 import Http2Handler
+from aiosonic.http2 import Http2Config, Http2Handler
 from aiosonic.timeout import Timeouts
 
 
@@ -328,6 +328,40 @@ async def test_h2_multiplexing_concurrent_requests(http2_serv):
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_custom_config_reaches_live_connection(http2_serv):
+    """A Http2Config passed at HTTPClient creation must reach the real
+    Http2Handler through HTTPClient -> TCPConnector -> pool -> Connection.
+
+    Uses a deliberately low max_streams so the local stream semaphore actually
+    throttles concurrency; requests must still all complete successfully,
+    proving the setting was applied rather than silently ignored.
+    """
+    url = http2_serv
+    config = Http2Config(max_streams=2)
+
+    async def get_and_read():
+        res = await client.get(url, verify=False)
+        return res, await res.text()
+
+    async with aiosonic.HTTPClient(http2=True, http2_config=config) as client:
+        # Each task must read its own body (releasing its stream slot) rather than
+        # collecting all responses first, otherwise requests 3-10 deadlock waiting
+        # on a semaphore slot that only frees up once an earlier body is drained.
+        results = await asyncio.gather(*[get_and_read() for _ in range(10)])
+        pool = client.connector.pools[":default"]
+        connection = next(iter(pool.connections.values()))
+
+    for res, text in results:
+        assert res.status_code == 200
+        assert res.http_version == "2"
+        assert text == "Hello World"
+
+    assert connection.h2handler.http2_config == config
+    assert connection.h2handler._max_streams == 2
+
+
+@pytest.mark.asyncio
 @pytest.mark.timeout(60)
 @pytest.mark.skipif(sys.platform == "win32", reason="large body flow-control unreliable on Windows CI")
 async def test_h2_flow_control_large_body(http2_serv):
@@ -347,6 +381,56 @@ async def test_h2_flow_control_large_body(http2_serv):
 
 
 # Unit tests for HTTP2Handler with mocked components
+
+
+@pytest.mark.asyncio
+async def test_h2_handler_init_enlarges_flow_control_window(mocker):
+    """__init__ must raise both the per-stream and connection-level flow-control
+    window past the HTTP/2 default of 65535 bytes, otherwise download throughput
+    is capped at roughly window_size / RTT (see aiosonic#579). With no explicit
+    Http2Config, the Http2Config() defaults must be applied."""
+    connection = mocker.MagicMock()
+    connection.h2conn = mocker.MagicMock()
+    connection.writer.drain = mocker.AsyncMock()
+    connection.reader.read = mocker.AsyncMock(return_value=b"")
+
+    defaults = Http2Config()
+    handler = Http2Handler(connection)
+    await asyncio.sleep(0)  # let the fire-and-forget reader/drain tasks run once
+
+    connection.h2conn.update_settings.assert_called_once_with(
+        {h2.settings.SettingCodes.INITIAL_WINDOW_SIZE: defaults.initial_window_size}
+    )
+    connection.h2conn.increment_flow_control_window.assert_called_once_with(defaults.initial_window_size)
+    assert handler._max_streams == defaults.max_streams
+    assert handler._stream_sem._value == defaults.max_streams
+
+    handler.cleanup()
+    await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
+async def test_h2_handler_init_uses_custom_http2_config(mocker):
+    """A custom Http2Config passed at construction must override the defaults,
+    so callers can tune the window size / concurrency at client creation time."""
+    connection = mocker.MagicMock()
+    connection.h2conn = mocker.MagicMock()
+    connection.writer.drain = mocker.AsyncMock()
+    connection.reader.read = mocker.AsyncMock(return_value=b"")
+
+    custom = Http2Config(initial_window_size=123, max_streams=5)
+    handler = Http2Handler(connection, custom)
+    await asyncio.sleep(0)
+
+    connection.h2conn.update_settings.assert_called_once_with(
+        {h2.settings.SettingCodes.INITIAL_WINDOW_SIZE: 123}
+    )
+    connection.h2conn.increment_flow_control_window.assert_called_once_with(123)
+    assert handler._max_streams == 5
+    assert handler._stream_sem._value == 5
+
+    handler.cleanup()
+    await asyncio.sleep(0)
 
 
 @pytest.mark.asyncio

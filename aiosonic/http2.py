@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, AsyncIterator, Dict, Iterator, List, Optional, Union
 
 import h2.events
@@ -10,6 +11,31 @@ from aiosonic.types import ParsedBodyType
 from aiosonic.utils import get_debug_logger
 
 dlogger = get_debug_logger()
+
+
+@dataclass(frozen=True, eq=True)
+class Http2Config:
+    """Configuration options for HTTP/2 connections.
+
+    This class is immutable and hashable, allowing it to be used as a dictionary key.
+    """
+
+    initial_window_size: int = field(
+        default=2**22,  # 4 MiB
+        metadata={"description": "Flow-control window (bytes) advertised for the connection and new streams"},
+    )
+    max_streams: int = field(
+        default=100,
+        metadata={"description": "Local cap on concurrent in-flight streams per connection"},
+    )
+
+    def __hash__(self):
+        """Make Http2Config hashable for use as dictionary keys.
+
+        Returns:
+            int: Hash value based on the configuration values
+        """
+        return hash((self.initial_window_size, self.max_streams))
 
 IGNORED_EVENTS = tuple(
     evt
@@ -86,19 +112,24 @@ class Http2Handler(object):
     stream lifetime.
     """
 
-    def __init__(self, connection: Connection):
+    def __init__(self, connection: Connection, http2_config: Optional[Http2Config] = None):
         assert connection
         self.connection = connection
         h2conn = connection.h2conn
         assert h2conn
+        self.http2_config = http2_config or Http2Config()
 
         self.loop = asyncio.get_event_loop()
         h2conn.initiate_connection()
+        h2conn.update_settings(
+            {h2.settings.SettingCodes.INITIAL_WINDOW_SIZE: self.http2_config.initial_window_size}
+        )
+        h2conn.increment_flow_control_window(self.http2_config.initial_window_size)
 
         self.requests: Dict[int, dict] = {}
 
         self._window_updated = asyncio.Event()
-        self._max_streams = 100
+        self._max_streams = self.http2_config.max_streams
         self._stream_sem = asyncio.Semaphore(self._max_streams)
         self._closing = False
 

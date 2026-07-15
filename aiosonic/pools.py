@@ -9,6 +9,7 @@ from typing import Optional
 from urllib.parse import ParseResult
 
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout, TimeoutException
+from aiosonic.http2 import Http2Config
 from aiosonic.timeout import Timeouts
 
 
@@ -51,10 +52,12 @@ class BasePool(ABC):
         conf: PoolConfig,
         connection_cls,
         timeouts: Optional[Timeouts] = None,
+        http2_config: Optional[Http2Config] = None,
     ):
         """Initialize pool with common attributes."""
         self.conf = conf
         self.timeouts = timeouts or Timeouts()
+        self.http2_config = http2_config or Http2Config()
         self._init_pool(connection_cls)
 
     @abstractmethod

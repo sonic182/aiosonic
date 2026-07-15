@@ -37,6 +37,7 @@ from aiosonic.exceptions import (
     RequestTimeout,
     TimeoutException,
 )
+from aiosonic.http2 import Http2Config
 from aiosonic.multipart import MultipartFile, MultipartForm
 from aiosonic.proxy import Proxy
 from aiosonic.resolver import get_loop
@@ -581,6 +582,9 @@ class HTTPClient:
         * **verify_ssl**: Flag to indicate if verify ssl certificates.
         * **http2**: Flag to enable HTTP/2 for all requests made by this client.
             Per-request ``http2=True`` also works and takes precedence.
+        * **http2_config**: HTTP/2 protocol tuning (flow-control window, max
+            concurrent streams), used only when this client builds its own
+            connector (i.e. when ``connector`` is not provided).
     """
 
     def __init__(
@@ -591,9 +595,10 @@ class HTTPClient:
         proxy: Optional[Proxy] = None,
         max_redirects: int = 5,
         http2: bool = False,
+        http2_config: Optional[Http2Config] = None,
     ):
         """Initialize client options."""
-        self.connector = connector or TCPConnector(http2=http2)
+        self.connector = connector or TCPConnector(http2=http2, http2_config=http2_config)
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl

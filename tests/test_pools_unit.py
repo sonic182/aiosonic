@@ -5,6 +5,7 @@ import pytest
 
 from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
+from aiosonic.http2 import Http2Config
 from aiosonic.pools import CyclicQueuePool, Http2MultiplexPool, PoolConfig, WsPool
 from aiosonic.timeout import Timeouts
 
@@ -30,6 +31,17 @@ def test_pool_config_hash():
     assert hash(a) == hash(b)
     d = {a: "value"}
     assert d[b] == "value"
+
+
+def test_pool_defaults_http2_config():
+    pool = CyclicQueuePool(PoolConfig(), Connection)
+    assert pool.http2_config == Http2Config()
+
+
+def test_pool_carries_custom_http2_config():
+    custom = Http2Config(initial_window_size=123, max_streams=5)
+    pool = Http2MultiplexPool(PoolConfig(), Connection, http2_config=custom)
+    assert pool.http2_config is custom
 
 
 def test_ws_pool_release_noop():

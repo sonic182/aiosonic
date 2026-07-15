@@ -10,6 +10,7 @@ from urllib.parse import ParseResult
 from onecache import ExpirableCache
 
 from aiosonic.exceptions import ConnectTimeout, HttpParsingError, TimeoutException
+from aiosonic.http2 import Http2Config
 from aiosonic.pools import BasePool, Http2MultiplexPool, PoolConfig, SmartPool
 from aiosonic.resolver import DefaultResolver
 from aiosonic.timeout import Timeouts
@@ -43,6 +44,9 @@ class TCPConnector:
         http2 (bool):
             When True and pool_cls is not explicitly provided, defaults pool_cls to
             Http2MultiplexPool. Defaults to False.
+        http2_config (Optional[Http2Config]):
+            HTTP/2 protocol tuning (flow-control window, max concurrent streams),
+            shared by every pool this connector manages. Defaults to Http2Config().
     """
 
     def __init__(
@@ -55,12 +59,14 @@ class TCPConnector:
         ttl_dns_cache=10000,
         use_dns_cache=True,
         http2: bool = False,
+        http2_config: Optional[Http2Config] = None,
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
         self.connection_cls = connection_cls or Connection
         self.pool_cls = pool_cls or (Http2MultiplexPool if http2 else SmartPool)
         self.timeouts = timeouts or Timeouts()
+        self.http2_config = http2_config or Http2Config()
 
         if pool_configs is None:
             pool_configs = {}
@@ -74,7 +80,7 @@ class TCPConnector:
         # Keys are expected to be in the form "<scheme>://<host>" or ":default".
         self.pools: Dict[str, BasePool] = {}
         for key, config in self.pool_configs.items():
-            self.pools[key] = self.pool_cls(config, self.connection_cls, self.timeouts)
+            self.pools[key] = self.pool_cls(config, self.connection_cls, self.timeouts, self.http2_config)
 
         self.resolver = resolver or DefaultResolver()
         self.use_dns_cache = use_dns_cache
