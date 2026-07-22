@@ -1,10 +1,12 @@
+import gzip
+import zlib
 from urllib.parse import urlparse
 
 import pytest
 
 import aiosonic
 from aiosonic import HttpHeaders, HttpResponse
-from aiosonic.exceptions import MissingWriterException
+from aiosonic.exceptions import DecompressionError, MissingWriterException
 from aiosonic.http_parser import add_header, add_headers
 
 
@@ -206,3 +208,52 @@ def test_handle_redirect_keeps_credentials_on_same_host():
     )
 
     assert headers["Cookie"] == "session=SECRET"
+
+
+def test_decompress_bounded_gzip_ok():
+    """Test that normal gzip data decompresses correctly under a generous limit."""
+    payload = b"hello world" * 10
+    compressed = gzip.compress(payload)
+    result = aiosonic.client._decompress_bounded(compressed, aiosonic.client._GZIP_WBITS, 10_000)
+    assert result == payload
+
+
+def test_decompress_bounded_deflate_ok():
+    """Test that normal deflate (zlib-wrapped) data decompresses correctly under a generous limit."""
+    payload = b"hello world" * 10
+    compressed = zlib.compress(payload)
+    result = aiosonic.client._decompress_bounded(compressed, aiosonic.client._DEFLATE_WBITS, 10_000)
+    assert result == payload
+
+
+def test_decompress_bounded_gzip_rejects_bomb():
+    """Test that a high-ratio gzip payload is rejected once it would exceed the size limit."""
+    compressed = gzip.compress(b"\x00" * 1_000_000, compresslevel=9)
+    with pytest.raises(DecompressionError):
+        aiosonic.client._decompress_bounded(compressed, aiosonic.client._GZIP_WBITS, 1_000)
+
+
+def test_decompress_bounded_deflate_rejects_bomb():
+    """Test that a high-ratio deflate payload is rejected once it would exceed the size limit."""
+    compressed = zlib.compress(b"\x00" * 1_000_000, level=9)
+    with pytest.raises(DecompressionError):
+        aiosonic.client._decompress_bounded(compressed, aiosonic.client._DEFLATE_WBITS, 1_000)
+
+
+def test_set_body_enforces_max_decompressed_size():
+    """Test that HttpResponse._set_body raises DecompressionError once the configured limit is hit."""
+    response = HttpResponse()
+    response.compressed = "gzip"
+    response.max_decompressed_size = 1_000
+    compressed = gzip.compress(b"\x00" * 1_000_000, compresslevel=9)
+    with pytest.raises(DecompressionError):
+        response._set_body(compressed)
+
+
+def test_http_client_max_decompressed_size_configurable():
+    """Test that HTTPClient exposes a sane default and honors a custom max_decompressed_size."""
+    default_client = aiosonic.HTTPClient()
+    assert default_client.max_decompressed_size == aiosonic.client._DEFAULT_MAX_DECOMPRESSED_SIZE
+
+    custom_client = aiosonic.HTTPClient(max_decompressed_size=42)
+    assert custom_client.max_decompressed_size == 42
