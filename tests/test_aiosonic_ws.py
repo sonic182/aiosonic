@@ -134,6 +134,17 @@ async def test_ws_custom_headers(ws_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_ws_connect_rejects_crlf_in_headers(ws_serv):
+    """Test WebSocket connect rejects CRLF injection in header values."""
+    headers = {"X-Evil": "a\r\nX-Injected: 1"}
+
+    async with WebSocketClient() as client:
+        with pytest.raises(ValueError):
+            await client.connect(ws_serv, headers=headers)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_ws_drop_frames(ws_serv):
     """Test drop_frames: extra frames dropped, queue doesn't grow."""
     # Use small queues and enable drop mode.

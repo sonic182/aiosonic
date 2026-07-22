@@ -422,6 +422,9 @@ class WebSocketClient:
         if headers:
             base_headers.update(headers)
 
+        for k, v in base_headers.items():
+            http_parser.validate_header(k, v)
+
         path = urlparsed.path or "/"
         if urlparsed.query:
             path = f"{path}?{urlparsed.query}"

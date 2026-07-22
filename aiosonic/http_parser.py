@@ -1,6 +1,7 @@
 """Pure python HTTP parser."""
 
 from __future__ import annotations
+import re
 from typing import TYPE_CHECKING, AsyncIterator, Dict, Iterator, List
 from urllib.parse import ParseResult, urlencode, urlparse
 
@@ -14,6 +15,17 @@ if TYPE_CHECKING:
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 _LRU_CACHE_SIZE = 512
+
+_TOKEN_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_BAD_VALUE_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
+
+
+def validate_header(key: str, value: str) -> None:
+    """Reject header names/values that could enable CRLF injection or request splitting."""
+    if not (key.startswith(":") or _TOKEN_RE.match(key)):
+        raise ValueError(f"invalid header name: {key!r}")
+    if _BAD_VALUE_RE.search(str(value)):
+        raise ValueError(f"invalid header value for {key!r}: contains a disallowed control character")
 
 
 # Functions with cache
@@ -44,6 +56,7 @@ def headers_iterator(headers: HeadersType):
 
 def add_header(headers: HeadersType, key: str, value: str, replace=False):
     """Safe add header method."""
+    validate_header(key, value)
     if isinstance(headers, List):
         if replace:
             included = [item for item in headers if item[0].lower() == key.lower()]
