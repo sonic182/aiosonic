@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] 2026-07-22
+
+### Security
+- Fixed Cookie and Proxy-Authorization headers being forwarded unchanged to a cross-host redirect target when `follow=True` (only `Authorization` was previously stripped). (GHSA-wgrq-f894-59q5)
+- Fixed missing CR/LF validation on outbound header names/values, which allowed HTTP header injection and request splitting via attacker-influenced header values. Added `http_parser.validate_header()`, enforced in both the HTTP/1.1 client and the WebSocket handshake. (GHSA-86v3-rrw9-q5mg)
+- Fixed unbounded gzip/deflate response decompression, which allowed a malicious server to exhaust client memory with a small high-ratio compressed payload. Decompression is now streamed through `zlib.decompressobj()` with a configurable size limit (`HTTPClient(max_decompressed_size=...)`, 100MB default), raising the new `DecompressionError` on overflow. (GHSA-5x59-6wvc-88hg)
+
 ## [1.0.2] 2026-07-15
 
 ### Fixed
@@ -434,7 +441,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.2..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.3..HEAD
+[1.0.3]: https://github.com/sonic182/aiosonic/compare/1.0.2..1.0.3
 [1.0.2]: https://github.com/sonic182/aiosonic/compare/1.0.1..1.0.2
 [1.0.1]: https://github.com/sonic182/aiosonic/compare/1.0.0..1.0.1
 [1.0.0]: https://github.com/sonic182/aiosonic/compare/0.31.1..1.0.0
