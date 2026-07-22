@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 import pytest
 
 import aiosonic
@@ -55,6 +57,59 @@ def test_add_header_replace():
     assert headers == [("user-agent", "wathever")]
 
 
+def test_add_header_rejects_crlf_in_value():
+    """Test that CRLF in a header value is rejected."""
+    with pytest.raises(ValueError):
+        add_header({}, "X-Trace-Id", "abc\r\nX-Injected: pwned")
+
+
+def test_add_header_rejects_bare_lf_and_cr():
+    """Test that bare LF and bare CR in a header value are each rejected."""
+    with pytest.raises(ValueError):
+        add_header({}, "X-Trace-Id", "abc\ninjected")
+    with pytest.raises(ValueError):
+        add_header({}, "X-Trace-Id", "abc\rinjected")
+
+
+def test_add_header_rejects_invalid_name():
+    """Test that a header name with illegal token characters is rejected."""
+    with pytest.raises(ValueError):
+        add_header({}, "X Bad:Name", "value")
+
+
+def test_add_header_allows_pseudo_header_names():
+    """Test that HTTP/2 pseudo-header names (leading ':') are allowed."""
+    headers = []
+    add_header(headers, ":method", "GET")
+    assert headers == [(":method", "GET")]
+
+
+def test_add_header_allows_normal_values():
+    """Test that ordinary header values, including HTAB, still pass."""
+    headers = {}
+    add_header(headers, "Authorization", "Bearer token")
+    add_header(headers, "Content-Type", "text/html; charset=utf-8")
+    add_header(headers, "X-Tabbed", "value\twith\ttab")
+    assert headers == {
+        "Authorization": "Bearer token",
+        "Content-Type": "text/html; charset=utf-8",
+        "X-Tabbed": "value\twith\ttab",
+    }
+
+
+def test_prepare_request_headers_rejects_crlf_injection(mocker):
+    """Test that the real request-building path rejects CRLF-laden header values."""
+    connection = mocker.MagicMock()
+    connection.h2conn = None
+    with pytest.raises(ValueError):
+        aiosonic.client._prepare_request_headers(
+            url=urlparse("http://127.0.0.1/"),
+            connection=connection,
+            method="GET",
+            headers={"X-Trace-Id": "abc\r\nX-Injected: pwned"},
+        )
+
+
 def test_encoding_from_header():
     """Test use encoder from header."""
     response = HttpResponse()
@@ -97,3 +152,57 @@ def test_hostname_parse():
     hostname = "gnosisespaña.es"
     port = 443
     assert aiosonic.client._get_hostname(hostname, port) == "xn--gnosisespaa-beb.es"
+
+
+def test_handle_redirect_strips_credentials_on_cross_host():
+    """Test that Cookie/Authorization/Proxy-Authorization are dropped on cross-host redirect."""
+    client = aiosonic.HTTPClient()
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 302 Found\r\n")
+    response._set_header("location", "http://evil.example/steal")
+
+    headers = {
+        "Cookie": "session=SECRET",
+        "Authorization": "Bearer SECRET",
+        "Proxy-Authorization": "Basic SECRET",
+        "X-Custom": "keep-me",
+    }
+    current = urlparse("http://origin.example/")
+
+    client._handle_redirect(
+        current_urlparsed=current,
+        headers=headers,
+        response=response,
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=False,
+    )
+
+    assert "Cookie" not in headers
+    assert "Authorization" not in headers
+    assert "Proxy-Authorization" not in headers
+    assert headers["X-Custom"] == "keep-me"
+
+
+def test_handle_redirect_keeps_credentials_on_same_host():
+    """Test that Cookie is preserved when the redirect stays on the same host."""
+    client = aiosonic.HTTPClient()
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 302 Found\r\n")
+    response._set_header("location", "http://origin.example/other")
+
+    headers = {"Cookie": "session=SECRET"}
+    current = urlparse("http://origin.example/")
+
+    client._handle_redirect(
+        current_urlparsed=current,
+        headers=headers,
+        response=response,
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=False,
+    )
+
+    assert headers["Cookie"] == "session=SECRET"

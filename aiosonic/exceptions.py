@@ -58,3 +58,8 @@ class SSEConnectionError(Exception):
 
 class SSEParsingError(Exception):
     pass
+
+
+# Decompression
+class DecompressionError(Exception):
+    pass

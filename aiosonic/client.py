@@ -10,7 +10,6 @@ from asyncio import wait_for
 from codecs import lookup
 from copy import deepcopy
 from functools import partial
-from gzip import decompress as gzip_decompress
 from http import cookies
 from io import IOBase
 from json import dumps as json_dumps
@@ -20,7 +19,7 @@ from random import randint
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
-from zlib import decompress as zlib_decompress
+from zlib import MAX_WBITS, decompressobj
 
 from charset_normalizer import detect
 
@@ -30,6 +29,7 @@ from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
     ConnectionDisconnected,
     ConnectTimeout,
+    DecompressionError,
     HttpParsingError,
     MaxRedirects,
     MissingWriterException,
@@ -56,6 +56,9 @@ _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 CRLF = "\r\n"
 dlogger = get_debug_logger()
 RANDOM_RANGE = (10**8, 10**9)
+_DEFAULT_MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
+_GZIP_WBITS = MAX_WBITS | 16
+_DEFLATE_WBITS = MAX_WBITS
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 
@@ -80,6 +83,17 @@ class HttpHeaders(CaseInsensitiveDict):
 HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
 
 
+def _decompress_bounded(data: bytes, wbits: int, max_size: int) -> bytes:
+    """Stream-decompress data, raising DecompressionError if output would exceed max_size."""
+    decompressor = decompressobj(wbits)
+    out = decompressor.decompress(data, max_size + 1)
+    if not decompressor.unconsumed_tail:
+        out += decompressor.flush()
+    if len(out) > max_size:
+        raise DecompressionError(f"decompressed response body exceeds the {max_size} byte limit")
+    return out
+
+
 class HttpResponse:
     """Custom HttpResponse class for handling responses.
 
@@ -102,6 +116,7 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
+        self.max_decompressed_size = _DEFAULT_MAX_DECOMPRESSED_SIZE
         self._h2_chunk_queue = None
         self._h2_sem_release = None
         self._h2_flow_cb = None
@@ -171,9 +186,9 @@ class HttpResponse:
     def _set_body(self, data):
         """Set body."""
         if self.compressed == "gzip":
-            self.body += gzip_decompress(data)
+            self.body += _decompress_bounded(data, _GZIP_WBITS, self.max_decompressed_size)
         elif self.compressed == "deflate":
-            self.body += zlib_decompress(data)
+            self.body += _decompress_bounded(data, _DEFLATE_WBITS, self.max_decompressed_size)
         else:
             self.body += data
 
@@ -493,6 +508,7 @@ async def _do_request(
     http2: bool = False,
     proxy: Optional[Proxy] = None,
     transfer_chunked: bool = True,
+    max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -532,6 +548,7 @@ async def _do_request(
 
         response = HttpResponse()
         response._set_request_meta(urlparsed)
+        response.max_decompressed_size = max_decompressed_size
 
         # get response code and version
         try:
@@ -585,6 +602,11 @@ class HTTPClient:
         * **http2_config**: HTTP/2 protocol tuning (flow-control window, max
             concurrent streams), used only when this client builds its own
             connector (i.e. when ``connector`` is not provided).
+        * **max_decompressed_size**: Maximum allowed size, in bytes, of a
+            gzip/deflate-decompressed response body. Protects against
+            decompression-bomb responses from malicious or compromised
+            servers. Defaults to 100MB; raises
+            :class:`aiosonic.exceptions.DecompressionError` if exceeded.
     """
 
     def __init__(
@@ -596,6 +618,7 @@ class HTTPClient:
         max_redirects: int = 5,
         http2: bool = False,
         http2_config: Optional[Http2Config] = None,
+        max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
     ):
         """Initialize client options."""
         self.connector = connector or TCPConnector(http2=http2, http2_config=http2_config)
@@ -605,6 +628,7 @@ class HTTPClient:
         self.proxy = proxy
         self.max_redirects = max_redirects
         self.http2 = http2
+        self.max_decompressed_size = max_decompressed_size
 
     async def __aenter__(self):
         return self
@@ -783,6 +807,7 @@ class HTTPClient:
         follow: bool = False,
         http2: bool = False,
         max_redirects: Optional[int] = None,
+        max_decompressed_size: Optional[int] = None,
     ) -> HttpResponse:
         """Do http request.
 
@@ -799,6 +824,8 @@ class HTTPClient:
             * **ssl**: this parameter allows to specify a custom ssl context
             * **timeouts**: parameter to indicate timeouts for request
             * **follow**: parameter to indicate whether to follow redirects
+            * **max_decompressed_size**: overrides the client's configured
+              gzip/deflate decompressed-size limit for this request
             * **http2**: flag to indicate whether to use http2 (experimental)
         """
         headers = deepcopy(headers) if headers else HttpHeaders()
@@ -835,6 +862,9 @@ class HTTPClient:
             body = http_parser.setup_body_request(data, headers)
 
         max_redirects = max_redirects if max_redirects is not None else self.max_redirects
+        max_decompressed_size = (
+            max_decompressed_size if max_decompressed_size is not None else self.max_decompressed_size
+        )
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
         http2 = http2 or self.http2
@@ -863,6 +893,7 @@ class HTTPClient:
                         http2,
                         self.proxy,
                         transfer_chunked=transfer_chunked,
+                        max_decompressed_size=max_decompressed_size,
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
@@ -952,11 +983,11 @@ class HTTPClient:
             # to disallow re-sends unless user opts in.
             pass
 
-        # 7) security: drop Authorization when host changes
+        # 7) security: drop Authorization/Cookie/Proxy-Authorization when host changes
         try:
             if current_urlparsed.netloc != new_urlparsed.netloc:
                 for h in list(headers.keys()):
-                    if h.lower() == "authorization":
+                    if h.lower() in ("authorization", "cookie", "proxy-authorization"):
                         del headers[h]
         except Exception:
             pass
