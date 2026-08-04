@@ -79,6 +79,7 @@ class Connection:
 
         self._verify = True
         self.proxy_connected = False
+        self.proxy_target: Optional[Tuple[str, str, int]] = None
         self.last_released_time = None
 
     @property
@@ -305,13 +306,15 @@ class Connection:
 
             self.reader, self.writer = None, None
         self.proxy_connected = False
+        self.proxy_target = None
 
-    async def upgrade(self, ssl_context: SSLContext = None):
+    async def upgrade(self, ssl_context: SSLContext = None, server_hostname: Optional[str] = None):
         """Upgrade the connection to use TLS.
 
         Args:
             ssl_context (SSLContext, optional): The SSL context to use for the upgrade.
-                If None, a default context will be created. Defaults to None.
+                                              If None, a default context will be created. Defaults to None.
+            server_hostname (Optional[str]): Hostname used for TLS SNI and certificate verification.
 
         Raises:
             MissingWriterException: If the writer is not set.
@@ -319,7 +322,7 @@ class Connection:
         ssl_context = ssl_context or get_default_ssl_context(self._verify)
         if not self.writer:
             raise MissingWriterException()
-        await self.writer.start_tls(ssl_context)
+        await self.writer.start_tls(ssl_context, server_hostname=server_hostname)
 
     async def http2_request(self, headers: Dict[str, str], body: Optional[ParsedBodyType]):
         """Send an HTTP/2 request.

@@ -15,7 +15,7 @@ from io import IOBase
 from json import dumps as json_dumps
 from json import loads
 from os.path import basename
-from random import randint
+from secrets import token_hex
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
@@ -55,7 +55,6 @@ _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 CRLF = "\r\n"
 dlogger = get_debug_logger()
-RANDOM_RANGE = (10**8, 10**9)
 _DEFAULT_MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
 _GZIP_WBITS = MAX_WBITS | 16
 _DEFLATE_WBITS = MAX_WBITS
@@ -518,9 +517,12 @@ async def _do_request(
         url_connect = http_parser.get_url_parsed(proxy.host)
 
     connect_ssl = ssl if not proxy else None
+    proxy_target = None
+    if proxy and urlparsed.scheme == "https":
+        proxy_target = (urlparsed.scheme, urlparsed.hostname, urlparsed.port or 443)
 
     args = url_connect, verify, connect_ssl, timeouts, http2
-    async with await connector.acquire(*args) as connection:
+    async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
         if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
             await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
 
@@ -855,7 +857,7 @@ class HTTPClient:
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
-            boundary = "boundary-%d" % randint(*RANDOM_RANGE)
+            boundary = f"boundary-{token_hex(16)}"
             body = await _send_multipart(data, boundary, headers)
             transfer_chunked = False
         elif data:
@@ -983,9 +985,10 @@ class HTTPClient:
             # to disallow re-sends unless user opts in.
             pass
 
-        # 7) security: drop Authorization/Cookie/Proxy-Authorization when host changes
         try:
-            if current_urlparsed.netloc != new_urlparsed.netloc:
+            if current_urlparsed.netloc != new_urlparsed.netloc or (
+                current_urlparsed.scheme == "https" and new_urlparsed.scheme != "https"
+            ):
                 for h in list(headers.keys()):
                     if h.lower() in ("authorization", "cookie", "proxy-authorization"):
                         del headers[h]
@@ -1042,18 +1045,25 @@ async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseRes
         raise ConnectionError(f"Failed to establish connection through proxy: {connect_response}")
 
     if sys.version_info >= (3, 11):
-        await connection.upgrade(ssl_context)
+        await connection.upgrade(ssl_context, server_hostname=desturl.hostname)
     else:
         # Manually upgrade the connection to TLS for Python versions < 3.11
-        await _update_transport(connection, ssl_context)
+        await _update_transport(connection, ssl_context, desturl.hostname)
 
     connection.proxy_connected = True
+    connection.proxy_target = (desturl.scheme, desturl.hostname, port)
 
 
-async def _update_transport(connection: Connection, ssl_context):
+async def _update_transport(connection: Connection, ssl_context, server_hostname: Optional[str] = None):
     transport = connection.writer.transport
     protocol = transport.get_protocol()
-    new_transport = await get_loop().start_tls(transport, protocol, ssl_context, server_side=False)
+    new_transport = await get_loop().start_tls(
+        transport,
+        protocol,
+        ssl_context,
+        server_side=False,
+        server_hostname=server_hostname,
+    )
 
     writer = connection.writer
     reader = connection.reader

@@ -187,6 +187,38 @@ def test_handle_redirect_strips_credentials_on_cross_host():
     assert headers["X-Custom"] == "keep-me"
 
 
+def test_handle_redirect_strips_credentials_on_https_downgrade():
+    """Test that credentials are dropped when HTTPS redirects to HTTP on the same host."""
+    client = aiosonic.HTTPClient()
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 302 Found\r\n")
+    response._set_header("location", "http://origin.example/insecure")
+
+    headers = {
+        "Cookie": "session=SECRET",
+        "Authorization": "Bearer SECRET",
+        "Proxy-Authorization": "Basic SECRET",
+        "X-Custom": "keep-me",
+    }
+    current = urlparse("https://origin.example/secure")
+
+    new_urlparsed, *_ = client._handle_redirect(
+        current_urlparsed=current,
+        headers=headers,
+        response=response,
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=False,
+    )
+
+    assert new_urlparsed.scheme == "http"
+    assert "Cookie" not in headers
+    assert "Authorization" not in headers
+    assert "Proxy-Authorization" not in headers
+    assert headers["X-Custom"] == "keep-me"
+
+
 def test_handle_redirect_keeps_credentials_on_same_host():
     """Test that Cookie is preserved when the redirect stays on the same host."""
     client = aiosonic.HTTPClient()

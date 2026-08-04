@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from asyncio import sleep as asyncio_sleep
 from asyncio import wait_for
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, Union
 from urllib.parse import ParseResult
 
 from onecache import ExpirableCache
@@ -87,7 +87,15 @@ class TCPConnector:
         if self.use_dns_cache:
             self.cache = ExpirableCache(512, ttl_dns_cache)
 
-    async def acquire(self, urlparsed: ParseResult, verify, ssl, timeouts, http2) -> Connection:
+    async def acquire(
+        self,
+        urlparsed: ParseResult,
+        verify,
+        ssl,
+        timeouts,
+        http2,
+        proxy_target: Optional[Tuple[str, str, int]] = None,
+    ) -> Connection:
         """Acquire a connection from the appropriate pool."""
         if not urlparsed.hostname:
             raise HttpParsingError("missing hostname")
@@ -101,6 +109,8 @@ class TCPConnector:
             pool = self.pools[":default"]
 
         conn = await pool.acquire(urlparsed)
+        if proxy_target and conn.proxy_connected and conn.proxy_target != proxy_target:
+            conn.close()
         return await self.after_acquire(urlparsed, conn, verify, ssl, timeouts, http2)
 
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):

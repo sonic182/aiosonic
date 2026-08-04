@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] 2026-08-04
+
+### Security
+- Use cryptographically secure 128-bit boundaries for both multipart upload paths to prevent practical boundary-guessing part injection.
+- Strip sensitive credentials when following an HTTPS-to-HTTP redirect, preventing their transmission over plaintext.
+- Reconnect HTTPS proxy tunnels when the destination origin changes and bind the tunneled TLS handshake to the destination hostname.
+
 ## [1.0.3] 2026-07-22
 
 ### Security
@@ -441,7 +448,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.3..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.4..HEAD
+[1.0.4]: https://github.com/sonic182/aiosonic/compare/1.0.3..1.0.4
 [1.0.3]: https://github.com/sonic182/aiosonic/compare/1.0.2..1.0.3
 [1.0.2]: https://github.com/sonic182/aiosonic/compare/1.0.1..1.0.2
 [1.0.1]: https://github.com/sonic182/aiosonic/compare/1.0.0..1.0.1
