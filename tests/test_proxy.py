@@ -1,5 +1,6 @@
 """Test proxy requests."""
 
+import sys
 from urllib.parse import urlparse
 
 import pytest
@@ -118,6 +119,9 @@ async def test_proxy_connect_uses_destination_hostname_for_tls(mocker):
     connection.read = mocker.AsyncMock(return_value=b"HTTP/1.1 200 Connection established\r\n\r\n")
     connection.upgrade = mocker.AsyncMock()
     ssl_context = mocker.MagicMock()
+    update_transport = None
+    if sys.version_info < (3, 11):
+        update_transport = mocker.patch("aiosonic.client._update_transport", new=mocker.AsyncMock())
 
     await _proxy_connect(
         connection,
@@ -126,7 +130,10 @@ async def test_proxy_connect_uses_destination_hostname_for_tls(mocker):
         ssl_context,
     )
 
-    connection.upgrade.assert_awaited_once_with(ssl_context, server_hostname="second.example")
+    if sys.version_info >= (3, 11):
+        connection.upgrade.assert_awaited_once_with(ssl_context, server_hostname="second.example")
+    else:
+        update_transport.assert_awaited_once_with(connection, ssl_context, "second.example")
     assert connection.proxy_target == ("https", "second.example", 443)
 
 
