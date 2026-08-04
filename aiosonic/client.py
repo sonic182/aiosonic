@@ -15,7 +15,7 @@ from io import IOBase
 from json import dumps as json_dumps
 from json import loads
 from os.path import basename
-from random import randint
+from secrets import token_hex
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
@@ -55,7 +55,6 @@ _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 CRLF = "\r\n"
 dlogger = get_debug_logger()
-RANDOM_RANGE = (10**8, 10**9)
 _DEFAULT_MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
 _GZIP_WBITS = MAX_WBITS | 16
 _DEFLATE_WBITS = MAX_WBITS
@@ -855,7 +854,7 @@ class HTTPClient:
         elif multipart:
             if not isinstance(data, dict):
                 raise ValueError("data should be dict")
-            boundary = "boundary-%d" % randint(*RANDOM_RANGE)
+            boundary = f"boundary-{token_hex(16)}"
             body = await _send_multipart(data, boundary, headers)
             transfer_chunked = False
         elif data:

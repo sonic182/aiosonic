@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Use cryptographically secure 128-bit boundaries for both multipart upload paths to prevent practical boundary-guessing part injection.
+
 ## [1.0.3] 2026-07-22
 
 ### Security

@@ -5,6 +5,16 @@ from aiosonic.client import MultipartFile, _send_multipart
 from aiosonic.multipart import MultipartForm
 
 
+def test_multipartform_uses_cryptographic_boundary(mocker):
+    """Test MultipartForm uses a cryptographically secure boundary."""
+    token_hex = mocker.patch("aiosonic.multipart.token_hex", return_value="a" * 32)
+
+    form = MultipartForm()
+
+    assert form.boundary == f"boundary-{'a' * 32}"
+    token_hex.assert_called_once_with(16)
+
+
 @pytest.mark.asyncio
 async def test_post_multipart(http_serv):
     """Test post multipart."""
@@ -88,6 +98,21 @@ async def test_multipart_backward_compatibility(http_serv):
         res = await client.post(url, data=data, multipart=True)
         assert res.status_code == 200
         assert await res.text() == "bar-foo"
+
+
+@pytest.mark.asyncio
+async def test_legacy_multipart_uses_cryptographic_boundary(http_serv, mocker):
+    """Test legacy multipart uses a cryptographically secure boundary."""
+    token_hex = mocker.patch("aiosonic.client.token_hex", return_value="b" * 32)
+    url = f"{http_serv}/upload_file"
+    data = {"foo": open("tests/files/bar.txt", "rb"), "field1": "foo"}
+
+    async with aiosonic.HTTPClient() as client:
+        res = await client.post(url, data=data, multipart=True)
+        assert res.status_code == 200
+        assert await res.text() == "bar-foo"
+
+    token_hex.assert_called_once_with(16)
 
 
 @pytest.mark.asyncio

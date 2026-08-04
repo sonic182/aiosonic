@@ -2,12 +2,11 @@ from __future__ import annotations
 import os
 from io import IOBase
 from os.path import basename
-from random import randint
+from secrets import token_hex
 from typing import Optional, Union, cast
 
 from aiosonic.resolver import get_loop
 
-RANDOM_RANGE = (1000, 9999)
 _CHUNK_SIZE = 1024 * 1024  # 1mb
 
 
@@ -119,7 +118,7 @@ class MultipartForm:
     def __init__(self):
         """Initializes an empty list for fields and generates a boundary."""
         self.fields = []
-        self.boundary = f"boundary-{randint(*RANDOM_RANGE)}"
+        self.boundary = f"boundary-{token_hex(16)}"
 
     def add_field(
         self,
