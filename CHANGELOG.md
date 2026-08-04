@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Use cryptographically secure 128-bit boundaries for both multipart upload paths to prevent practical boundary-guessing part injection.
 - Strip sensitive credentials when following an HTTPS-to-HTTP redirect, preventing their transmission over plaintext.
+- Reconnect HTTPS proxy tunnels when the destination origin changes and bind the tunneled TLS handshake to the destination hostname.
 
 ## [1.0.3] 2026-07-22
 

@@ -79,6 +79,37 @@ def test_is_connected_false_before_connect():
     assert not conn.is_connected
 
 
+def test_close_resets_proxy_tunnel_state():
+    """Test closing a connection clears its proxy tunnel state."""
+    from aiosonic.pools import CyclicQueuePool
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    conn.proxy_connected = True
+    conn.proxy_target = ("https", "second.example", 443)
+
+    conn.close()
+
+    assert not conn.proxy_connected
+    assert conn.proxy_target is None
+
+
+@pytest.mark.asyncio
+async def test_upgrade_passes_server_hostname(mocker):
+    """Test TLS upgrades pass the destination hostname for verification."""
+    from aiosonic.pools import CyclicQueuePool
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    conn.writer = mocker.MagicMock()
+    conn.writer.start_tls = mocker.AsyncMock()
+    ssl_context = mocker.MagicMock()
+
+    await conn.upgrade(ssl_context, server_hostname="second.example")
+
+    conn.writer.start_tls.assert_awaited_once_with(ssl_context, server_hostname="second.example")
+
+
 @pytest.mark.asyncio
 async def test_write_without_writer():
     from aiosonic.pools import CyclicQueuePool, PoolConfig

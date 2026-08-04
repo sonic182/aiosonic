@@ -517,9 +517,12 @@ async def _do_request(
         url_connect = http_parser.get_url_parsed(proxy.host)
 
     connect_ssl = ssl if not proxy else None
+    proxy_target = None
+    if proxy and urlparsed.scheme == "https":
+        proxy_target = (urlparsed.scheme, urlparsed.hostname, urlparsed.port or 443)
 
     args = url_connect, verify, connect_ssl, timeouts, http2
-    async with await connector.acquire(*args) as connection:
+    async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
         if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
             await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
 
@@ -1042,18 +1045,25 @@ async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseRes
         raise ConnectionError(f"Failed to establish connection through proxy: {connect_response}")
 
     if sys.version_info >= (3, 11):
-        await connection.upgrade(ssl_context)
+        await connection.upgrade(ssl_context, server_hostname=desturl.hostname)
     else:
         # Manually upgrade the connection to TLS for Python versions < 3.11
-        await _update_transport(connection, ssl_context)
+        await _update_transport(connection, ssl_context, desturl.hostname)
 
     connection.proxy_connected = True
+    connection.proxy_target = (desturl.scheme, desturl.hostname, port)
 
 
-async def _update_transport(connection: Connection, ssl_context):
+async def _update_transport(connection: Connection, ssl_context, server_hostname: Optional[str] = None):
     transport = connection.writer.transport
     protocol = transport.get_protocol()
-    new_transport = await get_loop().start_tls(transport, protocol, ssl_context, server_side=False)
+    new_transport = await get_loop().start_tls(
+        transport,
+        protocol,
+        ssl_context,
+        server_side=False,
+        server_hostname=server_hostname,
+    )
 
     writer = connection.writer
     reader = connection.reader
