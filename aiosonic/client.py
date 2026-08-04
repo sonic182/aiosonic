@@ -982,9 +982,10 @@ class HTTPClient:
             # to disallow re-sends unless user opts in.
             pass
 
-        # 7) security: drop Authorization/Cookie/Proxy-Authorization when host changes
         try:
-            if current_urlparsed.netloc != new_urlparsed.netloc:
+            if current_urlparsed.netloc != new_urlparsed.netloc or (
+                current_urlparsed.scheme == "https" and new_urlparsed.scheme != "https"
+            ):
                 for h in list(headers.keys()):
                     if h.lower() in ("authorization", "cookie", "proxy-authorization"):
                         del headers[h]
