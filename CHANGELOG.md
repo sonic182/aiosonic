@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] 2026-08-11
+
+### Security
+- Updated h2 to 4.4.1 to reject duplicate Host headers in HTTP/2 request header blocks.
+
 ## [1.0.4] 2026-08-04
 
 ### Security
@@ -448,7 +453,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.4..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.5..HEAD
+[1.0.5]: https://github.com/sonic182/aiosonic/compare/1.0.4..1.0.5
 [1.0.4]: https://github.com/sonic182/aiosonic/compare/1.0.3..1.0.4
 [1.0.3]: https://github.com/sonic182/aiosonic/compare/1.0.2..1.0.3
 [1.0.2]: https://github.com/sonic182/aiosonic/compare/1.0.1..1.0.2
