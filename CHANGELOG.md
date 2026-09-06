@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.6] 2026-09-06
+
+### Fixed
+- Accept HTTP response status lines with no reason phrase (e.g. `HTTP/1.1 200`), which previously failed with a bare `AssertionError`. An unparseable status line now raises a typed `HttpParsingError` that includes the offending bytes, and the connection is marked non-reusable to avoid poisoning a pooled keep-alive connection.
+
 ## [1.0.5] 2026-08-11
 
 ### Security
@@ -453,7 +458,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.5..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.0.6..HEAD
+[1.0.6]: https://github.com/sonic182/aiosonic/compare/1.0.5..1.0.6
 [1.0.5]: https://github.com/sonic182/aiosonic/compare/1.0.4..1.0.5
 [1.0.4]: https://github.com/sonic182/aiosonic/compare/1.0.3..1.0.4
 [1.0.3]: https://github.com/sonic182/aiosonic/compare/1.0.2..1.0.3

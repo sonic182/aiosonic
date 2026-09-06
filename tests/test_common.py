@@ -6,7 +6,7 @@ import pytest
 
 import aiosonic
 from aiosonic import HttpHeaders, HttpResponse
-from aiosonic.exceptions import DecompressionError, MissingWriterException
+from aiosonic.exceptions import DecompressionError, HttpParsingError, MissingWriterException
 from aiosonic.http_parser import add_header, add_headers
 
 
@@ -139,6 +139,20 @@ def test_parse_response_line_with_empty_reason():
     response = HttpResponse()
     response._set_response_initial(b"HTTP/1.1 200 \r\n")
     assert response.status_code == 200
+
+
+def test_parse_response_line_without_reason_phrase():
+    """Test parsing response line with no reason-phrase at all."""
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 200\r\n")
+    assert response.status_code == 200
+    assert response.http_version == "1.1"
+
+
+def test_parse_response_line_unparseable_raises_http_parsing_error():
+    """Test that an unparseable status line raises a typed HttpParsingError."""
+    with pytest.raises(HttpParsingError):
+        HttpResponse()._set_response_initial(b"garbage\r\n")
 
 
 def test_handle_bad_chunk(mocker):

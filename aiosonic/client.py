@@ -50,7 +50,7 @@ from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
 # VARIABLES
-_HTTP_RESPONSE_STATUS_LINE = re.compile(r"HTTP/(?P<version>(\d.)?(\d)) (?P<code>\d+) (?P<reason>[\w]*)")
+_HTTP_RESPONSE_STATUS_LINE = re.compile(r"HTTP/(?P<version>\d(?:\.\d)?) (?P<code>\d+)(?: (?P<reason>.*))?")
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 CRLF = "\r\n"
@@ -123,7 +123,8 @@ class HttpResponse:
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
         res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip("\r\n"))
-        assert res
+        if not res:
+            raise HttpParsingError(f"unparseable status line: {data[:80]!r}")
         self.response_initial = res.groupdict()
 
     def _set_header(self, key: str, val: str):
@@ -562,6 +563,9 @@ async def _do_request(
             connection.keep = False
             raise ConnectionDisconnected()
             # raise HttpParsingError(f"response line parsing error: {exc.partial}")
+        except HttpParsingError:
+            connection.keep = False
+            raise
         except TimeoutException:
             raise ReadTimeout()
 
