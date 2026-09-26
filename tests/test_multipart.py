@@ -1,3 +1,5 @@
+from io import BytesIO
+
 import pytest
 
 import aiosonic
@@ -13,6 +15,18 @@ def test_multipartform_uses_cryptographic_boundary(mocker):
 
     assert form.boundary == f"boundary-{'a' * 32}"
     token_hex.assert_called_once_with(16)
+
+
+@pytest.mark.asyncio
+async def test_multipartform_separates_file_content_from_boundary():
+    form = MultipartForm()
+    form.boundary = "test-boundary"
+    form.add_field("file", BytesIO(b"ABC"), "test.bin")
+    form.add_field("field", "value")
+
+    body, _ = await form.get_body_size()
+
+    assert b"ABC\r\n--test-boundary\r\n" in body
 
 
 @pytest.mark.asyncio
@@ -66,7 +80,7 @@ async def test_post_multipart_with_metadata(http_serv):
 async def test_multipart_size_precalculation():
     """Test that multipart body size is precalculated without building body."""
     # Mock data with file
-    file_obj = open("tests/files/bar.txt", "rb")
+    file_obj = BytesIO(b"ABC")
     data = {
         "field1": "value1",
         "file": MultipartFile(file_obj, filename="test.txt", content_type="text/plain"),
@@ -84,6 +98,7 @@ async def test_multipart_size_precalculation():
         collected += chunk
 
     assert len(collected) > 0
+    assert collected.endswith(b"ABC\r\n--test-boundary--")
     assert "Content-Length" in headers
     assert headers["Content-Length"] == str(len(collected))
 

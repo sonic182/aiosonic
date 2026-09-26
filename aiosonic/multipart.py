@@ -179,6 +179,7 @@ class MultipartForm:
                 async for data in self._read_file(file_obj):
                     yield data
                 file_obj.close()
+                yield b"\r\n"
             else:
                 yield (f'Content-Disposition: form-data; name="{field[0]}"\r\n\r\n').encode()
                 yield field[1].encode() + b"\r\n"
