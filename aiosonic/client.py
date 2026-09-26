@@ -452,7 +452,7 @@ async def _send_multipart(
         to_write += CRLF
         total_size += len(to_write.encode())
 
-        total_size += file_size
+        total_size += file_size + len(CRLF.encode())
 
     # final boundary
     total_size += len((f"--{boundary}--").encode())
@@ -490,6 +490,7 @@ async def _send_multipart(
                     break
                 yield chunk
             file_obj.close()
+            yield CRLF.encode()
 
         # final boundary
         yield (f"--{boundary}--").encode()

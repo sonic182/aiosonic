@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Emit the required CRLF before multipart boundaries after file parts, preventing strict servers from dropping subsequent fields or rejecting the request. (#593)
+
 ## [1.0.6] 2026-09-06
 
 ### Fixed
