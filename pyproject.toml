@@ -62,7 +62,7 @@ ruff = "^0.14.0"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = ">=7.4,<8.0"
-sphinx-rtd-theme = ">=2.0,<3.0"
+sphinx-rtd-theme = ">=2.0,<4.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
