@@ -199,3 +199,27 @@ async def test_connect_uses_expected_default_port_and_tls_for_scheme(mocker, url
     else:
         assert "server_hostname" not in kwargs
         assert kwargs["ssl"] is None
+
+
+@pytest.mark.asyncio
+async def test_connect_reopens_when_scheme_changes_on_same_host(mocker):
+    from aiosonic.pools import CyclicQueuePool, PoolConfig
+
+    pool = CyclicQueuePool(PoolConfig(size=1), Connection)
+    conn = Connection(pool)
+    writer = MagicMock()
+    writer.get_extra_info.return_value = None
+    writer.is_closing.return_value = False
+    open_connection = mocker.patch(
+        "aiosonic.connection.open_connection",
+        new=mocker.AsyncMock(return_value=(object(), writer)),
+    )
+    dns_info = {"hostname": "example.com", "family": 0, "proto": 0, "flags": 0}
+
+    await conn.connect(urlparse("http://example.com/"), dns_info, verify=True, ssl_context=None)
+    await conn.connect(urlparse("http://example.com:80/"), dns_info, verify=True, ssl_context=None)
+    assert open_connection.await_count == 1
+
+    await conn.connect(urlparse("https://example.com/"), dns_info, verify=True, ssl_context=None)
+    assert open_connection.await_count == 2
+    assert open_connection.await_args.kwargs["port"] == 443
