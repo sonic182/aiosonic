@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Pooled connections are keyed by scheme, host and effective port, so a request to `https://host` no longer reuses a connection opened for `http://host`, and `host` and `host:80` share one. This fixes `follow=True` looping until `MaxRedirects` on an `http`→`https` redirect to the same host.
+
 ## [1.0.7] 2026-09-26
 
 ### Fixed

@@ -11,6 +11,7 @@ from urllib.parse import ParseResult
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout, TimeoutException
 from aiosonic.http2 import Http2Config
 from aiosonic.timeout import Timeouts
+from aiosonic.utils import connection_key
 
 
 @dataclass(frozen=True, eq=True)
@@ -173,7 +174,7 @@ class SmartPool(BasePool):
 
         # Find connection based on URL
         if urlparsed:
-            key = f"{urlparsed.hostname}-{urlparsed.port}"
+            key = connection_key(urlparsed)
             for item in self.pool:
                 if item.key == key:
                     self.pool.remove(item)
@@ -269,8 +270,7 @@ class Http2MultiplexPool(BasePool):
     def _host_key(self, urlparsed: Optional[ParseResult]) -> str:
         if not urlparsed or not urlparsed.hostname:
             return ":default"
-        port = urlparsed.port or (443 if urlparsed.scheme in ["https", "wss"] else 80)
-        return f"{urlparsed.scheme}://{urlparsed.hostname}:{port}"
+        return connection_key(urlparsed)
 
     async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire a shared connection for the target host."""

@@ -6,8 +6,9 @@ import pytest
 from aiosonic.connection import Connection
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout
 from aiosonic.http2 import Http2Config
-from aiosonic.pools import CyclicQueuePool, Http2MultiplexPool, PoolConfig, WsPool
+from aiosonic.pools import CyclicQueuePool, Http2MultiplexPool, PoolConfig, SmartPool, WsPool
 from aiosonic.timeout import Timeouts
+from aiosonic.utils import connection_key
 
 
 def make_cyclic_pool(**kwargs):
@@ -128,3 +129,20 @@ async def test_cyclic_pool_acquire_timeout():
     with pytest.raises(ConnectionPoolAcquireTimeout):
         await pool.acquire()
     pool.release(conn)
+
+
+def test_connection_key_uses_scheme_and_effective_port():
+    assert connection_key(urlparse("http://a.test/x")) == connection_key(urlparse("http://a.test:80/y"))
+    assert connection_key(urlparse("http://a.test/")) != connection_key(urlparse("https://a.test/"))
+
+
+@pytest.mark.asyncio
+async def test_smart_pool_matches_connection_by_effective_port():
+    pool = SmartPool(PoolConfig(size=2), Connection)
+    conns = list(pool.pool)
+    conns[0].key = connection_key(urlparse("https://a.test/"))
+    conns[1].key = connection_key(urlparse("http://a.test/"))
+
+    conn = await pool.acquire(urlparse("http://a.test:80/"))
+
+    assert conn is conns[1]
