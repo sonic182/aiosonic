@@ -24,7 +24,7 @@ from aiosonic.http2 import Http2Handler
 from aiosonic.pools import BasePool
 from aiosonic.tcp_helpers import keepalive_flags
 from aiosonic.types import ParsedBodyType
-from aiosonic.utils import connection_key
+from aiosonic.utils import connection_key, default_port
 
 
 class Connection:
@@ -248,7 +248,7 @@ class Connection:
                         pass
             else:
                 del dns_info_copy["server_hostname"]
-            port = urlparsed.port or (443 if urlparsed.scheme in ("https", "wss") else 80)
+            port = default_port(urlparsed)
             dns_info_copy["port"] = port
 
             self.reader, self.writer = await open_connection(**dns_info_copy, ssl=ssl_context)
