@@ -109,7 +109,7 @@ class TCPConnector:
             pool = self.pools[":default"]
 
         conn = await pool.acquire(urlparsed)
-        if proxy_target and conn.proxy_connected and conn.proxy_target != proxy_target:
+        if conn.proxy_connected and conn.proxy_target != proxy_target:
             conn.close()
         return await self.after_acquire(urlparsed, conn, verify, ssl, timeouts, http2)
 

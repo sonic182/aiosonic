@@ -75,8 +75,17 @@ async def test_https_proxy_request_passes_destination_to_connector(mocker):
 
 
 @pytest.mark.asyncio
-async def test_connector_reconnects_proxy_tunnel_for_different_origin(mocker):
-    """Test a proxy tunnel is closed before it is reused for another HTTPS origin."""
+@pytest.mark.parametrize(
+    "proxy_target, close_calls",
+    [
+        (("https", "first.example", 443), 0),
+        (("https", "second.example", 443), 1),
+        (None, 1),
+    ],
+    ids=["same-origin", "other-origin", "plain-http"],
+)
+async def test_connector_reuses_proxy_tunnel_only_for_its_origin(mocker, proxy_target, close_calls):
+    """Test a proxy tunnel is reused only for its HTTPS origin and closed otherwise."""
     connector = TCPConnector({":default": PoolConfig(size=1)}, connection_cls=TunnelTrackingConnection)
     mocker.patch.object(connector, "after_acquire", side_effect=_return_connection)
 
@@ -86,28 +95,10 @@ async def test_connector_reconnects_proxy_tunnel_for_different_origin(mocker):
         None,
         Timeouts(),
         False,
-        proxy_target=("https", "second.example", 443),
+        proxy_target=proxy_target,
     )
 
-    assert connection.close_calls == 1
-
-
-@pytest.mark.asyncio
-async def test_connector_keeps_proxy_tunnel_for_same_origin(mocker):
-    """Test a proxy tunnel remains reusable for its original HTTPS origin."""
-    connector = TCPConnector({":default": PoolConfig(size=1)}, connection_cls=TunnelTrackingConnection)
-    mocker.patch.object(connector, "after_acquire", side_effect=_return_connection)
-
-    connection = await connector.acquire(
-        urlparse("http://proxy.example:8080"),
-        True,
-        None,
-        Timeouts(),
-        False,
-        proxy_target=("https", "first.example", 443),
-    )
-
-    assert connection.close_calls == 0
+    assert connection.close_calls == close_calls
 
 
 @pytest.mark.asyncio
