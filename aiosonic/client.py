@@ -21,18 +21,17 @@ from secrets import token_hex
 from ssl import SSLContext
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
-from zlib import MAX_WBITS, decompressobj
 
 from charset_normalizer import detect
 
 from aiosonic import http_parser
 from aiosonic.auth import AuthType, resolve_auth
+from aiosonic.compression import DEFAULT_MAX_DECOMPRESSED_SIZE, decompress_body, get_decompressor
 from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
     ConnectionDisconnected,
     ConnectTimeout,
-    DecompressionError,
     HTTPStatusError,
     HttpParsingError,
     MaxRedirects,
@@ -60,9 +59,6 @@ _CHUNK_SIZE = 1024 * 4  # 4kilobytes
 _STREAM_CHUNK_SIZE = 1024 * 64
 CRLF = "\r\n"
 dlogger = get_debug_logger()
-_DEFAULT_MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
-_GZIP_WBITS = MAX_WBITS | 16
-_DEFLATE_WBITS = MAX_WBITS
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 _EVENT_HOOKS = ("request", "response")
@@ -86,33 +82,6 @@ class HttpHeaders(CaseInsensitiveDict):
 
 #: Headers
 HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
-
-
-class _BoundedDecompressor:
-    """Incremental decompressor, raising DecompressionError if the output would exceed max_size."""
-
-    def __init__(self, wbits: int, max_size: int):
-        self._decompressor = decompressobj(wbits)
-        self._max_size = max_size
-        self._produced = 0
-
-    def _account(self, out: bytes) -> bytes:
-        self._produced += len(out)
-        if self._produced > self._max_size:
-            raise DecompressionError(f"decompressed response body exceeds the {self._max_size} byte limit")
-        return out
-
-    def feed(self, data: bytes) -> bytes:
-        return self._account(self._decompressor.decompress(data, self._max_size - self._produced + 1))
-
-    def flush(self) -> bytes:
-        return self._account(self._decompressor.flush())
-
-
-def _decompress_bounded(data: bytes, wbits: int, max_size: int) -> bytes:
-    """Decompress data, raising DecompressionError if output would exceed max_size."""
-    decompressor = _BoundedDecompressor(wbits, max_size)
-    return decompressor.feed(data) + decompressor.flush()
 
 
 class HttpResponse:
@@ -143,7 +112,7 @@ class HttpResponse:
         self.url = ""
         self.method = ""
         self._remaining: Optional[int] = None
-        self.max_decompressed_size = _DEFAULT_MAX_DECOMPRESSED_SIZE
+        self.max_decompressed_size = DEFAULT_MAX_DECOMPRESSED_SIZE
         self._h2_chunk_queue = None
         self._h2_sem_release = None
         self._h2_flow_cb = None
@@ -234,12 +203,7 @@ class HttpResponse:
 
     def _set_body(self, data):
         """Set body."""
-        if self.compressed == "gzip":
-            self.body += _decompress_bounded(data, _GZIP_WBITS, self.max_decompressed_size)
-        elif self.compressed == "deflate":
-            self.body += _decompress_bounded(data, _DEFLATE_WBITS, self.max_decompressed_size)
-        else:
-            self.body += data
+        self.body += decompress_body(data, self.compressed, self.max_decompressed_size)
 
     def _get_encoding(self) -> str:
         ctype = self.headers.get("content-type", "").lower()
@@ -341,8 +305,7 @@ class HttpResponse:
             if self.body:
                 yield self.body
             return
-        wbits = {"gzip": _GZIP_WBITS, "deflate": _DEFLATE_WBITS}.get(self.compressed)
-        decompressor = _BoundedDecompressor(wbits, self.max_decompressed_size) if wbits else None
+        decompressor = get_decompressor(self.compressed, self.max_decompressed_size)
         async for chunk in self.read_chunks():
             data = decompressor.feed(chunk) if decompressor else chunk
             if data:
@@ -638,7 +601,7 @@ async def _do_request(
     http2: bool = False,
     proxy: Optional[Proxy] = None,
     transfer_chunked: bool = True,
-    max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
+    max_decompressed_size: int = DEFAULT_MAX_DECOMPRESSED_SIZE,
     method: str = "GET",
     stream: bool = False,
 ) -> HttpResponse:
@@ -772,7 +735,7 @@ class HTTPClient:
         max_redirects: int = 5,
         http2: bool = False,
         http2_config: Optional[Http2Config] = None,
-        max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
+        max_decompressed_size: int = DEFAULT_MAX_DECOMPRESSED_SIZE,
         base_url: str = "",
         headers: Optional[HeadersType] = None,
         params: Optional[ParamsType] = None,
