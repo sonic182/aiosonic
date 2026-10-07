@@ -66,3 +66,9 @@ class BaseClient:
 
     async def delete(self, url: str, **kwargs):
         return await self.request("DELETE", url, **kwargs)
+
+    async def head(self, url: str, **kwargs):
+        return await self.request("HEAD", url, **kwargs)
+
+    async def options(self, url: str, **kwargs):
+        return await self.request("OPTIONS", url, **kwargs)

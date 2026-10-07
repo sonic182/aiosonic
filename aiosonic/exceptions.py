@@ -85,3 +85,18 @@ class HTTPStatusError(AiosonicError):
     def __init__(self, message: str, response: HttpResponse):
         super().__init__(message)
         self.response = response
+
+
+# httpx compatible client
+class ResponseNotRead(AiosonicError):
+    """Raised when the body of a streamed response is accessed before reading it."""
+
+    def __init__(self):
+        super().__init__("attempted to access the content of a streamed response without reading it, call aread()")
+
+
+class StreamConsumed(AiosonicError):
+    """Raised when the body of a streamed response is read after it was already iterated."""
+
+    def __init__(self):
+        super().__init__("attempted to read or iterate a response body that was already consumed")
