@@ -8,7 +8,7 @@ import re
 import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from copy import deepcopy
 from functools import partial
 from http import HTTPStatus, cookies
@@ -309,10 +309,11 @@ class HttpResponse:
                 yield self.body
             return
         decompressor = get_decompressor(self.compressed, self.max_decompressed_size)
-        async for chunk in self.read_chunks():
-            data = decompressor.feed(chunk) if decompressor else chunk
-            if data:
-                yield data
+        async with aclosing(self.read_chunks()) as chunks:
+            async for chunk in chunks:
+                data = decompressor.feed(chunk) if decompressor else chunk
+                if data:
+                    yield data
         if decompressor:
             tail = decompressor.flush()
             if tail:
@@ -322,10 +323,11 @@ class HttpResponse:
         """Iterate over the decoded body line by line, without the line terminators."""
         decoder = getincrementaldecoder(self._get_encoding())(errors="replace")
         pending = ""
-        async for data in self.iter_bytes():
-            *lines, pending = (pending + decoder.decode(data)).split("\n")
-            for line in lines:
-                yield line.removesuffix("\r")
+        async with aclosing(self.iter_bytes()) as chunks:
+            async for data in chunks:
+                *lines, pending = (pending + decoder.decode(data)).split("\n")
+                for line in lines:
+                    yield line.removesuffix("\r")
         pending += decoder.decode(b"", final=True)
         if pending:
             yield pending.removesuffix("\r")

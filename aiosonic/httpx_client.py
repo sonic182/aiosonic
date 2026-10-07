@@ -14,7 +14,7 @@ Example:
 
 from __future__ import annotations
 from codecs import getincrementaldecoder
-from contextlib import asynccontextmanager
+from contextlib import aclosing, asynccontextmanager
 from io import BytesIO, IOBase
 from json import loads
 from ssl import SSLContext
@@ -220,8 +220,9 @@ class Response:
         if self._read:
             raise StreamConsumed()
         self._start_stream()
-        async for chunk in self._response.read_chunks():
-            yield chunk
+        async with aclosing(self._response.read_chunks()) as chunks:
+            async for chunk in chunks:
+                yield chunk
 
     async def aiter_bytes(self) -> AsyncIterator[bytes]:
         """Iterate over the body, decompressing gzip and deflate bodies as they arrive."""
@@ -230,16 +231,18 @@ class Response:
                 yield self._response.body
             return
         self._start_stream()
-        async for chunk in self._response.iter_bytes():
-            yield chunk
+        async with aclosing(self._response.iter_bytes()) as chunks:
+            async for chunk in chunks:
+                yield chunk
 
     async def aiter_text(self) -> AsyncIterator[str]:
         """Iterate over the decoded body."""
         decoder = getincrementaldecoder(self.encoding)(errors="replace")
-        async for chunk in self.aiter_bytes():
-            text = decoder.decode(chunk)
-            if text:
-                yield text
+        async with aclosing(self.aiter_bytes()) as chunks:
+            async for chunk in chunks:
+                text = decoder.decode(chunk)
+                if text:
+                    yield text
         tail = decoder.decode(b"", final=True)
         if tail:
             yield tail
@@ -247,10 +250,11 @@ class Response:
     async def aiter_lines(self) -> AsyncIterator[str]:
         """Iterate over the decoded body line by line, without the line terminators."""
         pending = ""
-        async for text in self.aiter_text():
-            *lines, pending = (pending + text).split("\n")
-            for line in lines:
-                yield line.removesuffix("\r")
+        async with aclosing(self.aiter_text()) as texts:
+            async for text in texts:
+                *lines, pending = (pending + text).split("\n")
+                for line in lines:
+                    yield line.removesuffix("\r")
         if pending:
             yield pending.removesuffix("\r")
 
