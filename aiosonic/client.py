@@ -25,7 +25,7 @@ from urllib.parse import ParseResult, urlencode, urljoin
 from charset_normalizer import detect
 
 from aiosonic import http_parser
-from aiosonic.auth import AuthType, resolve_auth
+from aiosonic.auth import AuthType, normalize_auths, resolve_auth
 from aiosonic.compression import DEFAULT_MAX_DECOMPRESSED_SIZE, decompress_body, get_decompressor
 from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
@@ -105,6 +105,7 @@ class HttpResponse:
         self.body = b""
         self.response_initial = {}
         self._connection = None
+        self._owns_connection = False
         self.chunked = False
         self.compressed = b""
         self.chunks_readed = False
@@ -157,6 +158,7 @@ class HttpResponse:
     def _set_connection(self, connection: Connection):
         """Set header to response."""
         self._connection = connection
+        self._owns_connection = connection.blocked
 
     def _set_h2_queue(self, queue, sem_release, flow_cb):
         """Attach an HTTP/2 per-stream chunk queue to this response."""
@@ -295,8 +297,9 @@ class HttpResponse:
                     yield chunk[:-2]
             self.chunks_readed = True
         finally:
-            if self._connection is connection and connection.blocked:
+            if self._connection is connection and self._owns_connection:
                 self._connection = None
+                self._owns_connection = False
                 connection.ensure_released(response_read=self.chunks_readed)
 
     async def iter_bytes(self) -> AsyncIterator[bytes]:
@@ -345,17 +348,19 @@ class HttpResponse:
             self._discard_h2_queue()
             return
         connection = self._connection
+        owns_connection = self._owns_connection
         self._connection = None
-        if connection is not None and connection.blocked:
+        self._owns_connection = False
+        if connection is not None and owns_connection:
             connection.ensure_released(response_read=False)
 
     def __del__(self):
         if self._h2_chunk_queue is not None:
             self._discard_h2_queue()
             return
-        if self._connection and self._connection.blocked:
-            response_read = self.body
-            self._connection.ensure_released(response_read)
+        if self._connection and self._owns_connection:
+            self._owns_connection = False
+            self._connection.ensure_released(response_read=False)
 
     def _set_request_meta(self, urlparsed: ParseResult, method: str = ""):
         self.request_meta = {"from_path": urlparsed.path or "/"}
@@ -731,7 +736,7 @@ class HTTPClient:
         self.max_redirects = max_redirects
         self.http2 = http2
         self.max_decompressed_size = max_decompressed_size
-        self.auths = {host.lower(): value for host, value in (auths or {}).items()}
+        self.auths = normalize_auths(auths)
         self.follow = follow
         self.event_hooks: Dict[str, List[Callable]] = {name: list(event_hooks.get(name, [])) for name in _EVENT_HOOKS}
 

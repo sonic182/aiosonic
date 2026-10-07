@@ -7,7 +7,9 @@ from urllib.parse import urlparse
 import pytest
 
 import aiosonic
-from aiosonic import BearerAuth, HttpResponse
+from aiosonic import BasicAuth, BearerAuth, HttpResponse
+from aiosonic.auth import normalize_auths, resolve_auth
+from aiosonic.client import HttpHeaders
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
@@ -833,3 +835,49 @@ async def test_hooks_url_and_response_hook_error(http_serv):
         assert client.connector.pools[":default"].is_all_free()
 
     assert aiosonic.utils.join_url("http://base", "httpbin/get") == "http://base/httpbin/get"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_close_of_bodyless_response_keeps_other_request_connection(http_serv):
+    """Closing a response whose connection went back to the pool does not abort the request now using it."""
+    connector = TCPConnector({":default": PoolConfig(size=1)})
+    async with aiosonic.HTTPClient(connector) as client:
+        async with client.stream("HEAD", http_serv) as head_res:
+            assert head_res.status_code == 405
+            other = await client.request(http_serv + "/random", "GET", stream=True)
+        assert len(await other.content()) == 300000
+
+
+def test_resolve_auth_host_keys():
+    """auths keys match by host, host with the default or explicit port, and IPv6 hosts with brackets."""
+    auths = normalize_auths({"Example.com:443": ("a", "b"), "[::1]:8080": BearerAuth("v6"), "plain.org": ("c", "d")})
+
+    secure = resolve_auth(None, urlparse("https://example.com/path"), auths)
+    assert isinstance(secure, BasicAuth) and secure.username == "a"
+    assert resolve_auth(None, urlparse("http://example.com/"), auths) is None
+    assert resolve_auth(None, urlparse("http://[::1]:8080/"), auths).token == "v6"
+    assert resolve_auth(None, urlparse("http://plain.org:9000/"), auths).username == "c"
+    assert resolve_auth(None, urlparse("http://other.org/"), auths) is None
+
+
+def test_redirect_to_other_host_drops_credentials():
+    """Following a redirect to another host does not send the Authorization and Cookie headers."""
+    client = aiosonic.HTTPClient()
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 302 Found\r\n")
+    response.headers["Location"] = "http://other.example/x"
+    headers = HttpHeaders({"Authorization": "Basic abc", "Cookie": "a=b", "X-Keep": "1"})
+
+    client._handle_redirect(
+        current_urlparsed=urlparse("http://first.example/"),
+        headers=headers,
+        response=response,
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=True,
+    )
+
+    assert "Authorization" not in headers and "Cookie" not in headers
+    assert headers["X-Keep"] == "1"

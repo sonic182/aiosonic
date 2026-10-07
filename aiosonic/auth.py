@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 from urllib.parse import ParseResult, unquote
 
 from aiosonic import http_parser
+from aiosonic.utils import default_port
 
 if TYPE_CHECKING:
     from aiosonic.client import HeadersType
@@ -59,8 +60,19 @@ class BearerAuth(Auth):
         http_parser.add_header(headers, "Authorization", f"Bearer {self.token}", replace=True)
 
 
-#: Auth instance, or ``(username, password)`` tuple for basic authentication
 AuthType = Union[Auth, Tuple[str, str]]
+
+
+def normalize_auths(auths: Optional[Dict[str, AuthType]]) -> Dict[str, AuthType]:
+    """Normalize the keys of an ``auths`` map so they can be looked up by :func:`resolve_auth`.
+
+    Args:
+        auths (Optional[Dict[str, AuthType]]): Auths by host, or ``host:port``. IPv6 hosts may use brackets.
+
+    Returns:
+        Dict[str, AuthType]: The same auths with lowercase keys and without IPv6 brackets.
+    """
+    return {host.lower().replace("[", "").replace("]", ""): value for host, value in (auths or {}).items()}
 
 
 def _to_auth(value: AuthType) -> Auth:
@@ -73,7 +85,8 @@ def resolve_auth(
     """Get the :class:`Auth` to use for a request.
 
     The first one found is used: the ``auth`` of the request, the ``user:password@`` part of the url, and the
-    entry of ``auths`` for the host of the url (``host:port`` is looked up first when the url has a port).
+    entry of ``auths`` for the host of the url (``host:port`` is looked up first, using the default port of the
+    scheme when the url has none).
 
     Args:
         auth (Optional[AuthType]): The auth given to the request.
@@ -89,8 +102,7 @@ def resolve_auth(
         return BasicAuth(unquote(urlparsed.username), unquote(urlparsed.password or ""))
     if auths and urlparsed.hostname:
         hostname = urlparsed.hostname.lower()
-        keys = [f"{hostname}:{urlparsed.port}", hostname] if urlparsed.port else [hostname]
-        for key in keys:
+        for key in (f"{hostname}:{default_port(urlparsed)}", hostname):
             if key in auths:
                 return _to_auth(auths[key])
     return None

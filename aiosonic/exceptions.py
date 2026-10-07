@@ -1,4 +1,9 @@
+from __future__ import annotations
 from asyncio.exceptions import TimeoutError as TimeoutException  # noqa: F401
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from aiosonic.client import HttpResponse
 
 
 class AiosonicError(Exception):
@@ -77,6 +82,6 @@ class HTTPStatusError(AiosonicError):
         response: The response that triggered the error.
     """
 
-    def __init__(self, message: str, response):
+    def __init__(self, message: str, response: HttpResponse):
         super().__init__(message)
         self.response = response
