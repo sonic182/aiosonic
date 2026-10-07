@@ -48,7 +48,7 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger, join_url, url_without_userinfo
+from aiosonic.utils import get_debug_logger, url_without_userinfo
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -361,26 +361,6 @@ class HttpResponse:
         self.request_meta = {"from_path": urlparsed.path or "/"}
         self.url = url_without_userinfo(urlparsed)
         self.method = method
-
-
-def _merge_headers(base: Optional[HeadersType], extra: Optional[HeadersType]) -> Optional[HeadersType]:
-    if not base:
-        return extra
-    merged = HttpHeaders(base)
-    for key, value in http_parser.headers_iterator(extra or {}):
-        merged[key] = value
-    return merged
-
-
-def _merge_params(base: Optional[ParamsType], extra: Optional[ParamsType]) -> Optional[ParamsType]:
-    if not base:
-        return extra
-    if not extra:
-        return base
-    base_pairs = list(base.items()) if isinstance(base, dict) else list(base)
-    extra_pairs = list(extra.items()) if isinstance(extra, dict) else list(extra)
-    overridden = {key for key, _ in extra_pairs}
-    return [pair for pair in base_pairs if pair[0] not in overridden] + extra_pairs
 
 
 def _get_hostname(hostname_arg, port):
@@ -714,11 +694,9 @@ class HTTPClient:
             decompression-bomb responses from malicious or compromised
             servers. Defaults to 100MB; raises
             :class:`aiosonic.exceptions.DecompressionError` if exceeded.
-        * **base_url**: Prepended to the urls of requests that are not absolute.
-        * **headers**: Headers sent in every request, the ones of the request take precedence.
-        * **params**: Query params sent in every request, the ones of the request take precedence.
-        * **auth**: :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple used for
-            basic authentication in every request. Per-request ``auth`` takes precedence.
+        * **auths**: Dict of :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple by host
+            (``"api.example.com"``, or ``"api.example.com:8443"`` to match a port). Requests to a host
+            that is not in the dict get no credentials. Per-request ``auth`` takes precedence.
         * **follow**: Default for the ``follow`` argument of requests.
         * **event_hooks**: Dict with the ``"request"`` and ``"response"`` keys, each one a list of
             sync or async callables. Request hooks are called as ``hook(method, url, headers)``
@@ -736,10 +714,7 @@ class HTTPClient:
         http2: bool = False,
         http2_config: Optional[Http2Config] = None,
         max_decompressed_size: int = DEFAULT_MAX_DECOMPRESSED_SIZE,
-        base_url: str = "",
-        headers: Optional[HeadersType] = None,
-        params: Optional[ParamsType] = None,
-        auth: Optional[AuthType] = None,
+        auths: Optional[Dict[str, AuthType]] = None,
         follow: bool = False,
         event_hooks: Optional[Dict[str, List[Callable]]] = None,
     ):
@@ -756,10 +731,7 @@ class HTTPClient:
         self.max_redirects = max_redirects
         self.http2 = http2
         self.max_decompressed_size = max_decompressed_size
-        self.base_url = base_url
-        self.headers = headers
-        self.params = params
-        self.auth = auth
+        self.auths = {host.lower(): value for host, value in (auths or {}).items()}
         self.follow = follow
         self.event_hooks: Dict[str, List[Callable]] = {name: list(event_hooks.get(name, [])) for name in _EVENT_HOOKS}
 
@@ -1025,16 +997,12 @@ class HTTPClient:
               gzip/deflate decompressed-size limit for this request
             * **http2**: flag to indicate whether to use http2 (experimental)
             * **auth**: :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple, overrides the
-              client's one. Credentials in the url (``user:password@host``) are used as basic
+              client's ``auths``. Credentials in the url (``user:password@host``) are used as basic
               authentication when no auth is given.
             * **stream**: if true, the body is not read before returning, so it must be read
               from the response (``read_chunks``, ``iter_bytes``, ``iter_lines``, ``content``...)
               or released with ``aclose``. Prefer :meth:`stream`.
         """
-        if self.base_url:
-            url = join_url(self.base_url, url)
-        headers = _merge_headers(self.headers, headers)
-        params = _merge_params(self.params, params)
         follow = follow if follow is not None else self.follow
         headers = deepcopy(headers) if headers else HttpHeaders()
 
@@ -1053,7 +1021,7 @@ class HTTPClient:
         if self.handle_cookies:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
-        resolved_auth = resolve_auth(auth if auth is not None else self.auth, urlparsed)
+        resolved_auth = resolve_auth(auth, urlparsed, self.auths)
         if resolved_auth:
             resolved_auth.apply(headers, method, urlparsed.geturl())
 

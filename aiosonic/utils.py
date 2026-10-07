@@ -1,9 +1,12 @@
 """Utils."""
 
 import logging
+from typing import Optional
 from urllib.parse import ParseResult
 
 from onecache import CacheDecorator
+
+from aiosonic.types import ParamsType
 
 
 @CacheDecorator()
@@ -65,3 +68,23 @@ def url_without_userinfo(urlparsed: ParseResult) -> str:
         str: The URL as a string with the credentials removed.
     """
     return urlparsed._replace(netloc=urlparsed.netloc.rpartition("@")[2]).geturl()
+
+
+def merge_params(base: Optional[ParamsType], extra: Optional[ParamsType]) -> Optional[ParamsType]:
+    """Merge two sets of query params, giving precedence to ``extra``.
+
+    Args:
+        base (Optional[ParamsType]): The default params.
+        extra (Optional[ParamsType]): The params that override the default ones with the same name.
+
+    Returns:
+        Optional[ParamsType]: The merged params, or the only one given when the other is empty.
+    """
+    if not base:
+        return extra
+    if not extra:
+        return base
+    base_pairs = list(base.items()) if isinstance(base, dict) else list(base)
+    extra_pairs = list(extra.items()) if isinstance(extra, dict) else list(extra)
+    overridden = {key for key, _ in extra_pairs}
+    return [pair for pair in base_pairs if pair[0] not in overridden] + extra_pairs

@@ -652,27 +652,8 @@ async def test_get_with_cookies(http_serv):
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
-async def test_client_defaults_and_override(http_serv):
-    """Client level base_url, headers and params are used and overridden per request."""
-    async with aiosonic.HTTPClient(
-        base_url=http_serv, headers={"X-Default": "one", "X-Other": "keep"}, params={"foo": "from_client"}
-    ) as client:
-        res = await client.get("/headers", headers={"X-Default": "two"})
-        received = json.loads(await res.text())
-        assert received["x-default"] == "two"
-        assert received["x-other"] == "keep"
-
-        res = await client.get("/")
-        assert await res.text() == "from_client"
-
-        res = await client.get("/", params={"foo": "from_request"})
-        assert await res.text() == "from_request"
-
-
-@pytest.mark.asyncio
-@pytest.mark.timeout(30)
-async def test_auth_variants(http_serv):
-    """Tuple, BearerAuth, per request override and url credentials set the Authorization header."""
+async def test_auths_by_host(http_serv):
+    """Only the hosts in auths get credentials; per request auth and url credentials take precedence."""
 
     async def authorization(client, url, **kwargs):
         res = await client.get(url, **kwargs)
@@ -680,14 +661,22 @@ async def test_auth_variants(http_serv):
 
     basic = "Basic " + base64.b64encode(b"user:pass").decode()
     url = http_serv + "/headers"
-    async with aiosonic.HTTPClient(auth=("user", "pass")) as client:
+    port = urlparse(http_serv).port
+
+    async with aiosonic.HTTPClient(auths={"127.0.0.1": ("user", "pass")}) as client:
         assert await authorization(client, url) == basic
         assert await authorization(client, url, auth=BearerAuth("tok")) == "Bearer tok"
+        other = "Basic " + base64.b64encode(b"other:secret").decode()
+        assert await authorization(client, url.replace("http://", "http://other:secret@")) == other
 
-    async with aiosonic.HTTPClient() as client:
+    async with aiosonic.HTTPClient(auths={"LOCALHOST": ("user", "pass")}) as client:
         assert await authorization(client, url) is None
-        assert await authorization(client, url, auth=BearerAuth("tok")) == "Bearer tok"
-        assert await authorization(client, url.replace("http://", "http://user:pass@")) == basic
+
+    async with aiosonic.HTTPClient(auths={f"127.0.0.1:{port}": BearerAuth("with-port")}) as client:
+        assert await authorization(client, url) == "Bearer with-port"
+
+    async with aiosonic.HTTPClient(auths={f"127.0.0.1:{port + 1}": BearerAuth("other-port")}) as client:
+        assert await authorization(client, url) is None
 
 
 @pytest.mark.asyncio

@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- `HTTPClient` accepts `base_url`, `headers`, `params`, `auth`, `follow` and `event_hooks` as client level defaults; the per request values override them.
-- Authentication with `auth=` on the client and on every request method: a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or a custom `Auth` subclass. Credentials in the url (`user:pass@host`) are used as Basic auth.
+- `HTTPClient` accepts `follow` (default for the `follow` argument of requests) and `event_hooks`.
+- Authentication: `auth=` on every request method and `HTTPClient(auths={host: auth})`, a map of credentials by host (`"api.example.com"`, or `"api.example.com:8443"` to match a port) so that hosts which are not in the map never receive them. An auth is a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or a custom `Auth` subclass; credentials in the url (`user:pass@host`) are used as Basic auth. The auth of the request wins over the url credentials, which win over `auths`.
+- `BaseClient.default_params`, the query params sent in every request of the wrapper, next to `base_url` and `default_headers`.
 - `event_hooks` with `"request"` (`hook(method, url, headers)`) and `"response"` (`hook(response)`) hooks, sync or async, run on every send, including redirects and retries.
 - `HttpResponse.raise_for_status()`, the `HTTPStatusError` exception and the `AiosonicError` base class of every aiosonic exception.
 - `HttpResponse.url`, `HttpResponse.method` and `HttpResponse.reason`.

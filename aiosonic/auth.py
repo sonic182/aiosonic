@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from base64 import b64encode
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 from urllib.parse import ParseResult, unquote
 
 from aiosonic import http_parser
@@ -63,20 +63,34 @@ class BearerAuth(Auth):
 AuthType = Union[Auth, Tuple[str, str]]
 
 
-def resolve_auth(auth: Optional[AuthType], urlparsed: ParseResult) -> Optional[Auth]:
+def _to_auth(value: AuthType) -> Auth:
+    return BasicAuth(*value) if isinstance(value, tuple) else value
+
+
+def resolve_auth(
+    auth: Optional[AuthType], urlparsed: ParseResult, auths: Optional[Dict[str, AuthType]] = None
+) -> Optional[Auth]:
     """Get the :class:`Auth` to use for a request.
 
+    The first one found is used: the ``auth`` of the request, the ``user:password@`` part of the url, and the
+    entry of ``auths`` for the host of the url (``host:port`` is looked up first when the url has a port).
+
     Args:
-        auth (Optional[AuthType]): The auth given to the request or the client.
-        urlparsed (ParseResult): The parsed url, whose ``user:password@`` part is used when ``auth`` is missing.
+        auth (Optional[AuthType]): The auth given to the request.
+        urlparsed (ParseResult): The parsed url of the request.
+        auths (Optional[Dict[str, AuthType]]): Auths by lowercase host, or ``host:port``.
 
     Returns:
         Optional[Auth]: The auth to apply, or None when the request needs no authentication.
     """
-    if isinstance(auth, tuple):
-        return BasicAuth(*auth)
     if auth is not None:
-        return auth
+        return _to_auth(auth)
     if urlparsed.username is not None:
         return BasicAuth(unquote(urlparsed.username), unquote(urlparsed.password or ""))
+    if auths and urlparsed.hostname:
+        hostname = urlparsed.hostname.lower()
+        keys = [f"{hostname}:{urlparsed.port}", hostname] if urlparsed.port else [hostname]
+        for key in keys:
+            if key in auths:
+                return _to_auth(auths[key])
     return None

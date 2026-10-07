@@ -25,7 +25,7 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - Elegant key/value cookies
 - (Nearly) 100% test coverage
 - HTTP/2 (enabled with a flag)
-- Client defaults (`base_url`, `headers`, `params`, `auth`), event hooks, `raise_for_status()` and response streaming
+- Authentication by host, event hooks, `raise_for_status()` and response streaming
 
 ## Requirements
 
@@ -172,6 +172,7 @@ class GitHubAPI(BaseClient):
         "X-GitHub-Api-Version": "2022-11-28",
         # "Authorization": "Bearer YOUR_GITHUB_TOKEN",
     }
+    default_params = {"per_page": 50}
 
     async def process_response(self, response):
         body = await response.text()
@@ -223,7 +224,7 @@ g2 = GitHubAPI()
 gh == gh2
 ```
 
-## Client defaults, auth, hooks and streaming
+## Auth, hooks and streaming
 
 ```python
 import asyncio
@@ -237,18 +238,15 @@ async def log_response(response):
 
 async def main():
     client = aiosonic.HTTPClient(
-        base_url="https://api.example.com",
-        headers={"Accept": "application/json"},
-        params={"lang": "en"},
-        auth=("user", "password"),
+        auths={"api.example.com": BearerAuth("token")},
         event_hooks={"response": [log_response]},
     )
 
-    response = await client.get("/items", params={"page": 2}, auth=BearerAuth("token"))
+    response = await client.get("https://api.example.com/items", params={"page": 2})
     response.raise_for_status()
     print(await response.json())
 
-    async with client.stream("GET", "/export") as response:
+    async with client.stream("GET", "https://api.example.com/export") as response:
         async for line in response.iter_lines():
             print(line)
 
@@ -259,10 +257,11 @@ asyncio.run(main())
 
 Notes and limits:
 
-- `auth` accepts a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or any `Auth` subclass. Digest and netrc authentication are not supported.
+- `auths` maps hosts to credentials (`"api.example.com"`, or `"api.example.com:8443"` to match a port), so a host that is not in the map never gets them. Each value is a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or any `Auth` subclass. Digest and netrc authentication are not supported.
+- A request is authenticated with, in this order: its `auth=` argument, the `user:password@` part of its url, or the `auths` entry of its host. The auth is resolved once, for the host of the original request, so redirects to other hosts do not get it.
+- To send defaults (`base_url`, headers, query params) in every request of an API, use a `BaseClient` subclass with `base_url`, `default_headers` and `default_params`, see "Api Wrapping".
 - `event_hooks` runs `"request"` hooks as `hook(method, url, headers)` and `"response"` hooks as `hook(response)`, sync or async, on every send, including redirects and retries.
 - `raise_for_status()` raises `HTTPStatusError` (an `AiosonicError`) for 4xx and 5xx responses; 3xx responses that were not followed do not raise.
-- A per request `auth=None` means "use the client's auth"; to send a request without authentication, create the client without `auth`.
 - `stream()` releases the connection when the block ends, even if the body was not fully read.
 - `iter_bytes()` decompresses gzip and deflate bodies, but not over HTTP/2; `read_chunks()` keeps returning the bytes as received.
 - `timeouts.sock_read` only covers waiting for the status line, not the body.
