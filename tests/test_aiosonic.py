@@ -1,16 +1,22 @@
 import asyncio
+import base64
+import json
 import platform
 from urllib.parse import urlparse
 
 import pytest
 
 import aiosonic
-from aiosonic import HttpResponse
+from aiosonic import BasicAuth, BearerAuth, HttpResponse
+from aiosonic.auth import normalize_auths, resolve_auth
+from aiosonic.client import HttpHeaders
 from aiosonic.connection import Connection
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
+    AiosonicError,
     ConnectionPoolAcquireTimeout,
     ConnectTimeout,
+    HTTPStatusError,
     HttpParsingError,
     MaxRedirects,
     MissingEvent,
@@ -644,3 +650,234 @@ async def test_get_with_cookies(http_serv):
         # check if server got cookies
         res = await client.get(url)
         assert await res.text() == "Got cookies"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_auths_by_host(http_serv):
+    """Only the hosts in auths get credentials; per request auth and url credentials take precedence."""
+
+    async def authorization(client, url, **kwargs):
+        res = await client.get(url, **kwargs)
+        return json.loads(await res.text()).get("authorization")
+
+    basic = "Basic " + base64.b64encode(b"user:pass").decode()
+    url = http_serv + "/headers"
+    port = urlparse(http_serv).port
+
+    async with aiosonic.HTTPClient(auths={"127.0.0.1": ("user", "pass")}) as client:
+        assert await authorization(client, url) == basic
+        assert await authorization(client, url, auth=BearerAuth("tok")) == "Bearer tok"
+        other = "Basic " + base64.b64encode(b"other:secret").decode()
+        assert await authorization(client, url.replace("http://", "http://other:secret@")) == other
+
+    async with aiosonic.HTTPClient(auths={"LOCALHOST": ("user", "pass")}) as client:
+        assert await authorization(client, url) is None
+
+    async with aiosonic.HTTPClient(auths={f"127.0.0.1:{port}": BearerAuth("with-port")}) as client:
+        assert await authorization(client, url) == "Bearer with-port"
+
+    async with aiosonic.HTTPClient(auths={f"127.0.0.1:{port + 1}": BearerAuth("other-port")}) as client:
+        assert await authorization(client, url) is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_raise_for_status(http_serv):
+    """raise_for_status returns the response on success and raises HTTPStatusError on 4xx/5xx."""
+    assert issubclass(HTTPStatusError, AiosonicError)
+    assert issubclass(ReadTimeout, AiosonicError)
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(http_serv)
+        assert res.raise_for_status() is res
+        assert res.reason == "OK"
+        assert res.method == "GET"
+        assert res.url == http_serv
+
+        for code in (404, 500):
+            res = await client.get(f"{http_serv}/status?code={code}")
+            with pytest.raises(HTTPStatusError) as exc_info:
+                res.raise_for_status()
+            assert exc_info.value.response is res
+            assert str(code) in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_event_hooks(http_serv):
+    """Request hooks and response hooks, sync or async, run for every sent request."""
+    calls = []
+
+    def on_request(method, url, headers):
+        calls.append(("request", method, url))
+
+    async def on_response(response):
+        calls.append(("response", response.status_code))
+
+    async with aiosonic.HTTPClient(event_hooks={"request": [on_request], "response": [on_response]}) as client:
+        res = await client.get(http_serv + "/get_redirect", follow=True)
+        assert await res.text() == "Hello, world"
+
+    assert [call[0] for call in calls] == ["request", "response", "request", "response"]
+    assert calls[0][1] == "GET"
+    assert calls[1] == ("response", 302)
+    assert calls[3] == ("response", 200)
+
+    with pytest.raises(ValueError):
+        aiosonic.HTTPClient(event_hooks={"nope": []})
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_content_length_body(http_serv):
+    """stream reads a Content-Length body in several chunks, also decompressing it with iter_bytes."""
+    async with aiosonic.HTTPClient() as client:
+        async with client.stream("GET", http_serv + "/random") as res:
+            chunks = [chunk async for chunk in res.iter_bytes()]
+        expected = b"".join(chunks)
+        assert len(chunks) > 1
+        assert len(expected) == 300000
+
+        async with client.stream("GET", http_serv + "/random_gzip") as res:
+            assert b"".join([chunk async for chunk in res.iter_bytes()]) == expected
+
+        async with client.stream("GET", http_serv + "/gzip") as res:
+            assert b"".join([chunk async for chunk in res.iter_bytes()]) == b"Hello, world"
+
+        async with client.stream("GET", http_serv + "/chunked") as res:
+            assert b"".join([chunk async for chunk in res.iter_bytes()]) == b"foobar"
+
+        assert client.connector.pools[":default"].is_all_free()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_early_exit_frees_pool(http_serv):
+    """Leaving a stream block before reading the body releases the connection for later requests."""
+    async with aiosonic.HTTPClient() as client:
+        async with client.stream("GET", http_serv + "/random") as res:
+            async for _ in res.iter_bytes():
+                break
+        pool = client.connector.pools[":default"]
+        assert pool.is_all_free()
+
+        res = await client.get(http_serv)
+        assert await res.text() == "Hello, world"
+        assert pool.is_all_free()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_iter_lines(http_serv):
+    """iter_lines splits on LF and CRLF."""
+    async with aiosonic.HTTPClient() as client:
+        async with client.stream("GET", http_serv + "/lines") as res:
+            assert [line async for line in res.iter_lines()] == ["one", "two", "three"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_head_and_options(http_serv):
+    """HEAD gives no body and does not hang, OPTIONS is sent with its method."""
+    async with aiosonic.HTTPClient() as client:
+        res = await client.head(http_serv)
+        assert res.status_code == 405
+        assert await res.content() == b""
+
+        res = await client.options(http_serv)
+        assert res.method == "OPTIONS"
+        assert res.status_code == 405
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_follow_redirect_releases_connections(http_serv):
+    """A streamed request following a redirect does not leave the redirect hop's connection blocked."""
+    async with aiosonic.HTTPClient() as client:
+        async with client.stream("GET", http_serv + "/get_redirect", follow=True) as res:
+            assert [chunk async for chunk in res.iter_bytes()] == [b"Hello, world"]
+        assert client.connector.pools[":default"].is_all_free()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_partial_read_without_aclose_discards_connection(http_serv):
+    """Closing the body iterator early closes the socket so its unread bytes never reach the next request."""
+    connector = TCPConnector({":default": PoolConfig(size=1)})
+    async with aiosonic.HTTPClient(connector) as client:
+        res = await client.request(http_serv + "/random", "GET", stream=True)
+        chunks = res.iter_bytes()
+        await chunks.__anext__()
+        await chunks.aclose()
+
+        res = await client.get(http_serv)
+        assert await res.text() == "Hello, world"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_hooks_url_and_response_hook_error(http_serv):
+    """Request hooks get the url without credentials and a failing response hook releases the response."""
+    urls = []
+
+    def on_request(method, url, headers):
+        urls.append(url)
+
+    def on_response(response):
+        response.raise_for_status()
+
+    async with aiosonic.HTTPClient(event_hooks={"request": [on_request], "response": [on_response]}) as client:
+        await client.get(http_serv.replace("http://", "http://user:pass@") + "/headers")
+        assert urls == [http_serv + "/headers"]
+
+        with pytest.raises(HTTPStatusError):
+            await client.request(http_serv + "/status?code=500", "GET", stream=True)
+        assert client.connector.pools[":default"].is_all_free()
+
+    assert aiosonic.utils.join_url("http://base", "httpbin/get") == "http://base/httpbin/get"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_close_of_bodyless_response_keeps_other_request_connection(http_serv):
+    """Closing a response whose connection went back to the pool does not abort the request now using it."""
+    connector = TCPConnector({":default": PoolConfig(size=1)})
+    async with aiosonic.HTTPClient(connector) as client:
+        async with client.stream("HEAD", http_serv) as head_res:
+            assert head_res.status_code == 405
+            other = await client.request(http_serv + "/random", "GET", stream=True)
+        assert len(await other.content()) == 300000
+
+
+def test_resolve_auth_host_keys():
+    """auths keys match by host, host with the default or explicit port, and IPv6 hosts with brackets."""
+    auths = normalize_auths({"Example.com:443": ("a", "b"), "[::1]:8080": BearerAuth("v6"), "plain.org": ("c", "d")})
+
+    secure = resolve_auth(None, urlparse("https://example.com/path"), auths)
+    assert isinstance(secure, BasicAuth) and secure.username == "a"
+    assert resolve_auth(None, urlparse("http://example.com/"), auths) is None
+    assert resolve_auth(None, urlparse("http://[::1]:8080/"), auths).token == "v6"
+    assert resolve_auth(None, urlparse("http://plain.org:9000/"), auths).username == "c"
+    assert resolve_auth(None, urlparse("http://other.org/"), auths) is None
+
+
+def test_redirect_to_other_host_drops_credentials():
+    """Following a redirect to another host does not send the Authorization and Cookie headers."""
+    client = aiosonic.HTTPClient()
+    response = HttpResponse()
+    response._set_response_initial(b"HTTP/1.1 302 Found\r\n")
+    response.headers["Location"] = "http://other.example/x"
+    headers = HttpHeaders({"Authorization": "Basic abc", "Cookie": "a=b", "X-Keep": "1"})
+
+    client._handle_redirect(
+        current_urlparsed=urlparse("http://first.example/"),
+        headers=headers,
+        response=response,
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=True,
+    )
+
+    assert "Authorization" not in headers and "Cookie" not in headers
+    assert headers["X-Keep"] == "1"

@@ -732,3 +732,19 @@ async def test_request_rejected_when_connection_is_closing(mocker):
 
     with pytest.raises(ConnectionDisconnected):
         await handler.request([], b"")
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_stream_aclose_releases_slot(http2_serv):
+    """Leaving a stream block early frees the only HTTP/2 stream slot so the next request completes."""
+    config = Http2Config(max_streams=1)
+    async with aiosonic.HTTPClient(http2=True, http2_config=config) as client:
+        async with client.stream("GET", f"{http2_serv}/sample.png", verify=False) as res:
+            assert res.http_version == "2"
+            async for _ in res.iter_bytes():
+                break
+
+        res = await client.get(http2_serv, verify=False)
+        assert await res.text() == "Hello World"
+        assert res.http_version == "2"

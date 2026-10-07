@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from aiosonic import BaseClient, HTTPClient
@@ -84,3 +86,25 @@ async def test_patch_method(http_serv):
     client = RawClient()
     response = await client.patch("/patch-test")
     assert response.status_code in (200, 404, 405)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_default_headers_and_params(http_serv):
+    class ApiClient(BaseClient):
+        base_url = http_serv
+        default_headers = {"X-Default": "one", "X-Other": "keep"}
+        default_params = {"foo": "from_default"}
+
+    client = ApiClient()
+
+    response = await client.get("/headers", headers={"X-Default": "two"})
+    received = json.loads(await response.text())
+    assert received["x-default"] == "two"
+    assert received["x-other"] == "keep"
+
+    response = await client.get("/")
+    assert await response.text() == "from_default"
+
+    response = await client.get("/", params={"foo": "from_request"})
+    assert await response.text() == "from_request"

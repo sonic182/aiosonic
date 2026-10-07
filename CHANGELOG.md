@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `HTTPClient` accepts `follow` (default for the `follow` argument of requests) and `event_hooks`.
+- Authentication: `auth=` on every request method and `HTTPClient(auths={host: auth})`, a map of credentials by host (`"api.example.com"`, or `"api.example.com:8443"` to match a port) so that hosts which are not in the map never receive them. An auth is a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or a custom `Auth` subclass; credentials in the url (`user:pass@host`) are used as Basic auth. The auth of the request wins over the url credentials, which win over `auths`.
+- `BaseClient.default_params`, the query params sent in every request of the wrapper, next to `base_url` and `default_headers`.
+- `event_hooks` with `"request"` (`hook(method, url, headers)`) and `"response"` (`hook(response)`) hooks, sync or async, run on every send, including redirects and retries.
+- `HttpResponse.raise_for_status()`, the `HTTPStatusError` exception and the `AiosonicError` base class of every aiosonic exception.
+- `HttpResponse.url` (read-only, without the url credentials), `HttpResponse.method` and `HttpResponse.reason`.
+- `HTTPClient.stream()` and `request(stream=True)` keep the body of `Content-Length` responses unread, with `HttpResponse.iter_bytes()` (decompresses gzip and deflate), `iter_lines()` and `aclose()` to consume and release them.
+- `HTTPClient.head()`, `HTTPClient.options()` and `HTTPClient.aclose()`.
+- `BaseClient.head()` and `BaseClient.options()`.
+- `aiosonic.httpx_client.AsyncClient`, a `BaseClient` with the API of `httpx.AsyncClient` (`content`, `data`, `files`, `json`, `timeout`, `follow_redirects`, `verify`, `auth`, `event_hooks`, `stream()`...), to switch from httpx with few changes. Its `Response` has httpx's sync `content`, `text` and `json()`, `raise_for_status()` for any non-2xx status, and `aread()` and `aiter_raw/bytes/text/lines()` for streamed responses. Its `timeout` (5s by default) also limits waiting for a free pool connection, and `proxy` accepts a url with credentials (`http://user:pass@proxy:8080`). See the "httpx compatible client" docs page.
+- `ResponseNotRead` and `StreamConsumed` exceptions, raised by the httpx compatible `Response`.
+- Docs render Google style docstrings (`sphinx.ext.napoleon`).
+
+### Changed
+- Less overhead per request (about 5% faster `GET` requests than 1.0.8 in a quick benchmark).
+
+### Fixed
+- Cookie handling with `handle_cookies=True` failed when the request headers were an `HttpHeaders` instance.
+- Responses to `HEAD` requests, and `1xx`, `204` and `304` responses, no longer wait for a body announced by `Content-Length` or `Transfer-Encoding: chunked`.
+
 ## [1.0.8] 2026-10-05
 
 ### Fixed

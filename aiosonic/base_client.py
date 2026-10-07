@@ -2,11 +2,13 @@ from __future__ import annotations
 from typing import Optional
 
 from aiosonic.client import HTTPClient
+from aiosonic.utils import join_url, merge_params
 
 
 class BaseClient:
     base_url = ""
     default_headers = {}
+    default_params = {}
 
     def __init__(self, http_client: Optional[HTTPClient] = None):
         """Initialize the API client while allowing client reuse."""
@@ -17,20 +19,25 @@ class BaseClient:
 
     def process_request_url(self, url: str) -> str:
         """Process the request URL and prepend the base URL when needed."""
-        if not url.startswith("http"):
-            return self.base_url.rstrip("/") + "/" + url.lstrip("/")
-        return url
+        return join_url(self.base_url, url)
 
     def merge_headers(self, headers: Optional[dict] = None) -> dict:
         """Merge default headers with the provided ones."""
         headers = headers or {}
         return {**self.default_headers, **headers}
 
+    def merge_params(self, params: Optional[dict] = None) -> Optional[dict]:
+        """Merge default params with the provided ones."""
+        return merge_params(self.default_params, params)
+
     async def process_request(self, method: str, url: str, **kwargs):
         """Execute the request and return the raw aiosonic response."""
         full_url = self.process_request_url(url)
         headers = kwargs.pop("headers", None)
         kwargs["headers"] = self.merge_headers(headers)
+        params = self.merge_params(kwargs.pop("params", None))
+        if params:
+            kwargs["params"] = params
         method_func = getattr(self.client, method.lower(), None)
         if not method_func:
             raise ValueError(f"HTTP method {method} is not supported.")
@@ -59,3 +66,9 @@ class BaseClient:
 
     async def delete(self, url: str, **kwargs):
         return await self.request("DELETE", url, **kwargs)
+
+    async def head(self, url: str, **kwargs):
+        return await self.request("HEAD", url, **kwargs)
+
+    async def options(self, url: str, **kwargs):
+        return await self.request("OPTIONS", url, **kwargs)

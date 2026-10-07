@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 import re
-from typing import TYPE_CHECKING, AsyncIterator, Dict, Iterator, List
+from typing import TYPE_CHECKING, AsyncIterator, Iterator
 from urllib.parse import ParseResult, urlencode, urlparse
 
 from onecache import CacheDecorator
@@ -49,7 +49,7 @@ async def parse_headers_iterator(connection: Connection):
 
 
 def headers_iterator(headers: HeadersType):
-    iterator = headers if isinstance(headers, List) else headers.items()
+    iterator = headers if isinstance(headers, list) else headers.items()
     for key, data in iterator:
         yield key, data
 
@@ -57,7 +57,7 @@ def headers_iterator(headers: HeadersType):
 def add_header(headers: HeadersType, key: str, value: str, replace=False):
     """Safe add header method."""
     validate_header(key, value)
-    if isinstance(headers, List):
+    if isinstance(headers, list):
         if replace:
             included = [item for item in headers if item[0].lower() == key.lower()]
             if included:
@@ -84,7 +84,7 @@ def setup_body_request(data: DataType, headers: HeadersType) -> ParsedBodyType:
         body: BodyType = b""
         content_type = None
 
-        if isinstance(data, (Dict, tuple)):
+        if isinstance(data, (dict, tuple)):
             body = urlencode(data)
             content_type = "application/x-www-form-urlencoded"
         else:

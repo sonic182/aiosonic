@@ -1,6 +1,9 @@
 import http from 'http';
 import { parse as parseUrl } from 'url';
 import zlib from 'zlib';
+import { randomBytes } from 'crypto';
+
+const randomPayload = randomBytes(300000);
 
 let keepalive_calls = 0;  // Global counter for /keepalive calls
 
@@ -75,6 +78,36 @@ const handlers = {
     } else {
       sendResponse(res, 200, 'text/plain', 'Hello, world');
     }
+  },
+
+  'GET /headers': (req, res) => {
+    sendResponse(res, 200, 'application/json', JSON.stringify(req.headers));
+  },
+
+  'GET /status': (req, res, parsedUrl) => {
+    sendResponse(res, parseInt(parsedUrl.query.code || '200', 10), 'text/plain', 'status');
+  },
+
+  'GET /lines': (req, res) => {
+    sendResponse(res, 200, 'text/plain; charset=utf-8', 'one\r\ntwo\nthree');
+  },
+
+  'GET /random': (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': randomPayload.length
+    });
+    res.end(randomPayload);
+  },
+
+  'GET /random_gzip': (req, res) => {
+    const compressed = zlib.gzipSync(randomPayload);
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Encoding': 'gzip',
+      'Content-Length': compressed.length
+    });
+    res.end(compressed);
   },
 
   'GET /cookies': (req, res) => {

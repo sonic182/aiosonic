@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import pytest
 
 from aiosonic import HTTPClient
-from aiosonic.client import _do_request, _proxy_connect, _update_transport
+from aiosonic.client import HttpResponse, _do_request, _proxy_connect, _update_transport
 from aiosonic.connectors import TCPConnector
 from aiosonic.pools import PoolConfig
 from aiosonic.proxy import Proxy
@@ -54,7 +54,7 @@ async def test_https_proxy_request_passes_destination_to_connector(mocker):
     connection.h2conn = object()
     connection.__aenter__ = mocker.AsyncMock(return_value=connection)
     connection.__aexit__ = mocker.AsyncMock(return_value=False)
-    connection.http2_request = mocker.AsyncMock(return_value=object())
+    connection.http2_request = mocker.AsyncMock(return_value=HttpResponse())
     connector = mocker.MagicMock()
     connector.timeouts = Timeouts()
     connector.acquire = mocker.AsyncMock(return_value=connection)
