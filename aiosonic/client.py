@@ -7,10 +7,12 @@ import os
 import re
 import sys
 from asyncio import wait_for
-from codecs import lookup
+from codecs import getincrementaldecoder, lookup
+from contextlib import asynccontextmanager
 from copy import deepcopy
 from functools import partial
-from http import cookies
+from http import HTTPStatus, cookies
+from inspect import isawaitable
 from io import IOBase
 from json import dumps as json_dumps
 from json import loads
@@ -24,12 +26,14 @@ from zlib import MAX_WBITS, decompressobj
 from charset_normalizer import detect
 
 from aiosonic import http_parser
+from aiosonic.auth import AuthType, resolve_auth
 from aiosonic.connection import Connection, get_default_ssl_context
 from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import (
     ConnectionDisconnected,
     ConnectTimeout,
     DecompressionError,
+    HTTPStatusError,
     HttpParsingError,
     MaxRedirects,
     MissingWriterException,
@@ -45,7 +49,7 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger
+from aiosonic.utils import get_debug_logger, join_url
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -53,6 +57,7 @@ from aiosonic_utils.structures import CaseInsensitiveDict
 _HTTP_RESPONSE_STATUS_LINE = re.compile(r"HTTP/(?P<version>\d(?:\.\d)?) (?P<code>\d+)(?: (?P<reason>.*))?")
 _CHARSET_RGX = re.compile(r"charset=(?P<charset>[\w-]*);?")
 _CHUNK_SIZE = 1024 * 4  # 4kilobytes
+_STREAM_CHUNK_SIZE = 1024 * 64
 CRLF = "\r\n"
 dlogger = get_debug_logger()
 _DEFAULT_MAX_DECOMPRESSED_SIZE = 100 * 1024 * 1024  # 100MB
@@ -60,6 +65,7 @@ _GZIP_WBITS = MAX_WBITS | 16
 _DEFLATE_WBITS = MAX_WBITS
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
+_EVENT_HOOKS = ("request", "response")
 
 
 # Classes
@@ -82,15 +88,31 @@ class HttpHeaders(CaseInsensitiveDict):
 HeadersType = Union[Dict[str, str], List[Tuple[str, str]], HttpHeaders]
 
 
+class _BoundedDecompressor:
+    """Incremental decompressor, raising DecompressionError if the output would exceed max_size."""
+
+    def __init__(self, wbits: int, max_size: int):
+        self._decompressor = decompressobj(wbits)
+        self._max_size = max_size
+        self._produced = 0
+
+    def _account(self, out: bytes) -> bytes:
+        self._produced += len(out)
+        if self._produced > self._max_size:
+            raise DecompressionError(f"decompressed response body exceeds the {self._max_size} byte limit")
+        return out
+
+    def feed(self, data: bytes) -> bytes:
+        return self._account(self._decompressor.decompress(data, self._max_size - self._produced + 1))
+
+    def flush(self) -> bytes:
+        return self._account(self._decompressor.flush())
+
+
 def _decompress_bounded(data: bytes, wbits: int, max_size: int) -> bytes:
-    """Stream-decompress data, raising DecompressionError if output would exceed max_size."""
-    decompressor = decompressobj(wbits)
-    out = decompressor.decompress(data, max_size + 1)
-    if not decompressor.unconsumed_tail:
-        out += decompressor.flush()
-    if len(out) > max_size:
-        raise DecompressionError(f"decompressed response body exceeds the {max_size} byte limit")
-    return out
+    """Decompress data, raising DecompressionError if output would exceed max_size."""
+    decompressor = _BoundedDecompressor(wbits, max_size)
+    return decompressor.feed(data) + decompressor.flush()
 
 
 class HttpResponse:
@@ -102,6 +124,9 @@ class HttpResponse:
       * **cookies** (:class:`http.cookies.SimpleCookie`): instance of SimpleCookies
         if cookies present in respone.
       * **raw_headers** (List[Tuple[bytes, bytes]]): headers as raw format
+      * **url** (str): url of the request that produced this response
+      * **method** (str): http method of the request that produced this response
+      * **reason** (str): reason phrase of the status line
     """
 
     def __init__(self):
@@ -115,6 +140,9 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
+        self.url = ""
+        self.method = ""
+        self._remaining: Optional[int] = None
         self.max_decompressed_size = _DEFAULT_MAX_DECOMPRESSED_SIZE
         self._h2_chunk_queue = None
         self._h2_sem_release = None
@@ -183,6 +211,27 @@ class HttpResponse:
         """Returns True if :attr:`status_code` is 2xx range, False if not."""
         return 200 <= self.status_code <= 299
 
+    @property
+    def reason(self) -> str:
+        """Get the reason phrase, using the standard one when the server sent none."""
+        reason = self.response_initial.get("reason")
+        if reason:
+            return reason
+        try:
+            return HTTPStatus(self.status_code).phrase
+        except ValueError:
+            return ""
+
+    def raise_for_status(self) -> HttpResponse:
+        """Raise :class:`aiosonic.exceptions.HTTPStatusError` for 4xx and 5xx responses.
+
+        Returns:
+            HttpResponse: This response, so the call can be chained.
+        """
+        if self.status_code >= 400:
+            raise HTTPStatusError(f"{self.status_code} {self.reason} for url: {self.url}", self)
+        return self
+
     def _set_body(self, data):
         """Set body."""
         if self.compressed == "gzip":
@@ -217,9 +266,12 @@ class HttpResponse:
 
         return encoding.lower()
 
+    def _has_pending_body(self) -> bool:
+        return self.chunked or self._remaining is not None
+
     async def content(self) -> bytes:
         """Read response body."""
-        if self.chunked and not self.body:
+        if self._has_pending_body() and not self.body:
             res = b""
             async for chunk in self.read_chunks():
                 res += chunk
@@ -238,11 +290,12 @@ class HttpResponse:
         return json_decoder(body)
 
     async def read_chunks(self) -> AsyncIterator[bytes]:
-        """Read chunks from chunked response."""
-        if self._h2_chunk_queue is not None:
+        """Read the body in chunks, as they come from the server (compressed bodies are not decompressed)."""
+        queue = self._h2_chunk_queue
+        if queue is not None:
             try:
                 while not self.chunks_readed:
-                    chunk = await self._h2_chunk_queue.get()
+                    chunk = await queue.get()
                     if chunk is None:
                         break
                     if self._h2_flow_cb:
@@ -255,40 +308,116 @@ class HttpResponse:
                     self._h2_sem_release = None
             return
 
-        if not self._connection:
+        connection = self._connection
+        if not connection:
             raise ConnectionError("missing connection, possible already read response.")
         try:
-            while True and not self.chunks_readed:
-                chunk_size = int((await self._connection.readline()).rstrip(), 16)
-                if not chunk_size:
-                    # read last CRLF
-                    await self._connection.readline()
-                    break
-                chunk = await self._connection.readexactly(chunk_size + 2)
-                yield chunk[:-2]
+            if self._remaining is not None:
+                while self._remaining and not self.chunks_readed:
+                    data = await connection.read(min(self._remaining, _STREAM_CHUNK_SIZE))
+                    if not data:
+                        connection.keep = False
+                        connection.close()
+                        raise ConnectionDisconnected()
+                    self._remaining -= len(data)
+                    yield data
+            else:
+                while True and not self.chunks_readed:
+                    chunk_size = int((await connection.readline()).rstrip(), 16)
+                    if not chunk_size:
+                        await connection.readline()
+                        break
+                    chunk = await connection.readexactly(chunk_size + 2)
+                    yield chunk[:-2]
             self.chunks_readed = True
         finally:
-            # Ensure the conn get's released
-            if self._connection.blocked:
-                self._connection.release()
+            if self._connection is connection and connection.blocked:
+                connection.release()
                 self._connection = None
+
+    async def iter_bytes(self) -> AsyncIterator[bytes]:
+        """Iterate over the body, decompressing gzip and deflate bodies as they arrive."""
+        if self.body or not self._has_pending_body():
+            if self.body:
+                yield self.body
+            return
+        wbits = {"gzip": _GZIP_WBITS, "deflate": _DEFLATE_WBITS}.get(self.compressed)
+        decompressor = _BoundedDecompressor(wbits, self.max_decompressed_size) if wbits else None
+        async for chunk in self.read_chunks():
+            data = decompressor.feed(chunk) if decompressor else chunk
+            if data:
+                yield data
+        if decompressor:
+            tail = decompressor.flush()
+            if tail:
+                yield tail
+
+    async def iter_lines(self) -> AsyncIterator[str]:
+        """Iterate over the decoded body line by line, without the line terminators."""
+        decoder = getincrementaldecoder(self._get_encoding())(errors="replace")
+        pending = ""
+        async for data in self.iter_bytes():
+            *lines, pending = (pending + decoder.decode(data)).split("\n")
+            for line in lines:
+                yield line.removesuffix("\r")
+        pending += decoder.decode(b"", final=True)
+        if pending:
+            yield pending.removesuffix("\r")
+
+    def _discard_h2_queue(self):
+        queue = self._h2_chunk_queue
+        self._h2_chunk_queue = None
+        while not queue.empty():
+            queue.get_nowait()
+        if self._h2_sem_release:
+            self._h2_sem_release()
+            self._h2_sem_release = None
+
+    async def aclose(self):
+        """Release the connection of a response whose body was not fully read.
+
+        It is safe to call it more than once and after the body was read.
+        """
+        if self._h2_chunk_queue is not None:
+            self._discard_h2_queue()
+            return
+        connection = self._connection
+        self._connection = None
+        if connection is not None and connection.blocked:
+            connection.ensure_released(response_read=False)
 
     def __del__(self):
         if self._h2_chunk_queue is not None:
-            queue = self._h2_chunk_queue
-            self._h2_chunk_queue = None
-            while not queue.empty():
-                queue.get_nowait()
-            if self._h2_sem_release:
-                self._h2_sem_release()
-                self._h2_sem_release = None
+            self._discard_h2_queue()
             return
         if self._connection and self._connection.blocked:
             response_read = self.body
             self._connection.ensure_released(response_read)
 
-    def _set_request_meta(self, urlparsed: ParseResult):
+    def _set_request_meta(self, urlparsed: ParseResult, method: str = ""):
         self.request_meta = {"from_path": urlparsed.path or "/"}
+        self.url = urlparsed._replace(netloc=urlparsed.netloc.rpartition("@")[2]).geturl()
+        self.method = method
+
+
+def _merge_headers(base: Optional[HeadersType], extra: Optional[HeadersType]) -> Optional[HeadersType]:
+    if not base:
+        return extra
+    merged = HttpHeaders(base)
+    for key, value in http_parser.headers_iterator(extra or {}):
+        merged[key] = value
+    return merged
+
+
+def _merge_params(base: Optional[ParamsType], extra: Optional[ParamsType]) -> Optional[ParamsType]:
+    if not base:
+        return extra
+    if not extra:
+        return base
+    base_pairs = list(base.items()) if isinstance(base, dict) else list(base)
+    extra_pairs = list(extra.items()) if isinstance(extra, dict) else list(extra)
+    overridden = {key for key, _ in extra_pairs}
+    return [pair for pair in base_pairs if pair[0] not in overridden] + extra_pairs
 
 
 def _get_hostname(hostname_arg, port):
@@ -510,6 +639,8 @@ async def _do_request(
     proxy: Optional[Proxy] = None,
     transfer_chunked: bool = True,
     max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
+    method: str = "GET",
+    stream: bool = False,
 ) -> HttpResponse:
     """Something."""
     timeouts = timeouts or connector.timeouts
@@ -532,6 +663,7 @@ async def _do_request(
 
         if connection.h2conn:
             response = await connection.http2_request(to_send, body)
+            response._set_request_meta(urlparsed, method)
             connection.keep_alive()
             return response
 
@@ -551,7 +683,7 @@ async def _do_request(
                 connection.write(body)
 
         response = HttpResponse()
-        response._set_request_meta(urlparsed)
+        response._set_request_meta(urlparsed, method)
         response.max_decompressed_size = max_decompressed_size
 
         # get response code and version
@@ -573,12 +705,17 @@ async def _do_request(
         # reading headers
         await response._set_response_headers(http_parser.parse_headers_iterator(connection))
 
-        size = response.headers.get("content-length")
-        chunked = response.headers.get("transfer-encoding", "") == "chunked"
+        status = response.status_code
+        no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
+        size = None if no_body else response.headers.get("content-length")
+        chunked = not no_body and response.headers.get("transfer-encoding", "") == "chunked"
         keepalive = "close" not in response.headers.get("connection", "")
         response.compressed = response.headers.get("content-encoding", "")
 
-        if size:
+        if size and stream and int(size) > 0:
+            response._remaining = int(size)
+            connection.block_until_read_chunks()
+        elif size:
             response._set_body(await connection.readexactly(int(size)))
 
         if chunked:
@@ -614,6 +751,16 @@ class HTTPClient:
             decompression-bomb responses from malicious or compromised
             servers. Defaults to 100MB; raises
             :class:`aiosonic.exceptions.DecompressionError` if exceeded.
+        * **base_url**: Prepended to the urls of requests that are not absolute.
+        * **headers**: Headers sent in every request, the ones of the request take precedence.
+        * **params**: Query params sent in every request, the ones of the request take precedence.
+        * **auth**: :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple used for
+            basic authentication in every request. Per-request ``auth`` takes precedence.
+        * **follow**: Default for the ``follow`` argument of requests.
+        * **event_hooks**: Dict with the ``"request"`` and ``"response"`` keys, each one a list of
+            sync or async callables. Request hooks are called as ``hook(method, url, headers)``
+            before sending each request (also after redirects), and response hooks as
+            ``hook(response)`` after receiving each response.
     """
 
     def __init__(
@@ -626,8 +773,18 @@ class HTTPClient:
         http2: bool = False,
         http2_config: Optional[Http2Config] = None,
         max_decompressed_size: int = _DEFAULT_MAX_DECOMPRESSED_SIZE,
+        base_url: str = "",
+        headers: Optional[HeadersType] = None,
+        params: Optional[ParamsType] = None,
+        auth: Optional[AuthType] = None,
+        follow: bool = False,
+        event_hooks: Optional[Dict[str, List[Callable]]] = None,
     ):
         """Initialize client options."""
+        event_hooks = event_hooks or {}
+        unknown_hooks = set(event_hooks) - set(_EVENT_HOOKS)
+        if unknown_hooks:
+            raise ValueError(f"unknown event hooks: {sorted(unknown_hooks)}, valid ones: {list(_EVENT_HOOKS)}")
         self.connector = connector or TCPConnector(http2=http2, http2_config=http2_config)
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
@@ -636,6 +793,12 @@ class HTTPClient:
         self.max_redirects = max_redirects
         self.http2 = http2
         self.max_decompressed_size = max_decompressed_size
+        self.base_url = base_url
+        self.headers = headers
+        self.params = params
+        self.auth = auth
+        self.follow = follow
+        self.event_hooks: Dict[str, List[Callable]] = {name: list(event_hooks.get(name, [])) for name in _EVENT_HOOKS}
 
     async def __aenter__(self):
         return self
@@ -654,8 +817,9 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
+        auth: Optional[AuthType] = None,
     ) -> HttpResponse:
         """Do get http request."""
         return await self.request(
@@ -668,6 +832,7 @@ class HTTPClient:
             follow=follow,
             timeouts=timeouts,
             http2=http2,
+            auth=auth,
         )
 
     async def post(
@@ -682,8 +847,9 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
+        auth: Optional[AuthType] = None,
     ) -> HttpResponse:
         """Do post http request."""
         return await self.request(
@@ -700,6 +866,7 @@ class HTTPClient:
             follow=follow,
             timeouts=timeouts,
             http2=http2,
+            auth=auth,
         )
 
     async def put(
@@ -714,8 +881,9 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
+        auth: Optional[AuthType] = None,
     ) -> HttpResponse:
         """Do put http request."""
         return await self.request(
@@ -732,6 +900,7 @@ class HTTPClient:
             follow=follow,
             timeouts=timeouts,
             http2=http2,
+            auth=auth,
         )
 
     async def patch(
@@ -746,8 +915,9 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
+        auth: Optional[AuthType] = None,
     ) -> HttpResponse:
         """Do patch http request."""
         return await self.request(
@@ -764,6 +934,7 @@ class HTTPClient:
             follow=follow,
             timeouts=timeouts,
             http2=http2,
+            auth=auth,
         )
 
     async def delete(
@@ -778,8 +949,9 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
+        auth: Optional[AuthType] = None,
     ) -> HttpResponse:
         """Do delete http request."""
         return await self.request(
@@ -796,6 +968,59 @@ class HTTPClient:
             follow=follow,
             timeouts=timeouts,
             http2=http2,
+            auth=auth,
+        )
+
+    async def head(
+        self,
+        url: str,
+        headers: Optional[HeadersType] = None,
+        params: Optional[ParamsType] = None,
+        verify: bool = True,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
+        follow: Optional[bool] = None,
+        http2: bool = False,
+        auth: Optional[AuthType] = None,
+    ) -> HttpResponse:
+        """Do head http request."""
+        return await self.request(
+            url=url,
+            method="HEAD",
+            headers=headers,
+            params=params,
+            verify=verify,
+            ssl=ssl,
+            follow=follow,
+            timeouts=timeouts,
+            http2=http2,
+            auth=auth,
+        )
+
+    async def options(
+        self,
+        url: str,
+        headers: Optional[HeadersType] = None,
+        params: Optional[ParamsType] = None,
+        verify: bool = True,
+        ssl: Optional[SSLContext] = None,
+        timeouts: Optional[Timeouts] = None,
+        follow: Optional[bool] = None,
+        http2: bool = False,
+        auth: Optional[AuthType] = None,
+    ) -> HttpResponse:
+        """Do options http request."""
+        return await self.request(
+            url=url,
+            method="OPTIONS",
+            headers=headers,
+            params=params,
+            verify=verify,
+            ssl=ssl,
+            follow=follow,
+            timeouts=timeouts,
+            http2=http2,
+            auth=auth,
         )
 
     async def request(
@@ -811,10 +1036,12 @@ class HTTPClient:
         verify: bool = True,
         ssl: Optional[SSLContext] = None,
         timeouts: Optional[Timeouts] = None,
-        follow: bool = False,
+        follow: Optional[bool] = None,
         http2: bool = False,
         max_redirects: Optional[int] = None,
         max_decompressed_size: Optional[int] = None,
+        auth: Optional[AuthType] = None,
+        stream: bool = False,
     ) -> HttpResponse:
         """Do http request.
 
@@ -834,7 +1061,18 @@ class HTTPClient:
             * **max_decompressed_size**: overrides the client's configured
               gzip/deflate decompressed-size limit for this request
             * **http2**: flag to indicate whether to use http2 (experimental)
+            * **auth**: :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple, overrides the
+              client's one. Credentials in the url (``user:password@host``) are used as basic
+              authentication when no auth is given.
+            * **stream**: if true, the body is not read before returning, so it must be read
+              from the response (``read_chunks``, ``iter_bytes``, ``iter_lines``, ``content``...)
+              or released with ``aclose``. Prefer :meth:`stream`.
         """
+        if self.base_url:
+            url = join_url(self.base_url, url)
+        headers = _merge_headers(self.headers, headers)
+        params = _merge_params(self.params, params)
+        follow = follow if follow is not None else self.follow
         headers = deepcopy(headers) if headers else HttpHeaders()
 
         if json is not None:
@@ -846,11 +1084,15 @@ class HTTPClient:
         urlparsed = http_parser.get_url_parsed(url)
 
         boundary = None
-        headers = HttpHeaders(deepcopy(headers)) if headers else []
+        headers = HttpHeaders(deepcopy(headers))
         body: ParsedBodyType = b""
 
         if self.handle_cookies:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
+
+        resolved_auth = resolve_auth(auth if auth is not None else self.auth, urlparsed)
+        if resolved_auth:
+            resolved_auth.apply(headers, method, urlparsed.geturl())
 
         transfer_chunked = True
 
@@ -877,6 +1119,7 @@ class HTTPClient:
         http2 = http2 or self.http2
         reconnect_times = 3
         while reconnect_times > 0:
+            await self._run_hooks("request", method, urlparsed.geturl(), headers)
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -901,14 +1144,19 @@ class HTTPClient:
                         self.proxy,
                         transfer_chunked=transfer_chunked,
                         max_decompressed_size=max_decompressed_size,
+                        method=method,
+                        stream=stream,
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
+
+                await self._run_hooks("response", response)
 
                 if self.handle_cookies:
                     self._save_new_cookies(str(urlparsed.hostname), response)
 
                 if follow and response.status_code in {301, 302, 303, 307, 308}:
+                    await response.aclose()
                     (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
                         current_urlparsed=urlparsed,
                         headers=headers,
@@ -929,6 +1177,36 @@ class HTTPClient:
             except TimeoutException:
                 raise RequestTimeout()
         raise ConnectionDisconnected("retried 3 times unsuccessfully")
+
+    @asynccontextmanager
+    async def stream(self, method: str, url: str, **kwargs) -> AsyncIterator[HttpResponse]:
+        """Do a request and give its response without reading the body.
+
+        The response is released when leaving the block, even if its body was not fully read.
+
+        Params:
+            * **method**: Http method of request
+            * **url**: url of request
+            * **kwargs**: any other argument of :meth:`request`
+        """
+        response = await self.request(url=url, method=method, stream=True, **kwargs)
+        try:
+            yield response
+        finally:
+            await response.aclose()
+
+    async def _run_hooks(self, name: str, *args):
+        for hook in self.event_hooks[name]:
+            result = hook(*args)
+            if isawaitable(result):
+                await result
+
+    async def aclose(self):
+        """Close the connections of the connector.
+
+        Responses that are still being read must be released first, as this waits for every connection.
+        """
+        await self.connector.cleanup()
 
     def _handle_redirect(
         self,
@@ -1017,7 +1295,7 @@ class HTTPClient:
     def _add_cookies_to_request(self, host: str, headers: HeadersType):
         """Add cookies to request."""
         host_cookies = self.cookies_map.get(host)
-        if host_cookies and not any([header.lower() == "cookie" for header, _ in headers]):
+        if host_cookies and not any(header.lower() == "cookie" for header, _ in http_parser.headers_iterator(headers)):
             cookies_str = host_cookies.output(header="Cookie:")
             for cookie_data in cookies_str.split("\r\n"):
                 http_parser.add_header(headers, *cookie_data.split(": ", 1))

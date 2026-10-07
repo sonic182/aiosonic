@@ -25,6 +25,7 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - Elegant key/value cookies
 - (Nearly) 100% test coverage
 - HTTP/2 (enabled with a flag)
+- Client defaults (`base_url`, `headers`, `params`, `auth`), event hooks, `raise_for_status()` and response streaming
 
 ## Requirements
 
@@ -221,6 +222,50 @@ g2 = GitHubAPI()
 
 gh == gh2
 ```
+
+## Client defaults, auth, hooks and streaming
+
+```python
+import asyncio
+import aiosonic
+from aiosonic import BearerAuth
+
+
+async def log_response(response):
+    print(response.method, response.url, response.status_code)
+
+
+async def main():
+    client = aiosonic.HTTPClient(
+        base_url="https://api.example.com",
+        headers={"Accept": "application/json"},
+        params={"lang": "en"},
+        auth=("user", "password"),
+        event_hooks={"response": [log_response]},
+    )
+
+    response = await client.get("/items", params={"page": 2}, auth=BearerAuth("token"))
+    response.raise_for_status()
+    print(await response.json())
+
+    async with client.stream("GET", "/export") as response:
+        async for line in response.iter_lines():
+            print(line)
+
+    await client.aclose()
+
+asyncio.run(main())
+```
+
+Notes and limits:
+
+- `auth` accepts a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or any `Auth` subclass. Digest and netrc authentication are not supported.
+- `event_hooks` runs `"request"` hooks as `hook(method, url, headers)` and `"response"` hooks as `hook(response)`, sync or async, on every send, including redirects and retries.
+- `raise_for_status()` raises `HTTPStatusError` (an `AiosonicError`) for 4xx and 5xx responses.
+- `stream()` releases the connection when the block ends, even if the body was not fully read.
+- `iter_bytes()` decompresses gzip and deflate bodies, but not over HTTP/2; `read_chunks()` keeps returning the bytes as received.
+- `timeouts.sock_read` only covers waiting for the status line, not the body.
+- `async with HTTPClient()` does not close the connector; call `await client.aclose()` once every response was read or closed.
 
 ## Benchmarks
 

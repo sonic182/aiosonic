@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `HTTPClient` accepts `base_url`, `headers`, `params`, `auth`, `follow` and `event_hooks` as client level defaults; the per request values override them.
+- Authentication with `auth=` on the client and on every request method: a `(user, password)` tuple, `BasicAuth`, `BearerAuth` or a custom `Auth` subclass. Credentials in the url (`user:pass@host`) are used as Basic auth.
+- `event_hooks` with `"request"` (`hook(method, url, headers)`) and `"response"` (`hook(response)`) hooks, sync or async, run on every send, including redirects and retries.
+- `HttpResponse.raise_for_status()`, the `HTTPStatusError` exception and the `AiosonicError` base class of every aiosonic exception.
+- `HttpResponse.url`, `HttpResponse.method` and `HttpResponse.reason`.
+- `HTTPClient.stream()` and `request(stream=True)` keep the body of `Content-Length` responses unread, with `HttpResponse.iter_bytes()` (decompresses gzip and deflate), `iter_lines()` and `aclose()` to consume and release them.
+- `HTTPClient.head()`, `HTTPClient.options()` and `HTTPClient.aclose()`.
+
+### Fixed
+- Cookie handling with `handle_cookies=True` failed when the request headers were an `HttpHeaders` instance.
+- Responses to `HEAD` requests, and `1xx`, `204` and `304` responses, no longer wait for a body announced by `Content-Length` or `Transfer-Encoding: chunked`.
+
 ## [1.0.8] 2026-10-05
 
 ### Fixed

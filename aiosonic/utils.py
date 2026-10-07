@@ -15,6 +15,21 @@ def get_debug_logger():
     return logger
 
 
+def join_url(base_url: str, url: str) -> str:
+    """Prepend ``base_url`` to ``url`` unless ``url`` is already absolute.
+
+    Args:
+        base_url (str): The base URL to prepend.
+        url (str): An absolute URL or a path relative to ``base_url``.
+
+    Returns:
+        str: ``url`` when it starts with ``http``, otherwise ``base_url`` and ``url`` joined by one slash.
+    """
+    if url.startswith("http"):
+        return url
+    return base_url.rstrip("/") + "/" + url.lstrip("/")
+
+
 def default_port(urlparsed: ParseResult) -> int:
     """Return the URL's port, or its scheme's default when it has none.
 

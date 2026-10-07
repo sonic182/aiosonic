@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 from aiosonic.client import HTTPClient
+from aiosonic.utils import join_url
 
 
 class BaseClient:
@@ -17,9 +18,7 @@ class BaseClient:
 
     def process_request_url(self, url: str) -> str:
         """Process the request URL and prepend the base URL when needed."""
-        if not url.startswith("http"):
-            return self.base_url.rstrip("/") + "/" + url.lstrip("/")
-        return url
+        return join_url(self.base_url, url)
 
     def merge_headers(self, headers: Optional[dict] = None) -> dict:
         """Merge default headers with the provided ones."""

@@ -1,17 +1,21 @@
 from asyncio.exceptions import TimeoutError as TimeoutException  # noqa: F401
 
 
+class AiosonicError(Exception):
+    """Base class of all aiosonic exceptions."""
+
+
 # General
-class MissingWriterException(Exception):
+class MissingWriterException(AiosonicError):
     pass
 
 
-class MissingReaderException(Exception):
+class MissingReaderException(AiosonicError):
     pass
 
 
 # timeouts
-class BaseTimeout(Exception):
+class BaseTimeout(AiosonicError):
     pass
 
 
@@ -32,34 +36,47 @@ class ConnectionPoolAcquireTimeout(BaseTimeout):
 
 
 # parsing
-class HttpParsingError(Exception):
+class HttpParsingError(AiosonicError):
     pass
 
 
 # Redirects
-class MaxRedirects(Exception):
+class MaxRedirects(AiosonicError):
     pass
 
 
 # Reconnect
-class ConnectionDisconnected(Exception):
+class ConnectionDisconnected(AiosonicError):
     pass
 
 
 # HTTP2
-class MissingEvent(Exception):
+class MissingEvent(AiosonicError):
     pass
 
 
 # SSE
-class SSEConnectionError(Exception):
+class SSEConnectionError(AiosonicError):
     pass
 
 
-class SSEParsingError(Exception):
+class SSEParsingError(AiosonicError):
     pass
 
 
 # Decompression
-class DecompressionError(Exception):
+class DecompressionError(AiosonicError):
     pass
+
+
+# Status
+class HTTPStatusError(AiosonicError):
+    """Raised by ``HttpResponse.raise_for_status`` for 4xx and 5xx responses.
+
+    Attributes:
+        response: The response that triggered the error.
+    """
+
+    def __init__(self, message: str, response):
+        super().__init__(message)
+        self.response = response
