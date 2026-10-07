@@ -78,16 +78,19 @@ Argument             Meaning
 ``auth``             ``(user, password)`` tuple, :class:`aiosonic.auth.BasicAuth`,
                      :class:`aiosonic.auth.BearerAuth` or an :class:`aiosonic.auth.Auth` subclass, used for every
                      request. It is not sent to another host when following a redirect.
-``timeout``          Seconds for connecting, reading the response and getting a connection from the pool
+``timeout``          Seconds for connecting, waiting for the response and getting a connection from the pool
                      (5 by default), ``None`` to disable them, or a :class:`aiosonic.timeout.Timeouts`.
+                     The ``timeout`` of a request overrides it, except for getting a connection from the
+                     pool, which only uses the client one.
 ``follow_redirects`` Whether to follow redirects (``False`` by default).
 ``max_redirects``    Redirects to follow before raising :class:`aiosonic.exceptions.MaxRedirects` (20).
 ``verify``           Whether to verify ssl certificates, or the ``ssl.SSLContext`` to use.
 ``http2``            Whether to use HTTP/2.
 ``event_hooks``      ``{"request": [...], "response": [...]}``, see `Event hooks`_.
-``proxy``            Proxy url, or an :class:`aiosonic.proxy.Proxy`.
+``proxy``            Proxy url (``"http://user:password@proxy:8080"``), or an :class:`aiosonic.proxy.Proxy`.
 ``http_client``      An :class:`aiosonic.HTTPClient` to send the requests with, to share its connections. It
                      can not be combined with ``event_hooks`` or ``proxy``, and ``aclose()`` does not close it.
+                     The pool timeout and cookie handling are then the ones of that client.
 ==================== ==========================================================================================
 
 ``client.headers`` and ``client.params`` can be changed after creating the client, as in httpx:
@@ -96,7 +99,8 @@ Argument             Meaning
 
     client.headers["Authorization"] = "Bearer new-token"
 
-Cookies set by the server are kept and sent back in later requests to the same host.
+Cookies set by the server are kept and sent back in later requests to the same host, unless ``http_client``
+is given, which keeps them according to its ``handle_cookies``.
 
 
 Requests
@@ -216,7 +220,8 @@ Differences with httpx
 - Urls are ``str``, not ``httpx.URL``, and ``response.request`` only has the method and url (its headers
   are empty).
 - ``timeout`` takes a number, ``None`` or :class:`aiosonic.timeout.Timeouts`, not ``httpx.Timeout``. A number
-  limits connecting, waiting for the response and getting a connection from the pool, not reading the body.
+  limits connecting, waiting for the response and getting a connection from the pool, not reading the body,
+  and the pool timeout can not be changed per request.
 - Not supported: ``cookies=``, ``cert=``, ``transport=``, ``limits=``, ``build_request()``, ``send()``,
   ``response.history``, ``response.elapsed``, ``DigestAuth``, netrc and callable auths.
 - List values in ``params`` and ``data`` are not expanded into repeated fields; pass a list of tuples to
@@ -237,3 +242,5 @@ Reference
 .. autoclass:: aiosonic.httpx_client.Request
 
 .. autofunction:: aiosonic.httpx_client.to_timeouts
+
+.. autofunction:: aiosonic.httpx_client.to_proxy

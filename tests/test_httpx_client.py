@@ -1,8 +1,9 @@
 import base64
+from contextlib import AsyncExitStack
 
 import pytest
 
-from aiosonic.exceptions import HTTPStatusError, ResponseNotRead, StreamConsumed
+from aiosonic.exceptions import ConnectionPoolAcquireTimeout, HTTPStatusError, ResponseNotRead, StreamConsumed
 from aiosonic.httpx_client import AsyncClient, Request, Response
 
 
@@ -104,3 +105,25 @@ async def test_event_hooks(http_serv):
 
     assert response.json()["x-hook"] == "added"
     assert seen == [("GET", 200)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_timeout_limits_waiting_for_pool(http_serv):
+    async with AsyncClient(base_url=http_serv, timeout=0.5) as client:
+        async with AsyncExitStack() as stack:
+            for _ in range(30):
+                await stack.enter_async_context(client.stream("GET", "/random"))
+            with pytest.raises(ConnectionPoolAcquireTimeout):
+                await client.get("/")
+        assert (await client.get("/")).text == "Hello, world"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_proxy_url_credentials(http_serv, proxy_serv):
+    proxy_url, auth = proxy_serv
+    proxy = proxy_url.replace("://", f"://{auth}@")
+    async with AsyncClient(proxy=proxy) as client:
+        response = await client.get(http_serv)
+    assert response.text == "Hello, world"

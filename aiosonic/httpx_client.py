@@ -19,15 +19,18 @@ from io import BytesIO, IOBase
 from json import loads
 from ssl import SSLContext
 from typing import Any, AsyncIterator, Callable, Dict, Iterable, List, Optional, Tuple, Union
+from urllib.parse import unquote, urlparse
 
 from aiosonic.auth import AuthType
 from aiosonic.base_client import BaseClient
 from aiosonic.client import HeadersType, HttpHeaders, HTTPClient, HttpResponse
+from aiosonic.connectors import TCPConnector
 from aiosonic.exceptions import HTTPStatusError, ResponseNotRead, StreamConsumed
 from aiosonic.multipart import MultipartFile, MultipartForm
 from aiosonic.proxy import Proxy
 from aiosonic.timeout import Timeouts
 from aiosonic.types import DataType, ParamsType
+from aiosonic.utils import url_without_userinfo
 
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_MAX_REDIRECTS = 20
@@ -56,8 +59,8 @@ def to_timeouts(timeout: TimeoutType) -> Timeouts:
     """Convert an httpx style timeout to :class:`aiosonic.timeout.Timeouts`.
 
     Args:
-        timeout (TimeoutType): Seconds for connecting, reading and getting a connection from the pool,
-            None to disable them, or a :class:`aiosonic.timeout.Timeouts` that is used as is.
+        timeout (TimeoutType): Seconds for connecting, waiting for the response and getting a connection from
+            the pool, None to disable them, or a :class:`aiosonic.timeout.Timeouts` that is used as is.
 
     Returns:
         Timeouts: The timeouts, without a limit for the whole request when built from a number.
@@ -293,6 +296,23 @@ def _build_body(
     return data
 
 
+def to_proxy(proxy: Union[str, Proxy]) -> Proxy:
+    """Convert an httpx style proxy url to :class:`aiosonic.proxy.Proxy`.
+
+    Args:
+        proxy (Union[str, Proxy]): Proxy url, with the credentials in its ``user:password@`` part if needed,
+            or a :class:`aiosonic.proxy.Proxy` that is used as is.
+
+    Returns:
+        Proxy: The proxy, authenticated with the credentials of the url.
+    """
+    if isinstance(proxy, Proxy):
+        return proxy
+    parsed = urlparse(proxy)
+    auth = f"{unquote(parsed.username)}:{unquote(parsed.password or '')}" if parsed.username else None
+    return Proxy(url_without_userinfo(parsed), auth=auth)
+
+
 def _wrap_hook(name: str, hook: Callable) -> Callable:
     if name == "request":
         return lambda method, url, headers: hook(Request(method, url, headers))
@@ -305,7 +325,8 @@ class AsyncClient(BaseClient):
     """Client with the API of ``httpx.AsyncClient``.
 
     Requests return a :class:`Response` whose body was already read, so ``response.json()``,
-    ``response.text`` and ``response.content`` work as in httpx. Cookies are kept between requests.
+    ``response.text`` and ``response.content`` work as in httpx. Cookies are kept between requests, unless
+    ``http_client`` is given, which keeps them according to its ``handle_cookies``.
 
     Args:
         auth: :class:`aiosonic.auth.Auth` or ``(username, password)`` tuple used for every request.
@@ -313,15 +334,18 @@ class AsyncClient(BaseClient):
         headers: Headers added to every request.
         verify: Whether to verify ssl certificates, or the :class:`ssl.SSLContext` to use.
         http2: Whether to use HTTP/2.
-        timeout: Seconds for connecting, reading and getting a connection from the pool, None to disable them,
-            or a :class:`aiosonic.timeout.Timeouts`.
+        timeout: Seconds for connecting, waiting for the response and getting a connection from the pool, None
+            to disable them, or a :class:`aiosonic.timeout.Timeouts`. The timeout of a request overrides it,
+            except for getting a connection from the pool, which only uses this one and is not applied when
+            ``http_client`` is given.
         follow_redirects: Whether to follow redirects.
         max_redirects: Maximum redirects to follow.
         event_hooks: Dict with the ``"request"`` and ``"response"`` keys, each one a list of sync or async
             callables, called with a :class:`Request` before sending each request and with a :class:`Response`,
             whose body may be unread, after receiving each response.
         base_url: Url prepended to relative request urls.
-        proxy: Proxy url or :class:`aiosonic.proxy.Proxy`.
+        proxy: Proxy url, with the credentials in its ``user:password@`` part if needed, or
+            :class:`aiosonic.proxy.Proxy`.
         http_client: :class:`aiosonic.HTTPClient` to send the requests, to share its connections. It can not
             be combined with ``event_hooks`` or ``proxy``, and it is not closed by :meth:`aclose`.
     """
@@ -347,8 +371,9 @@ class AsyncClient(BaseClient):
         if http_client is None:
             hooks = {name: [_wrap_hook(name, hook) for hook in hooks] for name, hooks in (event_hooks or {}).items()}
             http_client = HTTPClient(
+                connector=TCPConnector(timeouts=to_timeouts(timeout)),
                 handle_cookies=True,
-                proxy=Proxy(proxy) if isinstance(proxy, str) else proxy,
+                proxy=to_proxy(proxy) if proxy else None,
                 event_hooks=hooks,
             )
             self._owns_client = True
