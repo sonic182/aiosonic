@@ -1,6 +1,7 @@
 """Utils."""
 
 import logging
+from functools import lru_cache
 from typing import Optional
 from urllib.parse import ParseResult
 
@@ -46,6 +47,7 @@ def default_port(urlparsed: ParseResult) -> int:
     return urlparsed.port or (443 if urlparsed.scheme in ("https", "wss") else 80)
 
 
+@lru_cache(maxsize=1024)
 def connection_key(urlparsed: ParseResult) -> str:
     """Build the key that identifies a reusable connection.
 
