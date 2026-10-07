@@ -28,6 +28,7 @@ Features
 - Comprehensive test coverage (nearly 100%)
 - HTTP/2 (BETA; enabled via a flag)
 - Authentication by host, event hooks, `raise_for_status()` and response streaming
+- An httpx compatible client, see :ref:`httpx_client`
 
 Requirements
 ============
@@ -229,6 +230,7 @@ Indices and Tables
     :maxdepth: 2
 
     examples
+    httpx_client
     reference
     websocket_client
     sse_client

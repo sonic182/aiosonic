@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `HttpResponse.url`, `HttpResponse.method` and `HttpResponse.reason`.
 - `HTTPClient.stream()` and `request(stream=True)` keep the body of `Content-Length` responses unread, with `HttpResponse.iter_bytes()` (decompresses gzip and deflate), `iter_lines()` and `aclose()` to consume and release them.
 - `HTTPClient.head()`, `HTTPClient.options()` and `HTTPClient.aclose()`.
+- `BaseClient.head()` and `BaseClient.options()`.
+- `aiosonic.httpx_client.AsyncClient`, a `BaseClient` with the API of `httpx.AsyncClient` (`content`, `data`, `files`, `json`, `timeout`, `follow_redirects`, `verify`, `auth`, `event_hooks`, `stream()`...), to switch from httpx with few changes. Its `Response` has httpx's sync `content`, `text` and `json()`, `raise_for_status()` for any non-2xx status, and `aread()` and `aiter_raw/bytes/text/lines()` for streamed responses. See the "httpx compatible client" docs page.
+- `ResponseNotRead` and `StreamConsumed` exceptions, raised by the httpx compatible `Response`.
 
 ### Fixed
 - Cookie handling with `handle_cookies=True` failed when the request headers were an `HttpHeaders` instance.
