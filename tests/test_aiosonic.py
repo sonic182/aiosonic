@@ -806,3 +806,41 @@ async def test_stream_follow_redirect_releases_connections(http_serv):
         async with client.stream("GET", http_serv + "/get_redirect", follow=True) as res:
             assert [chunk async for chunk in res.iter_bytes()] == [b"Hello, world"]
         assert client.connector.pools[":default"].is_all_free()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_stream_partial_read_without_aclose_discards_connection(http_serv):
+    """Closing the body iterator early closes the socket so its unread bytes never reach the next request."""
+    connector = TCPConnector({":default": PoolConfig(size=1)})
+    async with aiosonic.HTTPClient(connector) as client:
+        res = await client.request(http_serv + "/random", "GET", stream=True)
+        chunks = res.iter_bytes()
+        await chunks.__anext__()
+        await chunks.aclose()
+
+        res = await client.get(http_serv)
+        assert await res.text() == "Hello, world"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_hooks_url_and_response_hook_error(http_serv):
+    """Request hooks get the url without credentials and a failing response hook releases the response."""
+    urls = []
+
+    def on_request(method, url, headers):
+        urls.append(url)
+
+    def on_response(response):
+        response.raise_for_status()
+
+    async with aiosonic.HTTPClient(event_hooks={"request": [on_request], "response": [on_response]}) as client:
+        await client.get(http_serv.replace("http://", "http://user:pass@") + "/headers")
+        assert urls == [http_serv + "/headers"]
+
+        with pytest.raises(HTTPStatusError):
+            await client.request(http_serv + "/status?code=500", "GET", stream=True)
+        assert client.connector.pools[":default"].is_all_free()
+
+    assert aiosonic.utils.join_url("http://base", "httpbin/get") == "http://base/httpbin/get"

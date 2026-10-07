@@ -49,7 +49,7 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger, join_url
+from aiosonic.utils import get_debug_logger, join_url, url_without_userinfo
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -332,8 +332,8 @@ class HttpResponse:
             self.chunks_readed = True
         finally:
             if self._connection is connection and connection.blocked:
-                connection.release()
                 self._connection = None
+                connection.ensure_released(response_read=self.chunks_readed)
 
     async def iter_bytes(self) -> AsyncIterator[bytes]:
         """Iterate over the body, decompressing gzip and deflate bodies as they arrive."""
@@ -396,7 +396,7 @@ class HttpResponse:
 
     def _set_request_meta(self, urlparsed: ParseResult, method: str = ""):
         self.request_meta = {"from_path": urlparsed.path or "/"}
-        self.url = urlparsed._replace(netloc=urlparsed.netloc.rpartition("@")[2]).geturl()
+        self.url = url_without_userinfo(urlparsed)
         self.method = method
 
 
@@ -1119,7 +1119,7 @@ class HTTPClient:
         http2 = http2 or self.http2
         reconnect_times = 3
         while reconnect_times > 0:
-            await self._run_hooks("request", method, urlparsed.geturl(), headers)
+            await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -1149,33 +1149,36 @@ class HTTPClient:
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
-
-                await self._run_hooks("response", response)
-
-                if self.handle_cookies:
-                    self._save_new_cookies(str(urlparsed.hostname), response)
-
-                if follow and response.status_code in {301, 302, 303, 307, 308}:
-                    await response.aclose()
-                    (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
-                        current_urlparsed=urlparsed,
-                        headers=headers,
-                        response=response,
-                        max_redirects=max_redirects,
-                        method=method,
-                        body=body,
-                        transfer_chunked=transfer_chunked,
-                    )
-                    # continue loop to re-issue the request with updated params
-                else:
-                    return response
-
             except ConnectionDisconnected:
                 reconnect_times -= 1
+                continue
             except ConnectTimeout:
                 raise
             except TimeoutException:
                 raise RequestTimeout()
+
+            try:
+                await self._run_hooks("response", response)
+            except BaseException:
+                await response.aclose()
+                raise
+
+            if self.handle_cookies:
+                self._save_new_cookies(str(urlparsed.hostname), response)
+
+            if not (follow and response.status_code in {301, 302, 303, 307, 308}):
+                return response
+
+            await response.aclose()
+            (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
+                current_urlparsed=urlparsed,
+                headers=headers,
+                response=response,
+                max_redirects=max_redirects,
+                method=method,
+                body=body,
+                transfer_chunked=transfer_chunked,
+            )
         raise ConnectionDisconnected("retried 3 times unsuccessfully")
 
     @asynccontextmanager

@@ -183,7 +183,8 @@ Client defaults, auth, hooks and streaming
 
 - ``auth`` accepts a ``(user, password)`` tuple, ``BasicAuth``, ``BearerAuth`` or any ``Auth`` subclass. Digest and netrc authentication are not supported.
 - ``event_hooks`` runs ``"request"`` hooks as ``hook(method, url, headers)`` and ``"response"`` hooks as ``hook(response)``, sync or async, on every send, including redirects and retries.
-- ``raise_for_status()`` raises ``HTTPStatusError`` (an ``AiosonicError``) for 4xx and 5xx responses.
+- ``raise_for_status()`` raises ``HTTPStatusError`` (an ``AiosonicError``) for 4xx and 5xx responses; 3xx responses that were not followed do not raise.
+- A per request ``auth=None`` means "use the client's auth"; to send a request without authentication, create the client without ``auth``.
 - ``stream()`` releases the connection when the block ends, even if the body was not fully read.
 - ``iter_bytes()`` decompresses gzip and deflate bodies, but not over HTTP/2; ``read_chunks()`` keeps returning the bytes as received.
 - ``timeouts.sock_read`` only covers waiting for the status line, not the body.
