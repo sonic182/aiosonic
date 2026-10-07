@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs render Google style docstrings (`sphinx.ext.napoleon`).
 
 ### Changed
-- Less work per request: request headers get one shallow copy instead of two deep copies, socket reads and writes no longer go through a generator based context manager, header type checks use the builtin `list`/`dict` instead of the `typing` aliases, and `connection_key()` is cached. A quick benchmark of `GET` requests runs about 5% faster than 1.0.8.
+- Less overhead per request (about 5% faster `GET` requests than 1.0.8 in a quick benchmark).
 
 ### Fixed
 - Cookie handling with `handle_cookies=True` failed when the request headers were an `HttpHeaders` instance.
