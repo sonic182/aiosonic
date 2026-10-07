@@ -2,6 +2,11 @@
 Welcome to aiosonic
 ===================
 
+.. image:: _static/aiosonic-banner.png
+   :alt: aiosonic banner
+   :align: center
+   :width: 100%
+
 A really fast, lightweight Python asyncio HTTP/1.1, HTTP/2, and WebSocket client.
 
 Current version is |release|.
