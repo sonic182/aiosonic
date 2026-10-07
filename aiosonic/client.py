@@ -9,7 +9,6 @@ import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
-from copy import deepcopy
 from functools import partial
 from http import HTTPStatus, cookies
 from inspect import isawaitable
@@ -110,7 +109,7 @@ class HttpResponse:
         self.compressed = b""
         self.chunks_readed = False
         self.request_meta = {}
-        self.url = ""
+        self._urlparsed: Optional[ParseResult] = None
         self.method = ""
         self._remaining: Optional[int] = None
         self.max_decompressed_size = DEFAULT_MAX_DECOMPRESSED_SIZE
@@ -176,6 +175,11 @@ class HttpResponse:
     def http_version(self) -> str:
         """Get the negotiated HTTP version string (e.g. '2', '1.1', '1.0')."""
         return self.response_initial.get("version", "")
+
+    @property
+    def url(self) -> str:
+        """Get the url of the request that produced this response, without credentials."""
+        return url_without_userinfo(self._urlparsed) if self._urlparsed else ""
 
     @property
     def ok(self) -> bool:
@@ -366,7 +370,7 @@ class HttpResponse:
 
     def _set_request_meta(self, urlparsed: ParseResult, method: str = ""):
         self.request_meta = {"from_path": urlparsed.path or "/"}
-        self.url = url_without_userinfo(urlparsed)
+        self._urlparsed = urlparsed
         self.method = method
 
 
@@ -1011,7 +1015,7 @@ class HTTPClient:
               or released with ``aclose``. Prefer :meth:`stream`.
         """
         follow = follow if follow is not None else self.follow
-        headers = deepcopy(headers) if headers else HttpHeaders()
+        headers = HttpHeaders(headers)
 
         if json is not None:
             if data is not None and data != b"":
@@ -1022,7 +1026,6 @@ class HTTPClient:
         urlparsed = http_parser.get_url_parsed(url)
 
         boundary = None
-        headers = HttpHeaders(deepcopy(headers))
         body: ParsedBodyType = b""
 
         if self.handle_cookies:
@@ -1057,7 +1060,9 @@ class HTTPClient:
         http2 = http2 or self.http2
         reconnect_times = 3
         while reconnect_times > 0:
-            await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
+            # performance: skip building the hook url when no request hooks are registered
+            if self.event_hooks["request"]:
+                await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
