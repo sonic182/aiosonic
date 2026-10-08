@@ -19,12 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `aiosonic.httpx_client.AsyncClient`, a `BaseClient` with the API of `httpx.AsyncClient` (`content`, `data`, `files`, `json`, `timeout`, `follow_redirects`, `verify`, `auth`, `event_hooks`, `stream()`...), to switch from httpx with few changes. Its `Response` has httpx's sync `content`, `text` and `json()`, `raise_for_status()` for any non-2xx status, and `aread()` and `aiter_raw/bytes/text/lines()` for streamed responses. Its `timeout` (5s by default) also limits waiting for a free pool connection, and `proxy` accepts a url with credentials (`http://user:pass@proxy:8080`). See the "httpx compatible client" docs page.
 - `ResponseNotRead` and `StreamConsumed` exceptions, raised by the httpx compatible `Response`.
 - Docs render Google style docstrings (`sphinx.ext.napoleon`).
+- `scripts/profile_http_clients.py` compares fully consumed, validated responses with equal pool limits and alternating client order, and optionally collects cProfile statistics.
 
 ### Changed
 - Less overhead per request (about 5% faster `GET` requests than 1.0.8 in a quick benchmark).
+- `SmartPool` uses destination-indexed LIFO queues, preferring spare connections before replacing another destination's connection.
+- Healthy keep-alive connections skip DNS resolution and connection-timeout setup while preserving connection lifecycle limits.
+- Default HTTP/1.1 request bytes use a bounded 512-entry LRU cache.
+- Refresh benchmark dependencies and document controlled, machine-dependent performance comparisons.
 
 ### Fixed
 - Cookie handling with `handle_cookies=True` failed when the request headers were an `HttpHeaders` instance.
+- Combining an existing URL query with `params=` now inserts the required `&` separator. Wire-level regression tests cover default requests, custom headers, and authenticated HTTP proxies.
 - Responses to `HEAD` requests, and `1xx`, `204` and `304` responses, no longer wait for a body announced by `Content-Length` or `Transfer-Encoding: chunked`.
 
 ## [1.0.8] 2026-10-05

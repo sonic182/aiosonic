@@ -420,7 +420,7 @@ def _prepare_request_headers(
 
     if params:
         query = urlencode(params)
-        path += f"{query}" if "?" in path else f"?{query}"
+        path += f"&{query}" if "?" in path else f"?{query}"
     uppercase_method = method.upper()
     if not http2conn and not headers and not multipart and not (proxy and proxy.auth and url.scheme == "http"):
         request = _prepare_default_request(url, uppercase_method, path)
