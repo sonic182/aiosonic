@@ -347,8 +347,9 @@ poetry run sphinx-build -W -b html sourcedocs build/html
 ```
 
 HTML builds also export each page, including API reference content, as Markdown. Use the
-**Copy Markdown** button or **Download Markdown** link on a documentation page. Clipboard
-copying requires HTTPS or localhost and browser permission; downloading remains available otherwise.
+Shibuya theme's **Copy page** button and dropdown to copy Markdown, **View as Markdown**, or
+open the page in ChatGPT or Claude. Clipboard copying requires HTTPS or localhost and browser
+permission; the Markdown view remains available otherwise.
 
 ### Running Tests
 

@@ -1796,6 +1796,21 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pygments-styles"
+version = "0.3.0"
+description = "A curated collection of Pygments styles based on VS Code themes."
+optional = false
+python-versions = ">=3.9"
+groups = ["docs"]
+files = [
+    {file = "pygments_styles-0.3.0-py3-none-any.whl", hash = "sha256:c6c45e9939eb7590345bc9084113bac46c45f12b009d13422be02e80e84a034c"},
+    {file = "pygments_styles-0.3.0.tar.gz", hash = "sha256:67746b8fc6ff72c1179ca4d9a8bc89c7f54c196c2ff9d087f07392cd6fde3ecf"},
+]
+
+[package.dependencies]
+pygments = "*"
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
 description = "pytest: simple powerful testing with Python"
@@ -1964,6 +1979,22 @@ files = [
 ]
 
 [[package]]
+name = "shibuya"
+version = "2026.7.12"
+description = "A clean, responsive, and customizable Sphinx documentation theme with light/dark mode."
+optional = false
+python-versions = ">=3.10"
+groups = ["docs"]
+files = [
+    {file = "shibuya-2026.7.12-py3-none-any.whl", hash = "sha256:0a2c0c109e7cc47fc650b01feb671d267c0ffe2e39c98f3529e32d723a9c9d9b"},
+    {file = "shibuya-2026.7.12.tar.gz", hash = "sha256:9496606f5b95595511ad86b773d74b4b8d694a4dcc2f848e6ec34e2ad71d9060"},
+]
+
+[package.dependencies]
+pygments-styles = "*"
+Sphinx = "*"
+
+[[package]]
 name = "snowballstemmer"
 version = "3.1.0"
 description = "This package provides 36 stemmers for 34 languages generated from Snowball algorithms."
@@ -2032,26 +2063,6 @@ tabulate = "*"
 dev = ["black", "bumpver", "coveralls", "flake8", "isort", "pip-tools", "pylint", "pytest", "pytest-cov", "sphinx (>=9.0.4)", "sphinxcontrib-plantuml", "sphinxcontrib.httpdomain"]
 
 [[package]]
-name = "sphinx-rtd-theme"
-version = "2.0.0"
-description = "Read the Docs theme for Sphinx"
-optional = false
-python-versions = ">=3.6"
-groups = ["docs"]
-files = [
-    {file = "sphinx_rtd_theme-2.0.0-py2.py3-none-any.whl", hash = "sha256:ec93d0856dc280cf3aee9a4c9807c60e027c7f7b461b77aeffed682e68f0e586"},
-    {file = "sphinx_rtd_theme-2.0.0.tar.gz", hash = "sha256:bd5d7b80622406762073a04ef8fadc5f9151261563d47027de09910ce03afe6b"},
-]
-
-[package.dependencies]
-docutils = "<0.21"
-sphinx = ">=5,<8"
-sphinxcontrib-jquery = ">=4,<5"
-
-[package.extras]
-dev = ["bump2version", "sphinxcontrib-httpdomain", "transifex-client", "wheel"]
-
-[[package]]
 name = "sphinxcontrib-applehelp"
 version = "2.0.0"
 description = "sphinxcontrib-applehelp is a Sphinx extension which outputs Apple help books"
@@ -2101,21 +2112,6 @@ files = [
 lint = ["mypy", "ruff (==0.5.5)", "types-docutils"]
 standalone = ["Sphinx (>=5)"]
 test = ["html5lib", "pytest"]
-
-[[package]]
-name = "sphinxcontrib-jquery"
-version = "4.1"
-description = "Extension to include jQuery on newer Sphinx releases"
-optional = false
-python-versions = ">=2.7"
-groups = ["docs"]
-files = [
-    {file = "sphinxcontrib-jquery-4.1.tar.gz", hash = "sha256:1620739f04e36a2c779f1a131a2dfd49b2fd07351bf1968ced074365933abc7a"},
-    {file = "sphinxcontrib_jquery-4.1-py2.py3-none-any.whl", hash = "sha256:f936030d7d0147dd026a4f2b5a57343d233f1fc7b363f68b3d4f1cb0993878ae"},
-]
-
-[package.dependencies]
-Sphinx = ">=1.8"
 
 [[package]]
 name = "sphinxcontrib-jsmath"
@@ -2564,4 +2560,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0"
-content-hash = "9d44c4c81e8e539e0a34df00119cb3a5217d793616e6addc8f267d90e3197bc9"
+content-hash = "8b7f3d1fca191348c443041976f27c8a7c6d309984713637c9060dbf1a3f3209"

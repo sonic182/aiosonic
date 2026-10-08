@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `aiosonic.httpx_client.AsyncClient`, a `BaseClient` with the API of `httpx.AsyncClient` (`content`, `data`, `files`, `json`, `timeout`, `follow_redirects`, `verify`, `auth`, `event_hooks`, `stream()`...), to switch from httpx with few changes. Its `Response` has httpx's sync `content`, `text` and `json()`, `raise_for_status()` for any non-2xx status, and `aread()` and `aiter_raw/bytes/text/lines()` for streamed responses. Its `timeout` (5s by default) also limits waiting for a free pool connection, and `proxy` accepts a url with credentials (`http://user:pass@proxy:8080`). See the "httpx compatible client" docs page.
 - `ResponseNotRead` and `StreamConsumed` exceptions, raised by the httpx compatible `Response`.
 - Docs render Google style docstrings (`sphinx.ext.napoleon`).
-- Sphinx HTML pages offer whole-page Copy Markdown and Download Markdown controls, including generated API reference content.
+- Sphinx docs use the Shibuya theme with a built-in Copy page dropdown, Markdown viewing, and ChatGPT/Claude links, including generated API reference content.
 - `scripts/profile_http_clients.py` compares fully consumed, validated responses with equal pool limits and alternating client order, and optionally collects cProfile statistics.
 
 ### Changed

@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urljoin
 
 from sphinx.application import Sphinx
 
@@ -36,12 +37,13 @@ def export_markdown(app: Sphinx, exception: Optional[Exception]) -> None:
 def page_context(app: Sphinx, pagename: str, templatename: str, context: Dict[str, Any], doctree: Any) -> None:
     """Only offer Markdown copying on pages backed by a documentation source."""
     if app.builder.format == "html" and doctree is not None:
-        context["markdown_page"] = f"_markdown/{pagename}.md"
+        markdown_url = urljoin(app.config.html_baseurl.rstrip("/") + "/", f"_markdown/{pagename}.md")
+        context["view_source_link"] = lambda _filename: markdown_url
+        context["page_source_suffix"] = ".md"
 
 
 def setup(app: Sphinx) -> Dict[str, Any]:
     """Register export and page-context hooks for HTML documentation."""
-    app.add_js_file("copy-markdown.js")
-    app.connect("html-page-context", page_context)
+    app.connect("html-page-context", page_context, priority=800)
     app.connect("build-finished", export_markdown)
     return {"version": "1.0", "parallel_read_safe": True, "parallel_write_safe": True}

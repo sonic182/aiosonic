@@ -10,6 +10,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import os
 import sys
 from pathlib import Path
 
@@ -36,7 +37,7 @@ release = VERSION
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "sphinx_rtd_theme", "copy_markdown"]
+extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "copy_markdown"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -52,7 +53,12 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "shibuya"
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "https://aiosonic.readthedocs.io/en/latest/")
+html_theme_options = {
+    "github_url": "https://github.com/sonic182/aiosonic",
+    "show_ai_links": True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
