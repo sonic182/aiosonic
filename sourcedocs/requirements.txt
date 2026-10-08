@@ -35,16 +35,16 @@ pygments-styles==0.3.0
 requests==2.33.0
     # via sphinx
 shibuya==2026.1.9
-    # via -r sourcedocs/requirements.in
+    # via -r requirements.in
 snowballstemmer==2.2.0
     # via sphinx
 sphinx==7.4.7
     # via
-    #   -r sourcedocs/requirements.in
+    #   -r requirements.in
     #   shibuya
     #   sphinx-markdown-builder
 sphinx-markdown-builder==0.6.11
-    # via -r sourcedocs/requirements.in
+    # via -r requirements.in
 sphinxcontrib-applehelp==1.0.8
     # via sphinx
 sphinxcontrib-devhelp==1.0.6
@@ -59,5 +59,5 @@ sphinxcontrib-serializinghtml==1.1.10
     # via sphinx
 tabulate==0.10.0
     # via sphinx-markdown-builder
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests
