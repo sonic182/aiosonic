@@ -88,8 +88,8 @@ if __name__ == '__main__':
 Use `AsyncClient` for an HTTPX-style API, including synchronous response methods:
 
 > **Performance:** This compatibility layer adds overhead compared with using `aiosonic.HTTPClient` directly.
-> In one local run of `scripts/performance.py` (5,000 requests, pool size 25), it took about 14% longer
-> than the native client (1,131 ms vs 995 ms). Results depend on the machine and workload;
+> In a local five-round benchmark (5,000 requests per round, pool size 25), its median time was about 5% longer
+> than the native client (805 ms vs 769 ms). Results depend on the machine and workload;
 > prefer the native client for performance-sensitive workloads.
 
 ```python
@@ -283,29 +283,43 @@ asyncio.run(main())
 
 ## Benchmarks
 
-A simple performance benchmark script is included in the `tests` folder. For example:
+`scripts/profile_http_clients.py` compares fully read responses with equal connection limits and alternates
+client order between rounds. Install development dependencies with Poetry, then run:
 
 ```bash
-python scripts/performance.py
+poetry run python -m scripts.profile_http_clients --iterations 5000 --concurrency 25 --rounds 5
 ```
 
-Example output:
+The script logs JSON containing dependency versions, individual run times, and medians.
+Summarized results from a local HTTP/1.1 server returning a three-byte body:
 
 ```json
 {
-  "aiohttp": "5000 requests in 558.31 ms",
-  "aiosonic": "5000 requests in 563.95 ms",
-  "requests": "5000 requests in 10306.90 ms",
-  "aiosonic_cyclic": "5000 requests in 642.15 ms",
-  "httpx": "5000 requests in 7920.04 ms"
+  "python": "3.13.5",
+  "versions": {
+    "aiohttp": "3.14.4",
+    "httpx": "0.28.1"
+  },
+  "requests_per_round": 5000,
+  "pool_size": 25,
+  "rounds": 5,
+  "results": {
+    "aiosonic": {"median_ms": 768.92},
+    "aiosonic_httpx": {"median_ms": 805.06},
+    "aiohttp": {"median_ms": 914.26},
+    "httpx": {"median_ms": 19308.40}
+  }
 }
 ```
 
-aiosonic is 1457.99% faster than requests
-aiosonic is -1.38% faster than aiosonic cyclic
+Native aiosonic took about 16% less time than aiohttp in this workload. The HTTPX-compatible aiosonic client
+is listed separately from the actual `httpx` library.
 
-> **Note:**  
-> These benchmarks are basic and machine-dependent. They are intended as a rough comparison.
+For the broader comparison including `requests` and cyclic pooling, run `python scripts/performance.py`.
+To collect profiling data, add `--profile aiosonic --rounds 1 --output aiosonic.prof` to the command above.
+
+> **Note:** These are local, machine- and workload-dependent measurements, not general performance guarantees.
+> cProfile adds overhead; use unprofiled runs for timing comparisons.
 
 ## HTTP/2 Known Limitations
 

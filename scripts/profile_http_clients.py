@@ -9,15 +9,18 @@ import asyncio
 import cProfile
 import json
 import logging
+import platform
 import random
 import statistics
 import time
 from typing import Dict, List
 
 import aiohttp
+import httpx
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
+from aiosonic.httpx_client import AsyncClient
 from aiosonic.pools import PoolConfig
 from scripts.performance import ServerProcess
 
@@ -31,12 +34,24 @@ async def benchmark(kind: str, url: str, iterations: int, warmup: int, concurren
             async with client.get(url) as response:
                 if response.status != 200 or await response.read() != b"foo":
                     raise RuntimeError("unexpected benchmark response")
-    else:
-        client = aiosonic.HTTPClient(TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)}))
+    elif kind == "httpx":
+        client = httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency),
+            trust_env=False,
+        )
 
         async def request() -> None:
             response = await client.get(url)
-            if response.status_code != 200 or await response.content() != b"foo":
+            if response.status_code != 200 or response.content != b"foo":
+                raise RuntimeError("unexpected benchmark response")
+    else:
+        native_client = aiosonic.HTTPClient(TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)}))
+        client = AsyncClient(http_client=native_client) if kind == "aiosonic_httpx" else native_client
+
+        async def request() -> None:
+            response = await client.get(url)
+            body = response.content if kind == "aiosonic_httpx" else await response.content()
+            if response.status_code != 200 or body != b"foo":
                 raise RuntimeError("unexpected benchmark response")
 
     try:
@@ -48,13 +63,15 @@ async def benchmark(kind: str, url: str, iterations: int, warmup: int, concurren
     finally:
         if kind == "aiohttp":
             await client.close()
-        else:
+        elif kind == "httpx":
             await client.aclose()
+        else:
+            await native_client.aclose()
 
 
 async def compare(args: argparse.Namespace, url: str) -> Dict[str, List[float]]:
     """Alternate client order between rounds to reduce ordering bias."""
-    results: Dict[str, List[float]] = {"aiosonic": [], "aiohttp": []}
+    results: Dict[str, List[float]] = {"aiosonic": [], "aiosonic_httpx": [], "aiohttp": [], "httpx": []}
     for round_number in range(args.rounds):
         kinds = [args.profile] if args.profile else list(results)
         if round_number % 2:
@@ -72,7 +89,7 @@ def main() -> None:
     parser.add_argument("--warmup", type=int, default=100)
     parser.add_argument("--concurrency", type=int, default=25)
     parser.add_argument("--rounds", type=int, default=5)
-    parser.add_argument("--profile", choices=["aiosonic", "aiohttp"])
+    parser.add_argument("--profile", choices=["aiosonic", "aiosonic_httpx", "aiohttp", "httpx"])
     parser.add_argument("--output", default="http-client.prof")
     args = parser.parse_args()
     if min(args.iterations, args.concurrency, args.rounds) <= 0 or args.warmup < 0:
@@ -91,7 +108,17 @@ def main() -> None:
                 profiler.dump_stats(args.output)
         logging.getLogger(__name__).info(
             json.dumps(
-                {kind: {"runs_ms": times, "median_ms": statistics.median(times)} for kind, times in results.items()},
+                {
+                    "python": platform.python_version(),
+                    "versions": {"aiohttp": aiohttp.__version__, "httpx": httpx.__version__},
+                    "requests_per_round": args.iterations,
+                    "pool_size": args.concurrency,
+                    "rounds": args.rounds,
+                    "results": {
+                        kind: {"runs_ms": times, "median_ms": statistics.median(times)}
+                        for kind, times in results.items()
+                    },
+                },
                 indent=2,
             )
         )
