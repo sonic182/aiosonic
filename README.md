@@ -25,7 +25,7 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - HTTP proxy support
 - Sessions with cookie persistence
 - Elegant key/value cookies
-- (Nearly) 100% test coverage
+- Comprehensive test coverage
 - HTTP/2 (enabled with a flag)
 - Authentication by host, event hooks, `raise_for_status()` and response streaming
 
@@ -56,7 +56,7 @@ async def run():
     assert response.status_code == 200
     assert 'Google' in (await response.text())
 
-    # POST data as multipart form
+    # POST data as URL-encoded form
     url = "https://postman-echo.com/post"
     posted_data = {'foo': 'bar'}
     response = await client.post(url, data=posted_data)
@@ -82,6 +82,10 @@ async def run():
 if __name__ == '__main__':
     asyncio.run(run())
 ```
+
+Native ``HTTPClient`` context managers do not close the connector; call `await client.aclose()`
+when finished, after consuming or closing all responses. The HTTPX-compatible `AsyncClient`
+closes its owned client when its context manager exits.
 
 ## HTTPX-like Client
 
@@ -152,7 +156,7 @@ if __name__ == "__main__":
 
 HTTP/2 requires HTTPS. Enable it at the client level or per-request.
 
-**Client-level** (all requests use HTTP/2):
+**Client-level** (request HTTP/2 for HTTPS connections; servers may negotiate HTTP/1.1):
 
 ```python
 import asyncio
@@ -247,7 +251,7 @@ class GitHubAPI(BaseClient, SingletonMixin):
 gh = GitHubAPI()
 g2 = GitHubAPI()
 
-gh == gh2
+gh is g2
 ```
 
 ## Auth, hooks and streaming
@@ -315,7 +319,7 @@ Summarized results from a local HTTP/1.1 server returning a three-byte body:
 Native aiosonic took about 16% less time than aiohttp in this workload. The HTTPX-compatible aiosonic client
 is listed separately from the actual `httpx` library.
 
-For the broader comparison including `requests` and cyclic pooling, run `python scripts/performance.py`.
+For the broader comparison including `requests` and cyclic pooling, run `poetry run python -m scripts.performance`.
 To collect profiling data, add `--profile aiosonic --rounds 1 --output aiosonic.prof` to the command above.
 
 > **Note:** These are local, machine- and workload-dependent measurements, not general performance guarantees.
@@ -339,6 +343,16 @@ It is recommended to install Poetry in a separate virtual environment (via apt, 
 ```bash
 poetry config virtualenvs.in-project true
 ```
+
+### Building Documentation
+
+```bash
+poetry run sphinx-build -W -b html sourcedocs build/html
+```
+
+HTML builds also export each page, including API reference content, as Markdown. Use the
+**Copy Markdown** button or **Download Markdown** link on a documentation page. Clipboard
+copying requires HTTPS or localhost and browser permission; downloading remains available otherwise.
 
 ### Running Tests
 

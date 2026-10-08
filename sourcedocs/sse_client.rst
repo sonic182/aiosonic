@@ -38,14 +38,16 @@ Typical usage follows one of two patterns:
 
     asyncio.run(main())
 
-- Use nested async context managers (recommended) for automatic cleanup:
+- Use the connection's async context manager (recommended) for stream cleanup.
+  ``SSEClient`` itself is not an async context manager; when supplying an ``HTTPClient``,
+  close that client explicitly when finished:
 
 .. code-block:: python
 
-    async with SSEClient() as client:
-        async with client.connect("https://example.com/stream") as sse_conn:
-            async for event in sse_conn:
-                print(event["data"])  # handle events
+    client = SSEClient()
+    async with client.connect("https://example.com/stream") as sse_conn:
+        async for event in sse_conn:
+            print(event["data"])  # handle events
 
 Parameters and configuration
 ----------------------------
@@ -66,18 +68,20 @@ Each yielded event is a mapping with the following keys:
 - ``data`` (str): the combined ``data`` lines for the event (newlines preserved).
 - ``event`` (Optional[str]): the event type if provided by the server.
 - ``id`` (Optional[str]): the event id. Used for deduplication and Last-Event-ID when reconnecting.
-- ``retry`` (Optional[int]): if set, indicates the server-suggested retry interval in milliseconds.
+- ``retry`` (Optional[int]): the parsed server-suggested retry interval in milliseconds.
+  It is reported to the caller; reconnection currently uses the configured ``retry_delay``.
 
 The implementation follows the SSE spec for line parsing. Malformed lines or invalid ``retry`` values will
 raise :class:`aiosonic.exceptions.SSEParsingError`.
 
 Error handling and reconnection
-------------------------------
+-------------------------------
 
-- Initial connection failures raise :class:`aiosonic.exceptions.SSEConnectionError` unless ``reconnect`` is
-  enabled, in which case the client will retry using the configured ``retry_delay``.
-- While iterating, transient socket or parse errors will either trigger reconnection (if enabled) or raise
-  :class:`aiosonic.exceptions.SSEConnectionError`.
+- An invalid initial HTTP status or content type raises :class:`aiosonic.exceptions.SSEConnectionError`
+  immediately. Other initial connection failures retry when ``reconnect=True``.
+- While iterating, socket errors trigger retries when enabled; with reconnection disabled they raise
+  :class:`aiosonic.exceptions.SSEConnectionError`. Parse errors always raise
+  :class:`aiosonic.exceptions.SSEParsingError`.
 - When reconnecting, the client will include the last seen event id in the ``Last-Event-ID`` header, and
   deduplicate events by id and by the last yielded ``data`` to minimize duplicate deliveries.
 
@@ -86,16 +90,15 @@ Examples
 
 OpenAI-style streaming with a POST and JSON body::
 
-    async with SSEClient() as client:
-        async with client.connect(
-            "https://api.openai.com/v1/chat/completions",
-            method="POST",
-            json={"model": "gpt-4", "messages": [...], "stream": True},
-            headers={"Authorization": "Bearer <token>"},
-        ) as sse_conn:
-            async for event in sse_conn:
-                # event['data'] contains the partial JSON payloads
-                print(event['data'])
+    client = SSEClient()
+    async with client.connect(
+        "https://api.openai.com/v1/chat/completions",
+        method="POST",
+        json={"model": "<model>", "messages": [...], "stream": True},
+        headers={"Authorization": "Bearer <token>"},
+    ) as sse_conn:
+        async for event in sse_conn:
+            print(event["data"])
 
 Notes and tips
 --------------
