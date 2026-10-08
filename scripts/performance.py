@@ -5,8 +5,6 @@ import asyncio
 import json
 import logging
 import random
-import shlex
-import subprocess
 import time
 from concurrent import futures
 from multiprocessing import Process
@@ -21,6 +19,7 @@ from uvicorn.main import Config, Server
 
 import aiosonic
 from aiosonic.connectors import TCPConnector
+from aiosonic.httpx_client import AsyncClient
 from aiosonic.pools import CyclicQueuePool, PoolConfig
 
 try:
@@ -98,7 +97,21 @@ async def performance_aiosonic(url, concurrency, pool_cls, timeouts, repeat, war
     client = aiosonic.HTTPClient(
         TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)}, pool_cls=pool_cls)
     )
-    return await timeit_coro(client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup)
+    try:
+        return await timeit_coro(client.get, url, timeouts=timeouts, repeat=repeat, warmup=warmup)
+    finally:
+        await client.aclose()
+
+
+async def performance_aiosonic_httpx(url: str, concurrency: int, repeat: int, warmup: int) -> float:
+    """Benchmark the HTTPX-compatible client with the same pool size as the native client."""
+    connector = TCPConnector(pool_configs={":default": PoolConfig(size=concurrency)})
+    native_client = aiosonic.HTTPClient(connector)
+    try:
+        async with AsyncClient(http_client=native_client) as client:
+            return await timeit_coro(client.get, url, repeat=repeat, warmup=warmup)
+    finally:
+        await native_client.aclose()
 
 
 async def performance_httpx(url, concurrency, repeat, warmup):
@@ -135,6 +148,7 @@ async def do_tests(url, repeat, warmup, concurrency):
     results = {}
     results["aiohttp"] = await performance_aiohttp(url, concurrency, repeat, warmup)
     results["aiosonic"] = await performance_aiosonic(url, concurrency, None, None, repeat, warmup)
+    results["aiosonic_httpx"] = await performance_aiosonic_httpx(url, concurrency, repeat, warmup)
     results["requests"] = timeit_requests(url, concurrency, repeat, warmup)
     results["aiosonic_cyclic"] = await performance_aiosonic(url, concurrency, CyclicQueuePool, None, repeat, warmup)
 
@@ -151,6 +165,10 @@ async def do_tests(url, repeat, warmup, concurrency):
         )
     )
 
+    logger.info(
+        "HTTPX-compatible aiosonic client takes %.2f%% more time than native aiosonic",
+        ((results["aiosonic_httpx"] / results["aiosonic"]) - 1) * 100,
+    )
     if "httpx" in results and "httpx_error" not in results:
         logger.info(f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx")
     logger.info(f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp")
@@ -165,7 +183,7 @@ async def do_tests(url, repeat, warmup, concurrency):
 
 def start_server(port):
     """Start server."""
-    subprocess.Popen(shlex.split(f"node tests/app.js {port}"))
+    asyncio.run(start_dummy_server(port))
 
 
 class ServerProcess:
@@ -180,7 +198,7 @@ class ServerProcess:
         self.process = Process(target=start_server, args=(self.port,))
         self.process.start()
         timeout = time.perf_counter() + 5
-        url = f"http://0.0.0.0:{self.port}"
+        url = f"http://127.0.0.1:{self.port}"
         while time.perf_counter() < timeout:
             try:
                 with urlopen(url) as response:
@@ -217,7 +235,7 @@ def main():
     args = parser.parse_args()
 
     port = random.randint(1000, 9000)
-    url = f"http://0.0.0.0:{port}"
+    url = f"http://127.0.0.1:{port}"
     try:
         with ServerProcess(port):
             results = asyncio.run(

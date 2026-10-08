@@ -87,6 +87,11 @@ if __name__ == '__main__':
 
 Use `AsyncClient` for an HTTPX-style API, including synchronous response methods:
 
+> **Performance:** This compatibility layer adds overhead compared with using `aiosonic.HTTPClient` directly.
+> In one local run of `scripts/performance.py` (5,000 requests, pool size 25), it took about 14% longer
+> than the native client (1,131 ms vs 995 ms). Results depend on the machine and workload;
+> prefer the native client for performance-sensitive workloads.
+
 ```python
 import asyncio
 from aiosonic.httpx_client import AsyncClient
