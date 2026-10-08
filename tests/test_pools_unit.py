@@ -139,10 +139,59 @@ def test_connection_key_uses_scheme_and_effective_port():
 @pytest.mark.asyncio
 async def test_smart_pool_matches_connection_by_effective_port():
     pool = SmartPool(PoolConfig(size=2), Connection)
-    conns = list(pool.pool)
-    conns[0].key = connection_key(urlparse("https://a.test/"))
-    conns[1].key = connection_key(urlparse("http://a.test/"))
+    https_conn = await pool.acquire()
+    http_conn = await pool.acquire()
+    https_conn.key = connection_key(urlparse("https://a.test/"))
+    http_conn.key = connection_key(urlparse("http://a.test/"))
+    pool.release(https_conn)
+    pool.release(http_conn)
 
     conn = await pool.acquire(urlparse("http://a.test:80/"))
 
-    assert conn is conns[1]
+    assert conn is http_conn
+    pool.release(conn)
+
+    conn = await pool.acquire(urlparse("https://a.test:443/"))
+    assert conn is https_conn
+    pool.release(conn)
+    assert pool.free_conns() == 2
+
+
+@pytest.mark.asyncio
+async def test_smart_pool_prefers_most_recently_released_connection():
+    pool = SmartPool(PoolConfig(size=2), Connection)
+    url = urlparse("http://a.test/")
+    first = await pool.acquire(url)
+    second = await pool.acquire(url)
+    first.key = second.key = connection_key(url)
+    pool.release(first)
+    pool.release(second)
+
+    recent = await pool.acquire(url)
+    assert recent is second
+    remaining = await pool.acquire(url)
+    assert remaining is first
+    pool.release(remaining)
+    pool.release(recent)
+    assert pool.free_conns() == 2
+
+
+@pytest.mark.asyncio
+async def test_smart_pool_reuses_connection_after_destination_changes():
+    pool = SmartPool(PoolConfig(size=1), Connection)
+    first_url = urlparse("http://a.test/")
+    second_url = urlparse("http://b.test/")
+    conn = await pool.acquire(first_url)
+    conn.key = connection_key(first_url)
+    pool.release(conn)
+
+    replacement = await pool.acquire(second_url)
+    assert replacement is conn
+    replacement.key = connection_key(second_url)
+    pool.release(replacement)
+
+    reused = await pool.acquire(second_url)
+    assert reused is replacement
+    assert pool.free_conns() == 0
+    pool.release(reused)
+    assert pool.free_conns() == 1
