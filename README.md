@@ -326,12 +326,6 @@ To collect profiling data, add `--profile aiosonic --rounds 1 --output aiosonic.
 - **Server push not supported** — push promise frames are silently ignored (`PushPromiseReceived`, `PushedStreamReset`, `PushedStreamClosed`).
 - **No cleartext HTTP/2 (`h2c`)** — HTTP/2 requires TLS. This matches RFC 7540 §3.3 browser requirements and is intentional.
 
-## [TODO's](https://github.com/sonic182/aiosonic/projects/1)
-
-- Better documentation
-- International domains and URLs (IDNA + cache)
-- Basic/Digest authentication
-
 ## Development
 
 Install development dependencies with Poetry:
