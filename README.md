@@ -83,10 +83,6 @@ if __name__ == '__main__':
     asyncio.run(run())
 ```
 
-Native ``HTTPClient`` context managers do not close the connector; call `await client.aclose()`
-when finished, after consuming or closing all responses. The HTTPX-compatible `AsyncClient`
-closes its owned client when its context manager exits.
-
 ## HTTPX-like Client
 
 Use `AsyncClient` for an HTTPX-style API, including synchronous response methods:
