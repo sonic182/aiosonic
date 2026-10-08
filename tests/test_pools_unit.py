@@ -177,6 +177,27 @@ async def test_smart_pool_prefers_most_recently_released_connection():
 
 
 @pytest.mark.asyncio
+async def test_smart_pool_preserves_destinations_when_unassigned_connections_are_available():
+    """Assign spare connections before replacing another destination's connection."""
+    pool = SmartPool(PoolConfig(size=2), Connection)
+    first_url = urlparse("http://a.test/")
+    second_url = urlparse("http://b.test/")
+    first = await pool.acquire(first_url)
+    first.key = connection_key(first_url)
+    pool.release(first)
+
+    second = await pool.acquire(second_url)
+    assert second is not first
+    second.key = connection_key(second_url)
+    pool.release(second)
+
+    reused = await pool.acquire(first_url)
+    assert reused is first
+    pool.release(reused)
+    assert pool.free_conns() == 2
+
+
+@pytest.mark.asyncio
 async def test_smart_pool_reuses_connection_after_destination_changes():
     pool = SmartPool(PoolConfig(size=1), Connection)
     first_url = urlparse("http://a.test/")

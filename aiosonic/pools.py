@@ -172,6 +172,9 @@ class SmartPool(BasePool):
 
         key = connection_key(urlparsed) if urlparsed else None
         bucket = self.pool.get(key)
+        if not bucket:
+            key = None
+            bucket = self.pool.get(key)
         if bucket:
             conn = bucket.pop()
             if not bucket:
