@@ -33,8 +33,7 @@ Download file
 
 
  if __name__ == '__main__':
-     loop = asyncio.get_event_loop()
-     loop.run_until_complete(run())
+     asyncio.run(run())
 
 
 Concurrent Requests
@@ -59,8 +58,7 @@ Concurrent Requests
          responses = await asyncio.gather(*[client.get(url) for url in urls])
          assert all([res.status_code in [200, 301] for res in responses])
  
- loop = asyncio.get_event_loop()
- loop.run_until_complete(main())
+ asyncio.run(main())
 
 
 HTTP/2 request
@@ -150,8 +148,7 @@ Specifying an iterator as the request body, it will make the request transfer ma
          print(json.dumps(await response.json(), indent=10))
  
  
- loop = asyncio.get_event_loop()
- loop.run_until_complete(main())
+ asyncio.run(main())
 
 Multiple Pool Configurations
 ============================
@@ -210,8 +207,7 @@ Adding `handle_cookies=True` to the client, it will save response cookies and se
          print(await response.text())
  
  
- loop = asyncio.get_event_loop()
- loop.run_until_complete(main())
+ asyncio.run(main())
 
 
 Use custom DNS
@@ -238,8 +234,7 @@ Install `aiodns` in your dependencies and use AsyncResolver
          # client keep cookies in "cookies_map"
          print(await response.text())
  
- loop = asyncio.get_event_loop()
- loop.run_until_complete(main())
+ asyncio.run(main())
 
 
 Use a Proxy Server
@@ -292,8 +287,7 @@ Configure aiosonic logger at debug level to see some logging
        assert response.status_code == 200
        assert 'Google' in (await response.text())
 
- loop = asyncio.get_event_loop()
- loop.run_until_complete(run())
+ asyncio.run(run())
 
 
 Fastapi Usage
@@ -303,8 +297,6 @@ Fastapi Usage
 
 
   from contextlib import asynccontextmanager
-  from typing import Union
-
   from aiosonic import HTTPClient
 
   from fastapi import FastAPI
@@ -314,10 +306,10 @@ Fastapi Usage
 
   @asynccontextmanager
   async def lifespan(_app: FastAPI):
-      global client
       yield
       # useful function to wait all pending requests to finish
       await client.wait_requests()
+      await client.aclose()
 
 
   app = FastAPI(lifespan=lifespan)

@@ -9,7 +9,7 @@ import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
-from functools import partial
+from functools import lru_cache, partial
 from http import HTTPStatus, cookies
 from inspect import isawaitable
 from io import IOBase
@@ -389,6 +389,19 @@ def _get_path(url: ParseResult, proxy: Optional[Proxy] = None):
         return f"{url.scheme}://{url.netloc}{url.path}"
 
 
+@lru_cache(maxsize=512)
+def _prepare_default_request(url: ParseResult, method: str, path: str) -> bytes:
+    port = url.port or (443 if url.scheme == "https" else 80)
+    hostname = _get_hostname(url.hostname, port)
+    http_parser.validate_header("HOST", hostname)
+    return (
+        f"{method} {path} HTTP/1.1{CRLF}"
+        f"HOST: {hostname}{CRLF}"
+        f"Connection: keep-alive{CRLF}"
+        f"User-Agent: aiosonic/{VERSION}{CRLF}{CRLF}"
+    ).encode()
+
+
 def _prepare_request_headers(
     url: ParseResult,
     connection: Connection,
@@ -407,8 +420,13 @@ def _prepare_request_headers(
 
     if params:
         query = urlencode(params)
-        path += f"{query}" if "?" in path else f"?{query}"
+        path += f"&{query}" if "?" in path else f"?{query}"
     uppercase_method = method.upper()
+    if not http2conn and not headers and not multipart and not (proxy and proxy.auth and url.scheme == "http"):
+        request = _prepare_default_request(url, uppercase_method, path)
+        if dlogger.level == logging.DEBUG:
+            dlogger.debug(request.decode() + "---")
+        return request
     get_base = f"{uppercase_method} {path} HTTP/1.1{CRLF}"
 
     port = url.port or (443 if url.scheme == "https" else 80)

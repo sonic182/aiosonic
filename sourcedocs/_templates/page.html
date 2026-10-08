@@ -1,0 +1,11 @@
+{% extends "!page.html" %}
+{% block body %}
+{% if markdown_page %}
+<p class="copy-markdown-controls">
+  <button type="button" class="btn" data-markdown-url="{{ pathto(markdown_page, 1) }}">Copy Markdown</button>
+  <a href="{{ pathto(markdown_page, 1) }}" download>Download Markdown</a>
+  <span role="status" aria-live="polite"></span>
+</p>
+{% endif %}
+{{ super() }}
+{% endblock %}

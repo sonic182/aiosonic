@@ -71,6 +71,31 @@ async def test_max_conn_idle_ms(http_serv):
             assert conn.id > conn1_id
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "max_requests,close_writer,expect_reuse",
+    [(None, False, True), (0, False, False), (None, True, False)],
+)
+async def test_keepalive_reuse_respects_connection_lifecycle(http_serv, max_requests, close_writer, expect_reuse):
+    """Keep-alive reuses healthy connections but replaces closed or exhausted ones."""
+    connector = TCPConnector({":default": PoolConfig(size=1, max_conn_requests=max_requests)})
+    client = aiosonic.HTTPClient(connector)
+    try:
+        first = await client.get(http_serv)
+        assert await first.content() == b"Hello, world"
+        first_writer = first._connection.writer
+        if close_writer:
+            first_writer.close()
+            await first_writer.wait_closed()
+
+        second = await client.get(http_serv)
+        assert second.status_code == 200
+        assert await second.content() == b"Hello, world"
+        assert (second._connection.writer is first_writer) == expect_reuse
+    finally:
+        await client.aclose()
+
+
 def test_is_connected_false_before_connect():
     from aiosonic.pools import CyclicQueuePool, PoolConfig
 

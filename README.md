@@ -25,7 +25,7 @@ For full documentation, please see [aiosonic docs](https://aiosonic.readthedocs.
 - HTTP proxy support
 - Sessions with cookie persistence
 - Elegant key/value cookies
-- (Nearly) 100% test coverage
+- Comprehensive test coverage
 - HTTP/2 (enabled with a flag)
 - Authentication by host, event hooks, `raise_for_status()` and response streaming
 
@@ -56,7 +56,7 @@ async def run():
     assert response.status_code == 200
     assert 'Google' in (await response.text())
 
-    # POST data as multipart form
+    # POST data as URL-encoded form
     url = "https://postman-echo.com/post"
     posted_data = {'foo': 'bar'}
     response = await client.post(url, data=posted_data)
@@ -83,13 +83,17 @@ if __name__ == '__main__':
     asyncio.run(run())
 ```
 
+Native ``HTTPClient`` context managers do not close the connector; call `await client.aclose()`
+when finished, after consuming or closing all responses. The HTTPX-compatible `AsyncClient`
+closes its owned client when its context manager exits.
+
 ## HTTPX-like Client
 
 Use `AsyncClient` for an HTTPX-style API, including synchronous response methods:
 
 > **Performance:** This compatibility layer adds overhead compared with using `aiosonic.HTTPClient` directly.
-> In one local run of `scripts/performance.py` (5,000 requests, pool size 25), it took about 14% longer
-> than the native client (1,131 ms vs 995 ms). Results depend on the machine and workload;
+> In a local five-round benchmark (5,000 requests per round, pool size 25), its median time was about 5% longer
+> than the native client (805 ms vs 769 ms). Results depend on the machine and workload;
 > prefer the native client for performance-sensitive workloads.
 
 ```python
@@ -152,7 +156,7 @@ if __name__ == "__main__":
 
 HTTP/2 requires HTTPS. Enable it at the client level or per-request.
 
-**Client-level** (all requests use HTTP/2):
+**Client-level** (request HTTP/2 for HTTPS connections; servers may negotiate HTTP/1.1):
 
 ```python
 import asyncio
@@ -247,7 +251,7 @@ class GitHubAPI(BaseClient, SingletonMixin):
 gh = GitHubAPI()
 g2 = GitHubAPI()
 
-gh == gh2
+gh is g2
 ```
 
 ## Auth, hooks and streaming
@@ -283,40 +287,48 @@ asyncio.run(main())
 
 ## Benchmarks
 
-A simple performance benchmark script is included in the `tests` folder. For example:
+`scripts/profile_http_clients.py` compares fully read responses with equal connection limits and alternates
+client order between rounds. Install development dependencies with Poetry, then run:
 
 ```bash
-python scripts/performance.py
+poetry run python -m scripts.profile_http_clients --iterations 5000 --concurrency 25 --rounds 5
 ```
 
-Example output:
+The script logs JSON containing dependency versions, individual run times, and medians.
+Summarized results from a local HTTP/1.1 server returning a three-byte body:
 
 ```json
 {
-  "aiohttp": "5000 requests in 558.31 ms",
-  "aiosonic": "5000 requests in 563.95 ms",
-  "requests": "5000 requests in 10306.90 ms",
-  "aiosonic_cyclic": "5000 requests in 642.15 ms",
-  "httpx": "5000 requests in 7920.04 ms"
+  "python": "3.13.5",
+  "versions": {
+    "aiohttp": "3.14.4",
+    "httpx": "0.28.1"
+  },
+  "requests_per_round": 5000,
+  "pool_size": 25,
+  "rounds": 5,
+  "results": {
+    "aiosonic": {"median_ms": 768.92},
+    "aiosonic_httpx": {"median_ms": 805.06},
+    "aiohttp": {"median_ms": 914.26},
+    "httpx": {"median_ms": 19308.40}
+  }
 }
 ```
 
-aiosonic is 1457.99% faster than requests
-aiosonic is -1.38% faster than aiosonic cyclic
+Native aiosonic took about 16% less time than aiohttp in this workload. The HTTPX-compatible aiosonic client
+is listed separately from the actual `httpx` library.
 
-> **Note:**  
-> These benchmarks are basic and machine-dependent. They are intended as a rough comparison.
+For the broader comparison including `requests` and cyclic pooling, run `poetry run python -m scripts.performance`.
+To collect profiling data, add `--profile aiosonic --rounds 1 --output aiosonic.prof` to the command above.
+
+> **Note:** These are local, machine- and workload-dependent measurements, not general performance guarantees.
+> cProfile adds overhead; use unprofiled runs for timing comparisons.
 
 ## HTTP/2 Known Limitations
 
 - **Server push not supported** — push promise frames are silently ignored (`PushPromiseReceived`, `PushedStreamReset`, `PushedStreamClosed`).
 - **No cleartext HTTP/2 (`h2c`)** — HTTP/2 requires TLS. This matches RFC 7540 §3.3 browser requirements and is intentional.
-
-## [TODO's](https://github.com/sonic182/aiosonic/projects/1)
-
-- Better documentation
-- International domains and URLs (IDNA + cache)
-- Basic/Digest authentication
 
 ## Development
 
@@ -331,6 +343,16 @@ It is recommended to install Poetry in a separate virtual environment (via apt, 
 ```bash
 poetry config virtualenvs.in-project true
 ```
+
+### Building Documentation
+
+```bash
+poetry run sphinx-build -W -b html sourcedocs build/html
+```
+
+HTML builds also export each page, including API reference content, as Markdown. Use the
+**Copy Markdown** button or **Download Markdown** link on a documentation page. Clipboard
+copying requires HTTPS or localhost and browser permission; downloading remains available otherwise.
 
 ### Running Tests
 

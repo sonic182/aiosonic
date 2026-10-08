@@ -30,15 +30,15 @@ Features
 - HTTP proxy support
 - Sessions with cookie persistence
 - Elegant key/value cookies
-- Comprehensive test coverage (nearly 100%)
-- HTTP/2 (BETA; enabled via a flag)
+- Comprehensive test coverage
+- HTTP/2 (enabled via a flag; requires HTTPS)
 - Authentication by host, event hooks, `raise_for_status()` and response streaming
 - An httpx compatible client, see :ref:`httpx_client`
 
 Requirements
 ============
 
-- Python >= 3.10 (or PyPy 3.10+)
+- Python >= 3.10 (or PyPy 3.11+)
 
 Installation
 ============
@@ -67,7 +67,7 @@ Below is a basic example of using aiosonic's HTTP client:
      assert response.status_code == 200
      assert 'Google' in (await response.text())
  
-     # POST data as multipart form
+     # POST data as URL-encoded form
      url = "https://postman-echo.com/post"
      posted_data = {'foo': 'bar'}
      response = await client.post(url, data=posted_data)
@@ -124,8 +124,8 @@ This example demonstrates how to use the WebSocket support provided by aiosonic.
              # Gracefully close the connection.
              await ws.close(code=1000, reason="Normal closure")
  
-  if __name__ == "__main__":
-      asyncio.run(main())
+ if __name__ == "__main__":
+     asyncio.run(main())
 
 
 SSE Example
@@ -198,21 +198,21 @@ Auth, hooks and streaming
 Benchmarks
 ==========
 
-Below is a basic performance benchmark comparing aiosonic with other HTTP clients:
+Use the controlled benchmark driver with fully consumed, validated responses, equal pool limits,
+and alternating client order:
 
 .. code-block:: bash
 
- $ python scripts/performance.py
- {
-   "aiohttp": "5000 requests in 558.31 ms",
-   "aiosonic": "5000 requests in 563.95 ms",
-   "requests": "5000 requests in 10306.90 ms",
-   "aiosonic_cyclic": "5000 requests in 642.15 ms",
-   "httpx": "5000 requests in 7920.04 ms"
- }
+   poetry run python -m scripts.profile_http_clients --iterations 5000 --concurrency 25 --rounds 5
 
-Note that these benchmarks are machine-dependent and intended only as a rough comparison.
+The documented five-round local medians (Python 3.13.5, pool size 25, three-byte HTTP/1.1 responses)
+were 768.92 ms for native aiosonic, 805.06 ms for its HTTPX-compatible wrapper,
+914.26 ms for aiohttp 3.14.4, and 19,308.40 ms for httpx 0.28.1.
 
+These are machine- and workload-dependent results, not general performance guarantees.
+Use unprofiled runs to compare throughput; add ``--profile aiosonic --rounds 1`` to identify hotspots.
+The broader comparison including requests and cyclic pooling is available with
+``poetry run python -m scripts.performance``.
 
 Contributing
 ============

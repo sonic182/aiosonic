@@ -116,6 +116,8 @@ class TCPConnector:
     async def after_acquire(self, urlparsed, conn, verify, ssl, timeouts, http2):
         """Process connection after acquisition."""
         try:
+            if (timeouts.sock_connect is None or timeouts.sock_connect > 0) and conn.reuse(urlparsed, verify):
+                return conn
             dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
             await wait_for(
                 conn.connect(urlparsed, dns_info, verify, ssl, http2),

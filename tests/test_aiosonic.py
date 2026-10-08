@@ -267,7 +267,9 @@ async def test_connect_timeout(mocker):
         await asyncio.sleep(3)
 
     async def acquire(*_args, **_kwargs):
-        return mocker.MagicMock(connect=long_connect)
+        connection = mocker.MagicMock(spec=Connection(mocker.MagicMock()), connect=long_connect)
+        connection.reuse.return_value = False
+        return connection
 
     _connect = mocker.patch("aiosonic.pools.SmartPool.acquire", new=acquire)
     # _connect.return_value = long_connect()

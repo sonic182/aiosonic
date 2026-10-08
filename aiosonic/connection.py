@@ -86,6 +86,20 @@ class Connection:
     def is_connected(self):
         return self.writer is not None
 
+    def reuse(self, urlparsed: ParseResult, verify: bool) -> bool:
+        """Reuse an open connection to the same destination within its request limit."""
+        conn_key = self.key or self.temp_key
+        if (
+            conn_key
+            and conn_key == connection_key(urlparsed)
+            and self.writer is not None
+            and not self.writer.is_closing()
+            and self.__max_cons_made()
+        ):
+            self._verify = verify
+            return True
+        return False
+
     async def connect(
         self,
         urlparsed: ParseResult,
@@ -227,18 +241,11 @@ class Connection:
 
         key = connection_key(urlparsed)
 
-        def is_closing():
-            return True  # noqa
-
-        if self.writer:
-            is_closing = self.writer.is_closing  # type: ignore
-
         dns_info_copy = dns_info.copy()
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        conn_key = self.key or self.temp_key
-        if not (conn_key and key == conn_key and not is_closing() and self.__max_cons_made()):
+        if not self.reuse(urlparsed, verify):
             self.close()
 
             if urlparsed.scheme in ("https", "wss"):

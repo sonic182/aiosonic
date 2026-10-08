@@ -3,6 +3,7 @@
 from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
+from collections import deque
 from asyncio import Queue, Semaphore, wait_for
 from dataclasses import dataclass, field
 from typing import Optional
@@ -155,10 +156,9 @@ class SmartPool(BasePool):
     """Pool which priorizes the reusage of connections."""
 
     def _init_pool(self, connection_cls):
-        self.pool = set()
+        self.pool = {None: deque(connection_cls(self) for _ in range(self.pool_size))}
+        self._free_count = self.pool_size
         self.sem = Semaphore(self.pool_size)
-        for _ in range(self.pool_size):
-            self.pool.add(connection_cls(self))
 
     async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire connection."""
@@ -170,22 +170,24 @@ class SmartPool(BasePool):
             except TimeoutException:
                 raise ConnectionPoolAcquireTimeout()
 
-        conn = None
+        key = connection_key(urlparsed) if urlparsed else None
+        bucket = self.pool.get(key)
+        if not bucket:
+            key = None
+            bucket = self.pool.get(key)
+        if bucket:
+            conn = bucket.pop()
+            if not bucket:
+                del self.pool[key]
+        elif self.pool:
+            key, bucket = self.pool.popitem()
+            conn = bucket.pop()
+            if bucket:
+                self.pool[key] = bucket
+        else:
+            return None
+        self._free_count -= 1
 
-        # Find connection based on URL
-        if urlparsed:
-            key = connection_key(urlparsed)
-            for item in self.pool:
-                if item.key == key:
-                    self.pool.remove(item)
-                    conn = item
-                    break
-
-        # If no matching connection, get any connection
-        if conn is None and self.pool:
-            conn = self.pool.pop()
-
-        # Check if connection is idle
         if conn is not None and self._is_connection_idle(conn):
             conn.close()
             conn = conn.__class__(self)
@@ -194,11 +196,15 @@ class SmartPool(BasePool):
 
     def release(self, conn) -> None:
         """Release connection."""
-        self.pool.add(conn)
+        bucket = self.pool.get(conn.key)
+        if bucket is None:
+            bucket = self.pool[conn.key] = deque()
+        bucket.append(conn)
+        self._free_count += 1
         self.sem.release()
 
     def free_conns(self) -> int:
-        return len(self.pool)
+        return self._free_count
 
     def is_all_free(self):
         """Indicates if all pool is free."""
