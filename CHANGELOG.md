@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] 2026-10-08
+
 ### Added
 - Sphinx docs use the Shibuya theme with a built-in Copy page dropdown, Markdown viewing, and ChatGPT/Claude links, including generated API reference content.
 - `scripts/profile_http_clients.py` compares fully consumed, validated responses with equal pool limits and alternating client order, and optionally collects cProfile statistics.
@@ -505,7 +507,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.1.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.1.1..HEAD
+[1.1.1]: https://github.com/sonic182/aiosonic/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/sonic182/aiosonic/compare/1.0.8..1.1.0
 [1.0.8]: https://github.com/sonic182/aiosonic/compare/1.0.7..1.0.8
 [1.0.7]: https://github.com/sonic182/aiosonic/compare/1.0.6..1.0.7
