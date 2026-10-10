@@ -2269,7 +2269,7 @@ version = "2.8.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.10"
-groups = ["dev", "docs", "test"]
+groups = ["docs", "test"]
 files = [
     {file = "urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"},
     {file = "urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63"},
@@ -2368,41 +2368,34 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=6.1,<7.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "winloop"
-version = "0.3.1"
+version = "0.7.1"
 description = "Windows version of uvloop"
 optional = false
-python-versions = ">=3.9.0"
+python-versions = ">=3.8.0"
 groups = ["test"]
 markers = "sys_platform == \"win32\""
 files = [
-    {file = "winloop-0.3.1-cp310-cp310-win32.whl", hash = "sha256:83b9bceba7dd37c231c4114cdaa3e000bed36185d6e1e68adc7c61c16802a865"},
-    {file = "winloop-0.3.1-cp310-cp310-win_amd64.whl", hash = "sha256:0dda1f13d51e5f3c18e73b805308caea693f985b17e71870d4907d0c6ad72608"},
-    {file = "winloop-0.3.1-cp310-cp310-win_arm64.whl", hash = "sha256:e5650a6cf956a726692ea664b643ba15317e6c9a95051e4a2dbc518c184d1b3b"},
-    {file = "winloop-0.3.1-cp311-cp311-win32.whl", hash = "sha256:689f99f19c60036cfc58e2b1c23e129492e838871813517889611c167fd3190b"},
-    {file = "winloop-0.3.1-cp311-cp311-win_amd64.whl", hash = "sha256:eebf93a5130da31eb28a3fcb30885c80ee2bc3bd6e94eeebc4d4864d93f64422"},
-    {file = "winloop-0.3.1-cp311-cp311-win_arm64.whl", hash = "sha256:eed82f3583964fd503cc3026e38b4874e37a8f3e5430f9010c7965adef8dda39"},
-    {file = "winloop-0.3.1-cp312-cp312-win32.whl", hash = "sha256:b7a885fe69478fde47f158e02d346e8af463e5b99b6caf8681d4f7f0ac91a7e8"},
-    {file = "winloop-0.3.1-cp312-cp312-win_amd64.whl", hash = "sha256:fdeb1591cfdba4d70f5778e30c8b48e171d2948c3c4df496470822cbcebaaf18"},
-    {file = "winloop-0.3.1-cp312-cp312-win_arm64.whl", hash = "sha256:f4b4fded0d6b8ea879a819d32aa4f1bd37e89c4d4b68dfb8a27040ff614863bc"},
-    {file = "winloop-0.3.1-cp313-cp313-win32.whl", hash = "sha256:ad737291d20caac416a8e9302e47dfc85b1649e1f6b5c13b8f7d41413300b5e2"},
-    {file = "winloop-0.3.1-cp313-cp313-win_amd64.whl", hash = "sha256:c19270af68d9083c306d74cf4820dcb22f6f0a142021f20cebbe8489a9358c31"},
-    {file = "winloop-0.3.1-cp313-cp313-win_arm64.whl", hash = "sha256:6d55e3104822b4fa99b48aae835668cb7fbd8192051eddb4adf437de1f6ebac6"},
-    {file = "winloop-0.3.1-cp314-cp314-win32.whl", hash = "sha256:26df65787f9523d0e4661548c29480135c1103663c73f12e06f324966500b0e2"},
-    {file = "winloop-0.3.1-cp314-cp314-win_amd64.whl", hash = "sha256:e39f964d869eac1143e6b0a5268e3619caee75fe2c71f665bd4280200ca95ad3"},
-    {file = "winloop-0.3.1-cp314-cp314-win_arm64.whl", hash = "sha256:c56dc97517dfd22b0d9ba87409358f3676be3ca3452283c556cb53d81d406c45"},
-    {file = "winloop-0.3.1-cp314-cp314t-win32.whl", hash = "sha256:286013c1cb8db2c88f5bf5042ccfe4d410756eae13b1148cb74fa77233448c73"},
-    {file = "winloop-0.3.1-cp314-cp314t-win_amd64.whl", hash = "sha256:37ee1cf6f406762a242685e8c3344c0360035c5aa5a89ed2a92dc2b6dc5addc0"},
-    {file = "winloop-0.3.1-cp314-cp314t-win_arm64.whl", hash = "sha256:44177e1b207d3b46aa6004e92e38e36bf7019f65fbfc97f3e31a4653d8b69183"},
-    {file = "winloop-0.3.1-cp39-cp39-win32.whl", hash = "sha256:26ae2dbd95aa70f4075f91c0e1aff7cdc25c8c0cfafad30ff9a4ef6d5e6bb0ff"},
-    {file = "winloop-0.3.1-cp39-cp39-win_amd64.whl", hash = "sha256:c77d0a0d973d218ad66700da43c81b8430a8ba51abd93aaa59a26333bbcae09c"},
-    {file = "winloop-0.3.1-cp39-cp39-win_arm64.whl", hash = "sha256:491eae9492132bfaa86ef3860e74a0c07815676d8b532d60986c819e05355cdd"},
-    {file = "winloop-0.3.1.tar.gz", hash = "sha256:f86af8fa3f853bdbdb2b441f856cda7ec6e84a68f82636db34e54709ebcf0a7c"},
+    {file = "winloop-0.7.1-cp310-cp310-win_amd64.whl", hash = "sha256:c94f574049aa1b35e8c6babe805f9c5bc73e7d3752b6a7696f0403cec98108a4"},
+    {file = "winloop-0.7.1-cp310-cp310-win_arm64.whl", hash = "sha256:9089b64e6afd297716290671852bf6ec0b70bef2a336613765271fe85832a256"},
+    {file = "winloop-0.7.1-cp311-cp311-win_amd64.whl", hash = "sha256:19154f8be70bc9ce9455a9ca26d8ecd48cc6cf432b7ccbf57238c84db29ba53a"},
+    {file = "winloop-0.7.1-cp311-cp311-win_arm64.whl", hash = "sha256:ae1808cfbc608e92577cef81131674d93efed548090995760fd1cd721aa50dbb"},
+    {file = "winloop-0.7.1-cp312-cp312-win_amd64.whl", hash = "sha256:9bb416a2f0fee52dcdda3137358c56b48bfb63c443e11232d4c04353b56d39b0"},
+    {file = "winloop-0.7.1-cp312-cp312-win_arm64.whl", hash = "sha256:6f2f90622542382bf9304b5ec9d252102f444bc3b445e24515250d7c62d62702"},
+    {file = "winloop-0.7.1-cp313-cp313-win_amd64.whl", hash = "sha256:0aa944cb845ba5d6420fe53733feb3fb474600b298202ec2bd7cb03f46502331"},
+    {file = "winloop-0.7.1-cp313-cp313-win_arm64.whl", hash = "sha256:20464fde92ecbcda14a590d4d88275abf19eca99ed3ae787e0dee1e054be51d5"},
+    {file = "winloop-0.7.1-cp314-cp314-win_amd64.whl", hash = "sha256:86a78413b3ae9c6d6c5f9cc0a16a0ab7c48040df7952321f095b8b9b72ec653d"},
+    {file = "winloop-0.7.1-cp314-cp314-win_arm64.whl", hash = "sha256:db04854c148a1ead62cbf63394d320dbb4c14fe7d33738012deb3ad5ecf41eef"},
+    {file = "winloop-0.7.1-cp314-cp314t-win_amd64.whl", hash = "sha256:d1d3cf643c6f652aa3be42168df90d086508853fc40c58b3d1b3397577ffa667"},
+    {file = "winloop-0.7.1-cp314-cp314t-win_arm64.whl", hash = "sha256:2c6c1306da9b998e167930f9b0f7f8e3e6c9c75f6a666277a53ad9fa3afa694c"},
+    {file = "winloop-0.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:a34fd0d7b081fe975d70af6cf7ed2c448066d4fc460c5a3686e20382cd6efc0f"},
+    {file = "winloop-0.7.1-cp39-cp39-win_arm64.whl", hash = "sha256:64fad5fe179ae5a35f9316f96b358979d8deaca2171d81eca48d6f95d677745e"},
+    {file = "winloop-0.7.1.tar.gz", hash = "sha256:2ea92f36493477427ca3c7f4cb84a45f47f5feb3559dfe4b660d8e8068171a47"},
 ]
 
 [package.extras]
-dev = ["Cython (==3.1.4)", "setuptools (>=60)"]
-docs = ["Sphinx (>=4.1.2,<7.5.0)", "sphinx_rtd_theme (>=0.5.2,<3.1.0)", "sphinxcontrib-asyncio (>=0.3.0,<0.4.0)"]
-test = ["aiohttp (>=3.10.5)", "flake8 (>=5,<8)", "mypy (>=0.800)", "psutil", "pyOpenSSL (>=23.0,<25.4)", "pycodestyle (>=2.9,<2.15)"]
+dev = ["Cython (==3.3.0)", "packaging", "setuptools (>=60)"]
+docs = ["Sphinx (>=4.1.2,<9.2.0)", "sphinx_rtd_theme (>=0.5.2,<3.2.0)", "sphinxcontrib-asyncio (>=0.3.0,<0.4.0)"]
+test = ["aiohttp (>=3.10.5)", "flake8 (>=5,<8)", "mypy (>=0.800)", "psutil", "pyOpenSSL (>=23.0,<26.5)", "pycodestyle (>=2.9,<2.15)"]
 
 [[package]]
 name = "yarl"
@@ -2560,4 +2553,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0"
-content-hash = "3068feab8a95f35b3e6727182d34195832e14d3fc34036a71d33c6ad1cea1776"
+content-hash = "9bb6d86447b17078e77eb1233ef5643959bab66dcf7c3b0d7d1c477d38f6122d"
