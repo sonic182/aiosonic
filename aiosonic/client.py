@@ -108,7 +108,7 @@ class HttpResponse:
     def __init__(self):
         self.headers = HttpHeaders()
         self.history: List[HttpResponse] = []
-        self.elapsed = timedelta(0)
+        self._elapsed = 0.0
         self.cookies = None
         self.raw_headers = []
         self.body = b""
@@ -190,6 +190,10 @@ class HttpResponse:
     def url(self) -> str:
         """Get the url of the request that produced this response, without credentials."""
         return url_without_userinfo(self._urlparsed) if self._urlparsed else ""
+
+    @property
+    def elapsed(self) -> timedelta:
+        return timedelta(seconds=self._elapsed)
 
     @property
     def links(self) -> Dict[str, Dict[str, str]]:
@@ -1104,7 +1108,9 @@ class HTTPClient:
             # performance: skip building the hook url when no request hooks are registered
             if self.event_hooks["request"]:
                 await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
-            proxy = self._proxy_for(urlparsed)
+            proxy = self.proxy
+            if proxy is None and self.trust_env:
+                proxy = proxy_from_environment(urlparsed)
             started_at = perf_counter()
             headers_data = partial(
                 _prepare_request_headers,
@@ -1143,7 +1149,7 @@ class HTTPClient:
             except TimeoutException:
                 raise RequestTimeout()
 
-            response.elapsed = timedelta(seconds=perf_counter() - started_at)
+            response._elapsed = perf_counter() - started_at
             response.history = history
 
             try:
@@ -1187,13 +1193,6 @@ class HTTPClient:
             yield response
         finally:
             await response.aclose()
-
-    def _proxy_for(self, urlparsed: ParseResult) -> Optional[Proxy]:
-        if self.proxy is not None:
-            return self.proxy
-        if self.trust_env:
-            return proxy_from_environment(urlparsed)
-        return None
 
     async def _run_hooks(self, name: str, *args):
         for hook in self.event_hooks[name]:
