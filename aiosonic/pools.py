@@ -62,6 +62,7 @@ class BasePool(ABC):
         self.timeouts = timeouts or Timeouts()
         self.http2_config = http2_config or Http2Config()
         self._connections = WeakSet()
+        self._close_on_release = set()
         self._init_pool(connection_cls)
 
     def _new_connection(self, connection_cls):
@@ -69,8 +70,16 @@ class BasePool(ABC):
         self._connections.add(conn)
         return conn
 
-    def _close_connections(self) -> None:
+    def _close_connections(self, idle) -> None:
         for conn in list(self._connections):
+            if conn in idle:
+                conn.close()
+            else:
+                self._close_on_release.add(conn)
+
+    def _close_if_marked(self, conn) -> None:
+        if conn in self._close_on_release:
+            self._close_on_release.discard(conn)
             conn.close()
 
     @abstractmethod
@@ -100,7 +109,7 @@ class BasePool(ABC):
 
     @abstractmethod
     async def cleanup(self) -> None:
-        """Close all connections of the pool."""
+        """Close the connections of the pool."""
         pass
 
     @property
@@ -147,6 +156,8 @@ class CyclicQueuePool(BasePool):
 
     def release(self, conn):
         """Release connection."""
+        if self._close_on_release:
+            self._close_if_marked(conn)
         return self.pool.put_nowait(conn)
 
     def is_all_free(self):
@@ -157,8 +168,13 @@ class CyclicQueuePool(BasePool):
         return self.pool.qsize()
 
     async def cleanup(self):
-        """Close every connection of the pool, also the ones in use, without waiting for them."""
-        self._close_connections()
+        """Close the idle connections now and the ones in use when they are released, without waiting for them."""
+        idle = []
+        while not self.pool.empty():
+            idle.append(self.pool.get_nowait())
+        for conn in idle:
+            self.pool.put_nowait(conn)
+        self._close_connections(set(idle))
 
 
 class SmartPool(BasePool):
@@ -205,6 +221,8 @@ class SmartPool(BasePool):
 
     def release(self, conn) -> None:
         """Release connection."""
+        if self._close_on_release:
+            self._close_if_marked(conn)
         bucket = self.pool.get(conn.key)
         if bucket is None:
             bucket = self.pool[conn.key] = deque()
@@ -220,8 +238,8 @@ class SmartPool(BasePool):
         return self.pool_size == self.sem._value
 
     async def cleanup(self) -> None:
-        """Close every connection of the pool, also the ones in use, without waiting for them."""
-        self._close_connections()
+        """Close the idle connections now and the ones in use when they are released, without waiting for them."""
+        self._close_connections({conn for bucket in self.pool.values() for conn in bucket})
 
 
 class WsPool(BasePool):

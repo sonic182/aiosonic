@@ -909,6 +909,22 @@ async def test_async_with_closes_only_its_own_connector(http_serv):
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
 @pytest.mark.parametrize("pool_cls", [None, CyclicQueuePool])
+async def test_response_in_use_survives_client_close(http_serv, pool_cls):
+    """A chunked response not read yet can still be read after closing the client, and then its connection closes."""
+    client = aiosonic.HTTPClient(TCPConnector(pool_cls=pool_cls))
+    res = await client.get(http_serv + "/chunked")
+    await client.aclose()
+
+    assert await res.text() == "foobar"
+    assert not _open_connections(client.connector)
+    assert await (await client.get(http_serv)).text() == "Hello, world"
+    assert _open_connections(client.connector)
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("pool_cls", [None, CyclicQueuePool])
 async def test_aclose_with_unread_stream_does_not_hang(http_serv, pool_cls):
     """Closing the client while a streamed response is unread closes its connection and keeps the client usable."""
     client = aiosonic.HTTPClient(TCPConnector({":default": PoolConfig(size=2)}, pool_cls=pool_cls))

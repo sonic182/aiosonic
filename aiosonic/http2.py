@@ -342,6 +342,12 @@ class Http2Handler(object):
             self._window_updated = asyncio.Event()
         if not hasattr(self, "requests"):
             self.requests = {}
+        try:
+            await self._read_events()
+        finally:
+            self._fail_all_pending(ConnectionDisconnected())
+
+    async def _read_events(self) -> None:
         read_size = 16 * 1024
 
         while True:
@@ -474,6 +480,7 @@ class Http2Handler(object):
             self.reader_task.cancel()
         except Exception:
             pass
+        self._fail_all_pending(ConnectionDisconnected())
         try:
             self.loop.create_task(self._wait_reader_cancel())
         except Exception:
@@ -493,7 +500,7 @@ class Http2Handler(object):
                 future.set_exception(exc)
             queue = req.get("chunk_queue")
             if queue:
-                queue.put_nowait(None)
+                queue.put_nowait(exc)
 
     # kept for backward compatibility with tests that call send_body directly
     async def send_body(self, stream_id: int) -> None:

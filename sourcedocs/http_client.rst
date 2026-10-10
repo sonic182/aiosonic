@@ -57,5 +57,6 @@ Client cleanup
 --------------
 
 - ``async with HTTPClient()`` closes the connections of the connector the client created when the block ends. A connector given with ``HTTPClient(connector)`` is not closed, as it may be shared; call ``await connector.cleanup()`` or ``await client.aclose()`` for it.
-- ``await client.aclose()`` does not wait for responses that are still being read: their connections are closed, so reading them afterwards fails. The client can still be used afterwards, as connections are opened again when needed.
+- ``await client.aclose()`` never waits for responses that are still being read. Idle connections are closed right away, and the ones used by an HTTP/1.1 response (for example a chunked one) are closed when the response is read or closed, so it can still be read after closing the client. The client can still be used afterwards, as connections are opened again when needed.
+- HTTP/2 connections are shared by all their streams, so they are closed right away: read the body of an HTTP/2 response before closing the client, or reading it raises ``ConnectionDisconnected``.
 

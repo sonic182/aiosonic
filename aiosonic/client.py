@@ -283,6 +283,8 @@ class HttpResponse:
                     chunk = await queue.get()
                     if chunk is None:
                         break
+                    if isinstance(chunk, BaseException):
+                        raise chunk
                     if self._h2_flow_cb:
                         self._h2_flow_cb(len(chunk))
                     yield chunk

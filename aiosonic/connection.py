@@ -319,6 +319,10 @@ class Connection:
                 pass
 
             self.reader, self.writer = None, None
+        if self.h2handler:
+            self.h2handler.cleanup()
+            self.h2handler = None
+        self.h2conn = None
         self.proxy_connected = False
         self.proxy_target = None
 
