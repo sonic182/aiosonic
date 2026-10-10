@@ -752,6 +752,7 @@ class HTTPClient:
         unknown_hooks = set(event_hooks) - set(_EVENT_HOOKS)
         if unknown_hooks:
             raise ValueError(f"unknown event hooks: {sorted(unknown_hooks)}, valid ones: {list(_EVENT_HOOKS)}")
+        self._owns_connector = connector is None
         self.connector = connector or TCPConnector(http2=http2, http2_config=http2_config)
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
@@ -767,11 +768,10 @@ class HTTPClient:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, _exc_type, exc, _tb):  # type: ignore
-        if exc:
-            # Handle the exception appropriately, e.g., logging
-            return False  # Returning False re-raises the exception
-        return True
+    async def __aexit__(self, _exc_type, _exc, _tb):  # type: ignore
+        if self._owns_connector:
+            await self.aclose()
+        return False
 
     async def get(
         self,
@@ -1168,7 +1168,8 @@ class HTTPClient:
     async def aclose(self):
         """Close the connections of the connector.
 
-        Responses that are still being read must be released first, as this waits for every connection.
+        It does not wait for responses that are still being read: their connections are closed, so reading them
+        afterwards fails. The client can still be used, as connections are opened again when needed.
         """
         await self.connector.cleanup()
 

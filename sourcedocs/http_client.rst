@@ -37,5 +37,6 @@ Streaming and timeouts
 Client cleanup
 --------------
 
-- ``async with HTTPClient()`` does not close the connector; call ``await client.aclose()`` once every response was read or closed.
+- ``async with HTTPClient()`` closes the connections of the connector the client created when the block ends. A connector given with ``HTTPClient(connector)`` is not closed, as it may be shared; call ``await connector.cleanup()`` or ``await client.aclose()`` for it.
+- ``await client.aclose()`` does not wait for responses that are still being read: their connections are closed, so reading them afterwards fails. The client can still be used afterwards, as connections are opened again when needed.
 

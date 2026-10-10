@@ -6,7 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `async with HTTPClient()` closes the connections of the connector that the client created when the block ends; a connector given to the client is left open.
+- `HTTPClient.aclose()` and `TCPConnector.cleanup()` close the connections of responses that are still being read instead of waiting for them, and the client stays usable afterwards.
+
 ### Fixed
+- `aclose()` no longer hangs with `SmartPool` or raises `QueueEmpty` with `CyclicQueuePool` while a streamed response has not been read or closed.
 - `handle_cookies=True` sends every stored cookie of the host in a single `Cookie` header as `name=value` pairs (before, only the last cookie was sent, together with its attributes such as `Path`), and keeps cookies from earlier responses when a later response sets new ones instead of replacing them.
 - With `handle_cookies=True`, redirects send the cookies set by the redirect response, and a redirect to another host sends that host's cookies instead of none.
 

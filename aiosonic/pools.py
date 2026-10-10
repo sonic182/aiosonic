@@ -8,6 +8,7 @@ from asyncio import Queue, Semaphore, wait_for
 from dataclasses import dataclass, field
 from typing import Optional
 from urllib.parse import ParseResult
+from weakref import WeakSet
 
 from aiosonic.exceptions import ConnectionPoolAcquireTimeout, TimeoutException
 from aiosonic.http2 import Http2Config
@@ -60,7 +61,17 @@ class BasePool(ABC):
         self.conf = conf
         self.timeouts = timeouts or Timeouts()
         self.http2_config = http2_config or Http2Config()
+        self._connections = WeakSet()
         self._init_pool(connection_cls)
+
+    def _new_connection(self, connection_cls):
+        conn = connection_cls(self)
+        self._connections.add(conn)
+        return conn
+
+    def _close_connections(self) -> None:
+        for conn in list(self._connections):
+            conn.close()
 
     @abstractmethod
     def _init_pool(self, connection_cls):
@@ -89,7 +100,7 @@ class BasePool(ABC):
 
     @abstractmethod
     async def cleanup(self) -> None:
-        """Clean up all connections. Makes the pool unusable."""
+        """Close all connections of the pool."""
         pass
 
     @property
@@ -115,7 +126,7 @@ class CyclicQueuePool(BasePool):
     def _init_pool(self, connection_cls):
         self.pool = Queue(self.pool_size)
         for _ in range(self.pool_size):
-            self.pool.put_nowait(connection_cls(self))
+            self.pool.put_nowait(self._new_connection(connection_cls))
 
     async def acquire(self, urlparsed: Optional[ParseResult] = None):
         """Acquire connection."""
@@ -146,17 +157,15 @@ class CyclicQueuePool(BasePool):
         return self.pool.qsize()
 
     async def cleanup(self):
-        """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_size):
-            conn = self.pool.get_nowait()
-            conn.close()
+        """Close every connection of the pool, also the ones in use, without waiting for them."""
+        self._close_connections()
 
 
 class SmartPool(BasePool):
     """Pool which priorizes the reusage of connections."""
 
     def _init_pool(self, connection_cls):
-        self.pool = {None: deque(connection_cls(self) for _ in range(self.pool_size))}
+        self.pool = {None: deque(self._new_connection(connection_cls) for _ in range(self.pool_size))}
         self._free_count = self.pool_size
         self.sem = Semaphore(self.pool_size)
 
@@ -190,7 +199,7 @@ class SmartPool(BasePool):
 
         if conn is not None and self._is_connection_idle(conn):
             conn.close()
-            conn = conn.__class__(self)
+            conn = self._new_connection(conn.__class__)
 
         return conn
 
@@ -211,11 +220,8 @@ class SmartPool(BasePool):
         return self.pool_size == self.sem._value
 
     async def cleanup(self) -> None:
-        """Get all conn and close them, this method let this pool unusable."""
-        for _ in range(self.pool_size):
-            conn = await self.acquire()
-            if conn is not None:
-                conn.close()
+        """Close every connection of the pool, also the ones in use, without waiting for them."""
+        self._close_connections()
 
 
 class WsPool(BasePool):

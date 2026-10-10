@@ -817,6 +817,47 @@ async def test_stream_partial_read_without_aclose_discards_connection(http_serv)
         assert await res.text() == "Hello, world"
 
 
+def _open_connections(connector):
+    open_conns = []
+    for pool in connector.pools.values():
+        stored = pool.pool.values() if isinstance(pool.pool, dict) else [pool.pool._queue]
+        open_conns += [conn for bucket in stored for conn in bucket if conn.reader]
+    return open_conns
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_async_with_closes_only_its_own_connector(http_serv):
+    """Leaving ``async with`` closes the connections of the connector the client created, not a given one."""
+    async with aiosonic.HTTPClient() as client:
+        await client.get(http_serv)
+        own_connector = client.connector
+        assert _open_connections(own_connector)
+    assert not _open_connections(own_connector)
+
+    shared_connector = TCPConnector()
+    async with aiosonic.HTTPClient(shared_connector) as client:
+        await client.get(http_serv)
+    assert _open_connections(shared_connector)
+    await shared_connector.cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("pool_cls", [None, CyclicQueuePool])
+async def test_aclose_with_unread_stream_does_not_hang(http_serv, pool_cls):
+    """Closing the client while a streamed response is unread closes its connection and keeps the client usable."""
+    client = aiosonic.HTTPClient(TCPConnector({":default": PoolConfig(size=2)}, pool_cls=pool_cls))
+    res = await client.request(http_serv + "/random", "GET", stream=True)
+
+    await asyncio.wait_for(client.aclose(), 5)
+    await res.aclose()
+
+    assert not _open_connections(client.connector)
+    assert await (await client.get(http_serv)).text() == "Hello, world"
+    await client.aclose()
+
+
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
 async def test_hooks_url_and_response_hook_error(http_serv):
