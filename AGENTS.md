@@ -4,18 +4,9 @@
 
 ### Python Runner
 
-Detect and use the appropriate runner by checking in this order:
+The project is managed with Poetry (`pyproject.toml` + `poetry.lock`). Install dependencies with `poetry install` and run every command through `poetry run <cmd>`.
 
-| Priority | Condition | Run commands with |
-|----------|-----------|-------------------|
-| 1 | `uv` is available | `uv run <cmd>` |
-| 2 | `poetry` is available | `poetry run <cmd>` |
-| 3 | `pipenv` is available | `pipenv run <cmd>` |
-| 4 | `./venv/` exists | `./venv/bin/python <cmd>` |
-| 5 | `.venv/` exists | `.venv/bin/python <cmd>` |
-| 6 | fallback | `python <cmd>` (or as instructed) |
-
-> In the commands below, `<runner>` stands for whichever prefix applies.
+> In the commands below, `<runner>` stands for `poetry run`.
 
 ### Commands
 
