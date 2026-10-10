@@ -15,11 +15,11 @@ Example:
 from __future__ import annotations
 from codecs import getincrementaldecoder
 from contextlib import aclosing, asynccontextmanager
+from datetime import timedelta
 from io import BytesIO, IOBase
 from json import loads
 from ssl import SSLContext
 from typing import Any, AsyncIterator, Callable, Dict, Iterable, List, Optional, Tuple, Union
-from urllib.parse import unquote, urlparse
 
 from aiosonic.auth import AuthType
 from aiosonic.base_client import BaseClient
@@ -30,7 +30,6 @@ from aiosonic.multipart import MultipartFile, MultipartForm
 from aiosonic.proxy import Proxy
 from aiosonic.timeout import Timeouts
 from aiosonic.types import DataType, ParamsType
-from aiosonic.utils import url_without_userinfo
 
 DEFAULT_TIMEOUT = 5.0
 DEFAULT_MAX_REDIRECTS = 20
@@ -118,6 +117,18 @@ class Response:
     @property
     def request(self) -> Request:
         return Request(self._response.method, self._response.url)
+
+    @property
+    def history(self) -> List[Response]:
+        return [Response(hop) for hop in self._response.history]
+
+    @property
+    def elapsed(self) -> timedelta:
+        return self._response.elapsed
+
+    @property
+    def links(self) -> Dict[str, Dict[str, str]]:
+        return self._response.links
 
     @property
     def http_version(self) -> str:
@@ -308,9 +319,7 @@ def to_proxy(proxy: Union[str, Proxy]) -> Proxy:
     """
     if isinstance(proxy, Proxy):
         return proxy
-    parsed = urlparse(proxy)
-    auth = f"{unquote(parsed.username)}:{unquote(parsed.password or '')}" if parsed.username else None
-    return Proxy(url_without_userinfo(parsed), auth=auth)
+    return Proxy.from_url(proxy)
 
 
 def _wrap_hook(name: str, hook: Callable) -> Callable:
@@ -346,8 +355,10 @@ class AsyncClient(BaseClient):
         base_url: Url prepended to relative request urls.
         proxy: Proxy url, with the credentials in its ``user:password@`` part if needed, or
             :class:`aiosonic.proxy.Proxy`.
+        trust_env: Whether to use the proxies of the environment (``HTTP_PROXY``, ``HTTPS_PROXY``,
+            ``ALL_PROXY`` and ``NO_PROXY``) when no ``proxy`` is given. Unlike HTTPX, it defaults to False.
         http_client: :class:`aiosonic.HTTPClient` to send the requests, to share its connections. It can not
-            be combined with ``event_hooks`` or ``proxy``, and it is not closed by :meth:`aclose`.
+            be combined with ``event_hooks``, ``proxy`` or ``trust_env``, and it is not closed by :meth:`aclose`.
     """
 
     def __init__(
@@ -364,16 +375,18 @@ class AsyncClient(BaseClient):
         event_hooks: Optional[Dict[str, List[Callable]]] = None,
         base_url: str = "",
         proxy: Optional[Union[str, Proxy]] = None,
+        trust_env: bool = False,
         http_client: Optional[HTTPClient] = None,
     ):
-        if http_client is not None and (event_hooks or proxy):
-            raise ValueError("event_hooks and proxy can not be used with http_client, configure it instead")
+        if http_client is not None and (event_hooks or proxy or trust_env):
+            raise ValueError("event_hooks, proxy and trust_env can not be used with http_client, configure it instead")
         if http_client is None:
             hooks = {name: [_wrap_hook(name, hook) for hook in hooks] for name, hooks in (event_hooks or {}).items()}
             http_client = HTTPClient(
                 connector=TCPConnector(timeouts=to_timeouts(timeout)),
                 handle_cookies=True,
                 proxy=to_proxy(proxy) if proxy else None,
+                trust_env=trust_env,
                 event_hooks=hooks,
             )
             self._owns_client = True

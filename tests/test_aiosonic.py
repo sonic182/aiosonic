@@ -1,7 +1,12 @@
 import asyncio
 import base64
 import json
+import os
 import platform
+import sys
+import tempfile
+from datetime import timedelta
+from http.cookies import SimpleCookie
 from urllib.parse import urlparse
 
 import pytest
@@ -818,6 +823,123 @@ async def test_stream_partial_read_without_aclose_discards_connection(http_serv)
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_response_history_and_elapsed(http_serv):
+    """A followed redirect leaves its responses in the history of the final response, and every one has elapsed."""
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(http_serv + "/get_redirect", follow=True)
+        assert res.status_code == 200
+        assert [hop.status_code for hop in res.history] == [302]
+        assert res.history[0].headers["Location"] == "/"
+        assert res.history[0].elapsed > timedelta(0)
+        assert res.elapsed > timedelta(0)
+
+        res = await client.get(http_serv)
+        assert res.history == []
+
+
+def test_response_links():
+    """The Link headers of a response are parsed by rel, or by url when they have none."""
+    response = HttpResponse()
+    assert response.links == {}
+
+    response._set_header(
+        "Link", '<https://api.example/p2>; rel="next", <https://api.example/p9>; rel=last; title="end"'
+    )
+    response._set_header("link", "<https://api.example/doc>")
+
+    assert response.links == {
+        "next": {"url": "https://api.example/p2", "rel": "next"},
+        "last": {"url": "https://api.example/p9", "rel": "last", "title": "end"},
+        "https://api.example/doc": {"url": "https://api.example/doc"},
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="unix sockets are not available on windows")
+async def test_unix_socket_connector():
+    """With ``uds`` the requests go through the unix socket, keeping the host of the url in the Host header."""
+    requests = []
+
+    async def serve(reader, writer):
+        while True:
+            head = await reader.readuntil(b"\r\n\r\n")
+            requests.append(head.decode())
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+            await writer.drain()
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "s.sock")
+        server = await asyncio.start_unix_server(serve, path)
+        async with aiosonic.HTTPClient(TCPConnector(uds=path)) as client:
+            for _ in range(2):
+                res = await client.get("http://docker.invalid/ping")
+                assert (res.status_code, await res.text()) == (200, "ok")
+        server.close()
+
+    assert len(requests) == 2
+    assert requests[0].startswith("GET /ping HTTP/1.1\r\n") and "HOST: docker.invalid\r\n" in requests[0]
+
+
+def _open_connections(connector):
+    open_conns = []
+    for pool in connector.pools.values():
+        stored = pool.pool.values() if isinstance(pool.pool, dict) else [pool.pool._queue]
+        open_conns += [conn for bucket in stored for conn in bucket if conn.reader]
+    return open_conns
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_async_with_closes_only_its_own_connector(http_serv):
+    """Leaving ``async with`` closes the connections of the connector the client created, not a given one."""
+    async with aiosonic.HTTPClient() as client:
+        await client.get(http_serv)
+        own_connector = client.connector
+        assert _open_connections(own_connector)
+    assert not _open_connections(own_connector)
+
+    shared_connector = TCPConnector()
+    async with aiosonic.HTTPClient(shared_connector) as client:
+        await client.get(http_serv)
+    assert _open_connections(shared_connector)
+    await shared_connector.cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("pool_cls", [None, CyclicQueuePool])
+async def test_response_in_use_survives_client_close(http_serv, pool_cls):
+    """A chunked response not read yet can still be read after closing the client, and then its connection closes."""
+    client = aiosonic.HTTPClient(TCPConnector(pool_cls=pool_cls))
+    res = await client.get(http_serv + "/chunked")
+    await client.aclose()
+
+    assert await res.text() == "foobar"
+    assert not _open_connections(client.connector)
+    assert await (await client.get(http_serv)).text() == "Hello, world"
+    assert _open_connections(client.connector)
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("pool_cls", [None, CyclicQueuePool])
+async def test_aclose_with_unread_stream_does_not_hang(http_serv, pool_cls):
+    """Closing the client while a streamed response is unread closes its connection and keeps the client usable."""
+    client = aiosonic.HTTPClient(TCPConnector({":default": PoolConfig(size=2)}, pool_cls=pool_cls))
+    res = await client.request(http_serv + "/random", "GET", stream=True)
+
+    await asyncio.wait_for(client.aclose(), 5)
+    await res.aclose()
+
+    assert not _open_connections(client.connector)
+    assert await (await client.get(http_serv)).text() == "Hello, world"
+    await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_hooks_url_and_response_hook_error(http_serv):
     """Request hooks get the url without credentials and a failing response hook releases the response."""
     urls = []
@@ -883,3 +1005,81 @@ def test_redirect_to_other_host_drops_credentials():
 
     assert "Authorization" not in headers and "Cookie" not in headers
     assert headers["X-Keep"] == "1"
+
+
+def _response_setting_cookie(set_cookie: str) -> HttpResponse:
+    response = HttpResponse()
+    response._update_cookies(("Set-Cookie", set_cookie))
+    return response
+
+
+def _redirect_response(status: int, location: str) -> HttpResponse:
+    response = HttpResponse()
+    response._set_response_initial(f"HTTP/1.1 {status} Found\r\n".encode())
+    response.headers["Location"] = location
+    return response
+
+
+def _follow_redirect(client, headers, current_url: str, location: str):
+    client._handle_redirect(
+        current_urlparsed=urlparse(current_url),
+        headers=headers,
+        response=_redirect_response(302, location),
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=True,
+    )
+
+
+def test_cookie_jar_merges_responses_and_sends_all_cookies():
+    """Cookies of different responses are kept together and sent in one Cookie header without attributes."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("a=1; Path=/; Max-Age=60"))
+    client._save_new_cookies("example.com", _response_setting_cookie("b=2; Path=/"))
+    headers = HttpHeaders()
+
+    client._add_cookies_to_request("example.com", headers)
+
+    assert headers["Cookie"] == "a=1; b=2"
+
+    client._save_new_cookies("example.com", _response_setting_cookie("a=; Max-Age=0"))
+    headers = HttpHeaders()
+    client._add_cookies_to_request("example.com", headers)
+    assert headers["Cookie"] == "b=2"
+
+
+def test_redirect_same_host_keeps_cookies_given_by_the_user():
+    """Cookies of the request headers are kept on a same host redirect, together with the stored ones."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("login=ok"))
+    headers = HttpHeaders({"Cookie": "token=abc"})
+
+    _follow_redirect(client, headers, "http://example.com/login", "/home")
+
+    assert headers["Cookie"] == "token=abc; login=ok"
+
+
+def test_redirect_same_host_sends_cookies_set_by_the_redirect():
+    """A cookie set by a redirect response is sent in the next hop even if the request already had cookies."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("sid=old"))
+    headers = HttpHeaders()
+    client._add_cookies_to_request("example.com", headers)
+    client._save_new_cookies("example.com", _response_setting_cookie("login=ok"))
+
+    _follow_redirect(client, headers, "http://example.com/login", "/home")
+
+    assert headers["Cookie"] == "sid=old; login=ok"
+
+
+def test_redirect_to_other_host_sends_its_own_cookies_only():
+    """After a cross host redirect the cookies of the first host are dropped and those of the new host are sent."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client.cookies_map["first.example"] = SimpleCookie("a=b")
+    client.cookies_map["other.example"] = SimpleCookie("sid=xyz")
+    headers = HttpHeaders({"Cookie": "a=b"})
+
+    _follow_redirect(client, headers, "http://first.example/", "http://other.example/x")
+
+    assert headers["Cookie"] == "sid=xyz"

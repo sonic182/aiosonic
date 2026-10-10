@@ -12,6 +12,18 @@ Authentication
 - ``auths`` maps hosts to credentials (``"api.example.com"``, or ``"api.example.com:8443"`` to match a port), so a host that is not in the map never gets them. Each value is a ``(user, password)`` tuple, ``BasicAuth``, ``BearerAuth`` or any ``Auth`` subclass. Digest and netrc authentication are not supported.
 - A request is authenticated with, in this order: its ``auth=`` argument, the ``user:password@`` part of its url, or the ``auths`` entry of its host. The auth is resolved once, for the host of the original request, so redirects to other hosts do not get it.
 
+Proxies
+-------
+
+- ``proxy=Proxy(...)`` sends every request through that proxy.
+- ``trust_env=True`` takes the proxy of each request from the environment: ``HTTP_PROXY``, ``HTTPS_PROXY`` or ``ALL_PROXY``, chosen by the scheme of the url, with ``NO_PROXY`` excluding hosts (``example.com``, ``.example.com`` or ``host:port``). Credentials in the proxy url are used as Basic proxy authentication. A ``proxy`` given to the client wins over the environment, and it is ``False`` by default so that the environment never reroutes requests silently.
+- Only HTTP proxies are supported, with plain ``http://`` proxy urls.
+
+Unix domain sockets
+-------------------
+
+- ``HTTPClient(TCPConnector(uds="/var/run/docker.sock"))`` sends every request through that Unix domain socket instead of resolving the host of the url, which is only used for the ``Host`` header (``await client.get("http://localhost/containers/json")``). It is not available on Windows and can not be combined with proxies.
+
 API defaults
 ------------
 
@@ -21,6 +33,13 @@ Event hooks
 -----------
 
 - ``event_hooks`` runs ``"request"`` hooks as ``hook(method, url, headers)`` and ``"response"`` hooks as ``hook(response)``, sync or async, on every send, including redirects and retries. Request hooks get the live headers, including ``Authorization`` and ``Cookie``, so a hook that adds a header must be idempotent and a logging hook should not print them.
+
+Response details
+----------------
+
+- ``response.history`` lists the redirect responses followed to get the response, oldest first. They are already closed, so with ``stream=True`` their bodies are not available.
+- ``response.elapsed`` is a ``timedelta`` with the time from sending the request until the response was received, including its body unless ``stream=True``. Every response of ``history`` has its own.
+- ``response.links`` parses the ``Link`` headers into a dict by ``rel`` (or by url when there is none), each value with its ``url`` and parameters, e.g. ``response.links["next"]["url"]`` for pagination.
 
 Status errors
 -------------
@@ -37,5 +56,7 @@ Streaming and timeouts
 Client cleanup
 --------------
 
-- ``async with HTTPClient()`` does not close the connector; call ``await client.aclose()`` once every response was read or closed.
+- ``async with HTTPClient()`` closes the connections of the connector the client created when the block ends. A connector given with ``HTTPClient(connector)`` is not closed, as it may be shared; call ``await connector.cleanup()`` or ``await client.aclose()`` for it.
+- ``await client.aclose()`` never waits for responses that are still being read. Idle connections are closed right away, and the ones used by an HTTP/1.1 response (for example a chunked one) are closed when the response is read or closed, so it can still be read after closing the client. The client can still be used afterwards, as connections are opened again when needed.
+- HTTP/2 connections are shared by all their streams, so they are closed right away: read the body of an HTTP/2 response before closing the client, or reading it raises ``ConnectionDisconnected``.
 

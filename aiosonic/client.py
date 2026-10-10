@@ -9,6 +9,8 @@ import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
+from datetime import timedelta
+from email.utils import parsedate_to_datetime
 from functools import lru_cache, partial
 from http import HTTPStatus, cookies
 from inspect import isawaitable
@@ -18,6 +20,7 @@ from json import loads
 from os.path import basename
 from secrets import token_hex
 from ssl import SSLContext
+from time import perf_counter, time
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
 
@@ -41,13 +44,13 @@ from aiosonic.exceptions import (
 )
 from aiosonic.http2 import Http2Config
 from aiosonic.multipart import MultipartFile, MultipartForm
-from aiosonic.proxy import Proxy
+from aiosonic.proxy import Proxy, proxy_from_environment
 from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger, url_without_userinfo
+from aiosonic.utils import get_debug_logger, parse_link_header, url_without_userinfo
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -95,10 +98,19 @@ class HttpResponse:
       * **url** (str): url of the request that produced this response
       * **method** (str): http method of the request that produced this response
       * **reason** (str): reason phrase of the status line
+      * **history** (List[:class:`HttpResponse`]): the redirect responses followed to get this one, oldest
+        first. They are already closed, so with ``stream=True`` their bodies are not available.
+      * **elapsed** (:class:`datetime.timedelta`): time from sending the request until the response was
+        received. It includes the body only when it was read before returning the response, which is not the
+        case with ``stream=True``, HTTP/2 or chunked HTTP/1.1 responses.
+      * **links** (Dict[str, Dict[str, str]]): the parsed ``Link`` headers, by their ``rel`` (or their url
+        when they have none), each one with its ``url`` and parameters.
     """
 
     def __init__(self):
         self.headers = HttpHeaders()
+        self.history: List[HttpResponse] = []
+        self._elapsed = 0.0
         self.cookies = None
         self.raw_headers = []
         self.body = b""
@@ -180,6 +192,15 @@ class HttpResponse:
     def url(self) -> str:
         """Get the url of the request that produced this response, without credentials."""
         return url_without_userinfo(self._urlparsed) if self._urlparsed else ""
+
+    @property
+    def elapsed(self) -> timedelta:
+        return timedelta(seconds=self._elapsed)
+
+    @property
+    def links(self) -> Dict[str, Dict[str, str]]:
+        value = ", ".join(val for key, val in self.raw_headers if key.lower() == "link")
+        return {link.get("rel") or link["url"]: link for link in parse_link_header(value)}
 
     @property
     def ok(self) -> bool:
@@ -268,6 +289,8 @@ class HttpResponse:
                     chunk = await queue.get()
                     if chunk is None:
                         break
+                    if isinstance(chunk, BaseException):
+                        raise chunk
                     if self._h2_flow_cb:
                         self._h2_flow_cb(len(chunk))
                     yield chunk
@@ -727,6 +750,9 @@ class HTTPClient:
             (``"api.example.com"``, or ``"api.example.com:8443"`` to match a port). Requests to a host
             that is not in the dict get no credentials. Per-request ``auth`` takes precedence.
         * **follow**: Default for the ``follow`` argument of requests.
+        * **trust_env**: Flag to use the proxies of the environment (``HTTP_PROXY``, ``HTTPS_PROXY``,
+            ``ALL_PROXY`` and ``NO_PROXY``) for the requests, chosen by the url of each request. A ``proxy``
+            given to the client takes precedence. Defaults to False.
         * **event_hooks**: Dict with the ``"request"`` and ``"response"`` keys, each one a list of
             sync or async callables. Request hooks are called as ``hook(method, url, headers)``
             before sending each request (also after redirects), and response hooks as
@@ -746,17 +772,20 @@ class HTTPClient:
         auths: Optional[Dict[str, AuthType]] = None,
         follow: bool = False,
         event_hooks: Optional[Dict[str, List[Callable]]] = None,
+        trust_env: bool = False,
     ):
         """Initialize client options."""
         event_hooks = event_hooks or {}
         unknown_hooks = set(event_hooks) - set(_EVENT_HOOKS)
         if unknown_hooks:
             raise ValueError(f"unknown event hooks: {sorted(unknown_hooks)}, valid ones: {list(_EVENT_HOOKS)}")
+        self._owns_connector = connector is None
         self.connector = connector or TCPConnector(http2=http2, http2_config=http2_config)
         self.handle_cookies = handle_cookies
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl
         self.proxy = proxy
+        self.trust_env = trust_env
         self.max_redirects = max_redirects
         self.http2 = http2
         self.max_decompressed_size = max_decompressed_size
@@ -767,11 +796,10 @@ class HTTPClient:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, _exc_type, exc, _tb):  # type: ignore
-        if exc:
-            # Handle the exception appropriately, e.g., logging
-            return False  # Returning False re-raises the exception
-        return True
+    async def __aexit__(self, _exc_type, _exc, _tb):  # type: ignore
+        if self._owns_connector:
+            await self.aclose()
+        return False
 
     async def get(
         self,
@@ -1077,10 +1105,15 @@ class HTTPClient:
         verify_ssl = verify and self.verify_ssl
         http2 = http2 or self.http2
         reconnect_times = 3
+        history: List[HttpResponse] = []
         while reconnect_times > 0:
             # performance: skip building the hook url when no request hooks are registered
             if self.event_hooks["request"]:
                 await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
+            proxy = self.proxy
+            if proxy is None and self.trust_env and not getattr(self.connector, "uds", None):
+                proxy = proxy_from_environment(urlparsed)
+            started_at = perf_counter()
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -1089,7 +1122,7 @@ class HTTPClient:
                 params=params,
                 multipart=multipart,
                 boundary=boundary,
-                proxy=self.proxy,
+                proxy=proxy,
             )
             try:
                 response = await wait_for(
@@ -1102,7 +1135,7 @@ class HTTPClient:
                         ssl,
                         timeouts,
                         http2,
-                        self.proxy,
+                        proxy,
                         transfer_chunked=transfer_chunked,
                         max_decompressed_size=max_decompressed_size,
                         method=method,
@@ -1118,6 +1151,9 @@ class HTTPClient:
             except TimeoutException:
                 raise RequestTimeout()
 
+            response._elapsed = perf_counter() - started_at
+            response.history = history
+
             try:
                 await self._run_hooks("response", response)
             except BaseException:
@@ -1131,6 +1167,7 @@ class HTTPClient:
                 return response
 
             await response.aclose()
+            history = [*history, response]
             (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
                 current_urlparsed=urlparsed,
                 headers=headers,
@@ -1168,7 +1205,9 @@ class HTTPClient:
     async def aclose(self):
         """Close the connections of the connector.
 
-        Responses that are still being read must be released first, as this waits for every connection.
+        It does not wait for responses that are still being read: their connections are closed, so reading them
+        afterwards fails. The client can still be used, as connections are opened again when needed, unless the
+        connector's resolver can not be used once closed (like :class:`aiosonic.resolver.AsyncResolver`).
         """
         await self.connector.cleanup()
 
@@ -1206,11 +1245,7 @@ class HTTPClient:
         new_url_str = urljoin(current_url, location)
         new_urlparsed = http_parser.get_url_parsed(new_url_str)
 
-        # 5) cookies for new host (if enabled)
-        if self.handle_cookies:
-            self._add_cookies_to_request(str(new_urlparsed.hostname), headers)
-
-        # 6) switch method/body if required
+        # 5) switch method/body if required
         status = response.status_code
         original_method = method.upper()
 
@@ -1242,6 +1277,9 @@ class HTTPClient:
         except Exception:
             pass
 
+        if self.handle_cookies:
+            self._add_cookies_to_request(str(new_urlparsed.hostname), headers, merge=True)
+
         return new_urlparsed, method, body, transfer_chunked, max_redirects
 
     async def wait_requests(self, timeout: int = 30):
@@ -1256,18 +1294,58 @@ class HTTPClient:
         except TimeoutException:
             return False
 
-    def _add_cookies_to_request(self, host: str, headers: HeadersType):
-        """Add cookies to request."""
+    def _add_cookies_to_request(self, host: str, headers: HeadersType, merge: bool = False):
+        """Add the stored cookies of a host to the request as a single ``Cookie`` header.
+
+        Args:
+            host (str): The host whose cookies are sent.
+            headers (HeadersType): The headers of the request, modified in place.
+            merge (bool): Merge the stored cookies into a ``Cookie`` header already present, overriding the
+                cookies with the same name, instead of leaving it as is.
+        """
         host_cookies = self.cookies_map.get(host)
-        if host_cookies and not any(header.lower() == "cookie" for header, _ in http_parser.headers_iterator(headers)):
-            cookies_str = host_cookies.output(header="Cookie:")
-            for cookie_data in cookies_str.split("\r\n"):
-                http_parser.add_header(headers, *cookie_data.split(": ", 1))
+        if not host_cookies:
+            return
+        current = next(
+            (value for header, value in http_parser.headers_iterator(headers) if header.lower() == "cookie"), None
+        )
+        if current is not None and not merge:
+            return
+        pairs = {}
+        for pair in (current or "").split(";"):
+            name, _, value = pair.strip().partition("=")
+            if name:
+                pairs[name] = value
+        pairs.update((name, morsel.coded_value) for name, morsel in host_cookies.items())
+        cookie_value = "; ".join(f"{name}={value}" for name, value in pairs.items())
+        http_parser.add_header(headers, "Cookie", cookie_value, replace=True)
 
     def _save_new_cookies(self, host: str, response: HttpResponse):
-        """Save new cookies in map."""
-        if response.cookies:
-            self.cookies_map[host] = response.cookies
+        """Merge the cookies set by a response into the stored cookies of a host, dropping the expired ones."""
+        if not response.cookies:
+            return
+        host_cookies = self.cookies_map.setdefault(host, cookies.SimpleCookie())
+        for name, morsel in response.cookies.items():
+            if _cookie_expired(morsel):
+                host_cookies.pop(name, None)
+            else:
+                host_cookies[name] = morsel
+
+
+def _cookie_expired(morsel: cookies.Morsel) -> bool:
+    max_age = morsel["max-age"]
+    if max_age:
+        try:
+            return int(max_age) <= 0
+        except ValueError:
+            return False
+    expires = morsel["expires"]
+    if expires:
+        try:
+            return parsedate_to_datetime(expires).timestamp() <= time()
+        except (TypeError, ValueError):
+            return False
+    return False
 
 
 async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext):

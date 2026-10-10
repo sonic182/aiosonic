@@ -317,14 +317,14 @@ async def test_h2_multiplexing_concurrent_requests(http2_serv):
     async with aiosonic.HTTPClient(http2=True) as client:
         responses = await asyncio.gather(*[client.get(url, verify=False) for _ in range(10)])
         texts = [await res.text() for res in responses]
-        pool = client.connector.pools[":default"]
+        open_connections = len(client.connector.pools[":default"].connections)
 
     for res, text in zip(responses, texts):
         assert res.status_code == 200
         assert res.http_version == "2"
         assert text == "Hello World"
 
-    assert len(pool.connections) == 1
+    assert open_connections == 1
 
 
 @pytest.mark.asyncio
@@ -352,13 +352,13 @@ async def test_h2_custom_config_reaches_live_connection(http2_serv):
         pool = client.connector.pools[":default"]
         connection = next(iter(pool.connections.values()))
 
-    for res, text in results:
-        assert res.status_code == 200
-        assert res.http_version == "2"
-        assert text == "Hello World"
+        for res, text in results:
+            assert res.status_code == 200
+            assert res.http_version == "2"
+            assert text == "Hello World"
 
-    assert connection.h2handler.http2_config == config
-    assert connection.h2handler._max_streams == 2
+        assert connection.h2handler.http2_config == config
+        assert connection.h2handler._max_streams == 2
 
 
 @pytest.mark.asyncio
@@ -375,9 +375,9 @@ async def test_h2_flow_control_large_body(http2_serv):
     async with aiosonic.HTTPClient() as client:
         res = await client.post(url, data=body, verify=False, http2=True)
 
-    assert res.status_code == 200
-    assert res.http_version == "2"
-    assert await res.content() == body
+        assert res.status_code == 200
+        assert res.http_version == "2"
+        assert await res.content() == body
 
 
 # Unit tests for HTTP2Handler with mocked components
@@ -732,6 +732,17 @@ async def test_request_rejected_when_connection_is_closing(mocker):
 
     with pytest.raises(ConnectionDisconnected):
         await handler.request([], b"")
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_h2_closing_client_fails_pending_stream_instead_of_hanging(http2_serv):
+    """Reading a streamed HTTP/2 response whose client was closed raises instead of waiting forever."""
+    client = aiosonic.HTTPClient(http2=True)
+    async with client.stream("GET", f"{http2_serv}/never-ends", verify=False) as res:
+        await client.aclose()
+        with pytest.raises(ConnectionDisconnected):
+            await asyncio.wait_for(res.content(), 5)
 
 
 @pytest.mark.asyncio
