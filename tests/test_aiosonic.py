@@ -1043,6 +1043,22 @@ def test_cookie_jar_merges_responses_and_sends_all_cookies():
 
     assert headers["Cookie"] == "a=1; b=2"
 
+    client._save_new_cookies("example.com", _response_setting_cookie("a=; Max-Age=0"))
+    headers = HttpHeaders()
+    client._add_cookies_to_request("example.com", headers)
+    assert headers["Cookie"] == "b=2"
+
+
+def test_redirect_same_host_keeps_cookies_given_by_the_user():
+    """Cookies of the request headers are kept on a same host redirect, together with the stored ones."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("login=ok"))
+    headers = HttpHeaders({"Cookie": "token=abc"})
+
+    _follow_redirect(client, headers, "http://example.com/login", "/home")
+
+    assert headers["Cookie"] == "token=abc; login=ok"
+
 
 def test_redirect_same_host_sends_cookies_set_by_the_redirect():
     """A cookie set by a redirect response is sent in the next hop even if the request already had cookies."""

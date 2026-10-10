@@ -739,7 +739,7 @@ async def test_request_rejected_when_connection_is_closing(mocker):
 async def test_h2_closing_client_fails_pending_stream_instead_of_hanging(http2_serv):
     """Reading a streamed HTTP/2 response whose client was closed raises instead of waiting forever."""
     client = aiosonic.HTTPClient(http2=True)
-    async with client.stream("GET", f"{http2_serv}/sample.png", verify=False) as res:
+    async with client.stream("GET", f"{http2_serv}/never-ends", verify=False) as res:
         await client.aclose()
         with pytest.raises(ConnectionDisconnected):
             await asyncio.wait_for(res.content(), 5)

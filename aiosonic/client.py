@@ -10,6 +10,7 @@ from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
 from datetime import timedelta
+from email.utils import parsedate_to_datetime
 from functools import lru_cache, partial
 from http import HTTPStatus, cookies
 from inspect import isawaitable
@@ -19,7 +20,7 @@ from json import loads
 from os.path import basename
 from secrets import token_hex
 from ssl import SSLContext
-from time import perf_counter
+from time import perf_counter, time
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
 
@@ -100,7 +101,8 @@ class HttpResponse:
       * **history** (List[:class:`HttpResponse`]): the redirect responses followed to get this one, oldest
         first. They are already closed, so with ``stream=True`` their bodies are not available.
       * **elapsed** (:class:`datetime.timedelta`): time from sending the request until the response was
-        received, including its body unless ``stream=True``.
+        received. It includes the body only when it was read before returning the response, which is not the
+        case with ``stream=True``, HTTP/2 or chunked HTTP/1.1 responses.
       * **links** (Dict[str, Dict[str, str]]): the parsed ``Link`` headers, by their ``rel`` (or their url
         when they have none), each one with its ``url`` and parameters.
     """
@@ -1109,7 +1111,7 @@ class HTTPClient:
             if self.event_hooks["request"]:
                 await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
             proxy = self.proxy
-            if proxy is None and self.trust_env:
+            if proxy is None and self.trust_env and not getattr(self.connector, "uds", None):
                 proxy = proxy_from_environment(urlparsed)
             started_at = perf_counter()
             headers_data = partial(
@@ -1204,7 +1206,8 @@ class HTTPClient:
         """Close the connections of the connector.
 
         It does not wait for responses that are still being read: their connections are closed, so reading them
-        afterwards fails. The client can still be used, as connections are opened again when needed.
+        afterwards fails. The client can still be used, as connections are opened again when needed, unless the
+        connector's resolver can not be used once closed (like :class:`aiosonic.resolver.AsyncResolver`).
         """
         await self.connector.cleanup()
 
@@ -1275,7 +1278,7 @@ class HTTPClient:
             pass
 
         if self.handle_cookies:
-            self._add_cookies_to_request(str(new_urlparsed.hostname), headers, replace=True)
+            self._add_cookies_to_request(str(new_urlparsed.hostname), headers, merge=True)
 
         return new_urlparsed, method, body, transfer_chunked, max_redirects
 
@@ -1291,26 +1294,58 @@ class HTTPClient:
         except TimeoutException:
             return False
 
-    def _add_cookies_to_request(self, host: str, headers: HeadersType, replace: bool = False):
+    def _add_cookies_to_request(self, host: str, headers: HeadersType, merge: bool = False):
         """Add the stored cookies of a host to the request as a single ``Cookie`` header.
 
         Args:
             host (str): The host whose cookies are sent.
             headers (HeadersType): The headers of the request, modified in place.
-            replace (bool): Override a ``Cookie`` header already present, instead of leaving it as is.
+            merge (bool): Merge the stored cookies into a ``Cookie`` header already present, overriding the
+                cookies with the same name, instead of leaving it as is.
         """
         host_cookies = self.cookies_map.get(host)
         if not host_cookies:
             return
-        if not replace and any(header.lower() == "cookie" for header, _ in http_parser.headers_iterator(headers)):
+        current = next(
+            (value for header, value in http_parser.headers_iterator(headers) if header.lower() == "cookie"), None
+        )
+        if current is not None and not merge:
             return
-        cookie_value = "; ".join(f"{name}={morsel.coded_value}" for name, morsel in host_cookies.items())
+        pairs = {}
+        for pair in (current or "").split(";"):
+            name, _, value = pair.strip().partition("=")
+            if name:
+                pairs[name] = value
+        pairs.update((name, morsel.coded_value) for name, morsel in host_cookies.items())
+        cookie_value = "; ".join(f"{name}={value}" for name, value in pairs.items())
         http_parser.add_header(headers, "Cookie", cookie_value, replace=True)
 
     def _save_new_cookies(self, host: str, response: HttpResponse):
-        """Merge the cookies set by a response into the stored cookies of a host."""
-        if response.cookies:
-            self.cookies_map.setdefault(host, cookies.SimpleCookie()).update(response.cookies)
+        """Merge the cookies set by a response into the stored cookies of a host, dropping the expired ones."""
+        if not response.cookies:
+            return
+        host_cookies = self.cookies_map.setdefault(host, cookies.SimpleCookie())
+        for name, morsel in response.cookies.items():
+            if _cookie_expired(morsel):
+                host_cookies.pop(name, None)
+            else:
+                host_cookies[name] = morsel
+
+
+def _cookie_expired(morsel: cookies.Morsel) -> bool:
+    max_age = morsel["max-age"]
+    if max_age:
+        try:
+            return int(max_age) <= 0
+        except ValueError:
+            return False
+    expires = morsel["expires"]
+    if expires:
+        try:
+            return parsedate_to_datetime(expires).timestamp() <= time()
+        except (TypeError, ValueError):
+            return False
+    return False
 
 
 async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext):

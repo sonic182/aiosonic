@@ -13,6 +13,11 @@ function onRequest(req, res) {
     streamFile("sample.png", res);
     break;
 
+    case '/never-ends':
+      res.writeHead(200, { 'content-type': 'text/plain' });
+      res.write('partial body');
+    break;
+
     case '/posted':
       let data = ''
       req.on('data', (chunk) => {

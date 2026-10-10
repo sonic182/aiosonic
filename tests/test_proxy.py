@@ -179,6 +179,11 @@ def test_proxy_from_environment(monkeypatch):
     assert proxy_from_environment(urlparse("http://localhost:8000/")) is None
     assert proxy_from_environment(urlparse("http://localhost:9000/")) is not None
 
+    monkeypatch.delenv("http_proxy")
+    monkeypatch.setenv("all_proxy", "socks5://proxy.example:1080")
+    with pytest.raises(ValueError, match="socks5"):
+        proxy_from_environment(urlparse("http://a.example/"))
+
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)

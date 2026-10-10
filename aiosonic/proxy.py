@@ -50,6 +50,9 @@ def proxy_from_environment(urlparsed: ParseResult) -> Optional[Proxy]:
 
     Returns:
         Optional[Proxy]: The proxy to use, or None when the environment sets none for the url.
+
+    Raises:
+        ValueError: When the proxy of the url is not an ``http`` or ``https`` one (like ``socks5://``).
     """
     proxies = getproxies_environment()
     proxy_url = proxies.get(urlparsed.scheme) or proxies.get("all")
@@ -57,4 +60,7 @@ def proxy_from_environment(urlparsed: ParseResult) -> Optional[Proxy]:
         return None
     if proxy_bypass_environment(urlparsed.netloc.rpartition("@")[2], proxies):
         return None
+    scheme, sep, _ = proxy_url.partition("://")
+    if sep and scheme.lower() not in ("http", "https"):
+        raise ValueError(f"unsupported proxy scheme {scheme!r} in the environment, only http and https are supported")
     return Proxy.from_url(proxy_url)
