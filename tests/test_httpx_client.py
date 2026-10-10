@@ -1,5 +1,6 @@
 import base64
 from contextlib import AsyncExitStack
+from datetime import timedelta
 
 import pytest
 
@@ -52,6 +53,8 @@ async def test_status_errors_and_redirects(http_serv):
         response = await client.get("/get_redirect", follow_redirects=True)
         assert response.status_code == 200
         assert response.text == "Hello, world"
+        assert [hop.status_code for hop in response.history] == [302]
+        assert response.elapsed > timedelta(0)
 
 
 @pytest.mark.asyncio

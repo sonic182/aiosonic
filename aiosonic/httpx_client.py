@@ -15,6 +15,7 @@ Example:
 from __future__ import annotations
 from codecs import getincrementaldecoder
 from contextlib import aclosing, asynccontextmanager
+from datetime import timedelta
 from io import BytesIO, IOBase
 from json import loads
 from ssl import SSLContext
@@ -116,6 +117,18 @@ class Response:
     @property
     def request(self) -> Request:
         return Request(self._response.method, self._response.url)
+
+    @property
+    def history(self) -> List[Response]:
+        return [Response(hop) for hop in self._response.history]
+
+    @property
+    def elapsed(self) -> timedelta:
+        return self._response.elapsed
+
+    @property
+    def links(self) -> Dict[str, Dict[str, str]]:
+        return self._response.links
 
     @property
     def http_version(self) -> str:

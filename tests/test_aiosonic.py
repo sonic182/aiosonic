@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import platform
+from datetime import timedelta
 from http.cookies import SimpleCookie
 from urllib.parse import urlparse
 
@@ -815,6 +816,39 @@ async def test_stream_partial_read_without_aclose_discards_connection(http_serv)
 
         res = await client.get(http_serv)
         assert await res.text() == "Hello, world"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_response_history_and_elapsed(http_serv):
+    """A followed redirect leaves its responses in the history of the final response, and every one has elapsed."""
+    async with aiosonic.HTTPClient() as client:
+        res = await client.get(http_serv + "/get_redirect", follow=True)
+        assert res.status_code == 200
+        assert [hop.status_code for hop in res.history] == [302]
+        assert res.history[0].headers["Location"] == "/"
+        assert res.history[0].elapsed > timedelta(0)
+        assert res.elapsed > timedelta(0)
+
+        res = await client.get(http_serv)
+        assert res.history == []
+
+
+def test_response_links():
+    """The Link headers of a response are parsed by rel, or by url when they have none."""
+    response = HttpResponse()
+    assert response.links == {}
+
+    response._set_header(
+        "Link", '<https://api.example/p2>; rel="next", <https://api.example/p9>; rel=last; title="end"'
+    )
+    response._set_header("link", "<https://api.example/doc>")
+
+    assert response.links == {
+        "next": {"url": "https://api.example/p2", "rel": "next"},
+        "last": {"url": "https://api.example/p9", "rel": "last", "title": "end"},
+        "https://api.example/doc": {"url": "https://api.example/doc"},
+    }
 
 
 def _open_connections(connector):

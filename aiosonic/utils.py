@@ -1,13 +1,36 @@
 """Utils."""
 
 import logging
+import re
 from functools import lru_cache
-from typing import Optional
+from typing import Dict, List, Optional
 from urllib.parse import ParseResult
 
 from onecache import CacheDecorator
 
 from aiosonic.types import ParamsType
+
+_LINK_RGX = re.compile(r"<([^>]*)>([^<]*)")
+_LINK_PARAM_RGX = re.compile(r';\s*([^=;,\s]+)\s*(?:=\s*("[^"]*"|[^;,]*))?')
+
+
+def parse_link_header(value: str) -> List[Dict[str, str]]:
+    """Parse the value of a ``Link`` header.
+
+    Args:
+        value (str): The header value, with one or more comma separated links.
+
+    Returns:
+        List[Dict[str, str]]: One dict by link, with its ``url`` and its parameters (``rel``, ``title``...) by
+        lowercase name.
+    """
+    links = []
+    for url, params in _LINK_RGX.findall(value):
+        link = {"url": url}
+        for name, param_value in _LINK_PARAM_RGX.findall(params):
+            link[name.lower()] = param_value.strip().strip('"')
+        links.append(link)
+    return links
 
 
 @CacheDecorator()

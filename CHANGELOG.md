@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `HTTPClient(trust_env=True)` and `AsyncClient(trust_env=True)` use the proxies of the environment (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`) chosen by the url of each request; a proxy given to the client takes precedence. It is `False` by default.
+- `HttpResponse.history` (the followed redirect responses), `elapsed` and `links` (parsed `Link` headers), also available in the `AsyncClient` response.
 - `Proxy.from_url()` builds a proxy from a url with optional `user:password@` credentials, and `aiosonic.proxy.proxy_from_environment()` gives the proxy that the environment sets for a url.
 
 ### Changed

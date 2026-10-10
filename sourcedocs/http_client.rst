@@ -29,6 +29,13 @@ Event hooks
 
 - ``event_hooks`` runs ``"request"`` hooks as ``hook(method, url, headers)`` and ``"response"`` hooks as ``hook(response)``, sync or async, on every send, including redirects and retries. Request hooks get the live headers, including ``Authorization`` and ``Cookie``, so a hook that adds a header must be idempotent and a logging hook should not print them.
 
+Response details
+----------------
+
+- ``response.history`` lists the redirect responses followed to get the response, oldest first. They are already closed, so with ``stream=True`` their bodies are not available.
+- ``response.elapsed`` is a ``timedelta`` with the time from sending the request until the response was received, including its body unless ``stream=True``. Every response of ``history`` has its own.
+- ``response.links`` parses the ``Link`` headers into a dict by ``rel`` (or by url when there is none), each value with its ``url`` and parameters, e.g. ``response.links["next"]["url"]`` for pagination.
+
 Status errors
 -------------
 

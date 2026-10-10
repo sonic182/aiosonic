@@ -226,7 +226,10 @@ Differences with httpx
   limits connecting, waiting for the response and getting a connection from the pool, not reading the body,
   and the pool timeout can not be changed per request.
 - Not supported: ``cookies=``, ``cert=``, ``transport=``, ``limits=``, ``build_request()``, ``send()``,
-  ``response.history``, ``response.elapsed``, ``DigestAuth``, netrc and callable auths.
+  ``response.next_request``, ``DigestAuth``, netrc and callable auths.
+- ``response.history`` holds the followed redirect responses, which are already closed: with ``stream()`` their
+  bodies are not available. ``response.elapsed`` is the time until the response was received, including its
+  body unless it is streamed.
 - List values in ``params`` and ``data`` are not expanded into repeated fields; pass a list of tuples to
   ``params`` instead.
 - File objects given in ``files`` are closed after they are sent.

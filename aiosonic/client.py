@@ -9,6 +9,7 @@ import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
+from datetime import timedelta
 from functools import lru_cache, partial
 from http import HTTPStatus, cookies
 from inspect import isawaitable
@@ -18,6 +19,7 @@ from json import loads
 from os.path import basename
 from secrets import token_hex
 from ssl import SSLContext
+from time import perf_counter
 from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
 
@@ -47,7 +49,7 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger, url_without_userinfo
+from aiosonic.utils import get_debug_logger, parse_link_header, url_without_userinfo
 from aiosonic.version import VERSION
 from aiosonic_utils.structures import CaseInsensitiveDict
 
@@ -95,10 +97,18 @@ class HttpResponse:
       * **url** (str): url of the request that produced this response
       * **method** (str): http method of the request that produced this response
       * **reason** (str): reason phrase of the status line
+      * **history** (List[:class:`HttpResponse`]): the redirect responses followed to get this one, oldest
+        first. They are already closed, so with ``stream=True`` their bodies are not available.
+      * **elapsed** (:class:`datetime.timedelta`): time from sending the request until the response was
+        received, including its body unless ``stream=True``.
+      * **links** (Dict[str, Dict[str, str]]): the parsed ``Link`` headers, by their ``rel`` (or their url
+        when they have none), each one with its ``url`` and parameters.
     """
 
     def __init__(self):
         self.headers = HttpHeaders()
+        self.history: List[HttpResponse] = []
+        self.elapsed = timedelta(0)
         self.cookies = None
         self.raw_headers = []
         self.body = b""
@@ -180,6 +190,11 @@ class HttpResponse:
     def url(self) -> str:
         """Get the url of the request that produced this response, without credentials."""
         return url_without_userinfo(self._urlparsed) if self._urlparsed else ""
+
+    @property
+    def links(self) -> Dict[str, Dict[str, str]]:
+        value = ", ".join(val for key, val in self.raw_headers if key.lower() == "link")
+        return {link.get("rel") or link["url"]: link for link in parse_link_header(value)}
 
     @property
     def ok(self) -> bool:
@@ -1082,11 +1097,13 @@ class HTTPClient:
         verify_ssl = verify and self.verify_ssl
         http2 = http2 or self.http2
         reconnect_times = 3
+        history: List[HttpResponse] = []
         while reconnect_times > 0:
             # performance: skip building the hook url when no request hooks are registered
             if self.event_hooks["request"]:
                 await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
             proxy = self._proxy_for(urlparsed)
+            started_at = perf_counter()
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -1124,6 +1141,9 @@ class HTTPClient:
             except TimeoutException:
                 raise RequestTimeout()
 
+            response.elapsed = timedelta(seconds=perf_counter() - started_at)
+            response.history = history
+
             try:
                 await self._run_hooks("response", response)
             except BaseException:
@@ -1137,6 +1157,7 @@ class HTTPClient:
                 return response
 
             await response.aclose()
+            history = [*history, response]
             (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
                 current_urlparsed=urlparsed,
                 headers=headers,
