@@ -1206,11 +1206,7 @@ class HTTPClient:
         new_url_str = urljoin(current_url, location)
         new_urlparsed = http_parser.get_url_parsed(new_url_str)
 
-        # 5) cookies for new host (if enabled)
-        if self.handle_cookies:
-            self._add_cookies_to_request(str(new_urlparsed.hostname), headers)
-
-        # 6) switch method/body if required
+        # 5) switch method/body if required
         status = response.status_code
         original_method = method.upper()
 
@@ -1242,6 +1238,9 @@ class HTTPClient:
         except Exception:
             pass
 
+        if self.handle_cookies:
+            self._add_cookies_to_request(str(new_urlparsed.hostname), headers, replace=True)
+
         return new_urlparsed, method, body, transfer_chunked, max_redirects
 
     async def wait_requests(self, timeout: int = 30):
@@ -1256,18 +1255,26 @@ class HTTPClient:
         except TimeoutException:
             return False
 
-    def _add_cookies_to_request(self, host: str, headers: HeadersType):
-        """Add cookies to request."""
+    def _add_cookies_to_request(self, host: str, headers: HeadersType, replace: bool = False):
+        """Add the stored cookies of a host to the request as a single ``Cookie`` header.
+
+        Args:
+            host (str): The host whose cookies are sent.
+            headers (HeadersType): The headers of the request, modified in place.
+            replace (bool): Override a ``Cookie`` header already present, instead of leaving it as is.
+        """
         host_cookies = self.cookies_map.get(host)
-        if host_cookies and not any(header.lower() == "cookie" for header, _ in http_parser.headers_iterator(headers)):
-            cookies_str = host_cookies.output(header="Cookie:")
-            for cookie_data in cookies_str.split("\r\n"):
-                http_parser.add_header(headers, *cookie_data.split(": ", 1))
+        if not host_cookies:
+            return
+        if not replace and any(header.lower() == "cookie" for header, _ in http_parser.headers_iterator(headers)):
+            return
+        cookie_value = "; ".join(f"{name}={morsel.coded_value}" for name, morsel in host_cookies.items())
+        http_parser.add_header(headers, "Cookie", cookie_value, replace=True)
 
     def _save_new_cookies(self, host: str, response: HttpResponse):
-        """Save new cookies in map."""
+        """Merge the cookies set by a response into the stored cookies of a host."""
         if response.cookies:
-            self.cookies_map[host] = response.cookies
+            self.cookies_map.setdefault(host, cookies.SimpleCookie()).update(response.cookies)
 
 
 async def _proxy_connect(connection: Connection, proxy: Proxy, desturl: ParseResult, ssl_context: SSLContext):

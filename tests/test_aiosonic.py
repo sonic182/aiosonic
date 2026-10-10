@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import platform
+from http.cookies import SimpleCookie
 from urllib.parse import urlparse
 
 import pytest
@@ -883,3 +884,65 @@ def test_redirect_to_other_host_drops_credentials():
 
     assert "Authorization" not in headers and "Cookie" not in headers
     assert headers["X-Keep"] == "1"
+
+
+def _response_setting_cookie(set_cookie: str) -> HttpResponse:
+    response = HttpResponse()
+    response._update_cookies(("Set-Cookie", set_cookie))
+    return response
+
+
+def _redirect_response(status: int, location: str) -> HttpResponse:
+    response = HttpResponse()
+    response._set_response_initial(f"HTTP/1.1 {status} Found\r\n".encode())
+    response.headers["Location"] = location
+    return response
+
+
+def _follow_redirect(client, headers, current_url: str, location: str):
+    client._handle_redirect(
+        current_urlparsed=urlparse(current_url),
+        headers=headers,
+        response=_redirect_response(302, location),
+        max_redirects=5,
+        method="GET",
+        body=b"",
+        transfer_chunked=True,
+    )
+
+
+def test_cookie_jar_merges_responses_and_sends_all_cookies():
+    """Cookies of different responses are kept together and sent in one Cookie header without attributes."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("a=1; Path=/; Max-Age=60"))
+    client._save_new_cookies("example.com", _response_setting_cookie("b=2; Path=/"))
+    headers = HttpHeaders()
+
+    client._add_cookies_to_request("example.com", headers)
+
+    assert headers["Cookie"] == "a=1; b=2"
+
+
+def test_redirect_same_host_sends_cookies_set_by_the_redirect():
+    """A cookie set by a redirect response is sent in the next hop even if the request already had cookies."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client._save_new_cookies("example.com", _response_setting_cookie("sid=old"))
+    headers = HttpHeaders()
+    client._add_cookies_to_request("example.com", headers)
+    client._save_new_cookies("example.com", _response_setting_cookie("login=ok"))
+
+    _follow_redirect(client, headers, "http://example.com/login", "/home")
+
+    assert headers["Cookie"] == "sid=old; login=ok"
+
+
+def test_redirect_to_other_host_sends_its_own_cookies_only():
+    """After a cross host redirect the cookies of the first host are dropped and those of the new host are sent."""
+    client = aiosonic.HTTPClient(handle_cookies=True)
+    client.cookies_map["first.example"] = SimpleCookie("a=b")
+    client.cookies_map["other.example"] = SimpleCookie("sid=xyz")
+    headers = HttpHeaders({"Cookie": "a=b"})
+
+    _follow_redirect(client, headers, "http://first.example/", "http://other.example/x")
+
+    assert headers["Cookie"] == "sid=xyz"
