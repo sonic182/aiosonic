@@ -242,6 +242,7 @@ class Connection:
         key = connection_key(urlparsed)
 
         dns_info_copy = dns_info.copy()
+        uds = dns_info_copy.pop("uds", None)
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
@@ -257,10 +258,13 @@ class Connection:
                         pass
             else:
                 del dns_info_copy["server_hostname"]
-            port = default_port(urlparsed)
-            dns_info_copy["port"] = port
-
-            self.reader, self.writer = await open_connection(**dns_info_copy, ssl=ssl_context)
+            if uds:
+                self.reader, self.writer = await asyncio.open_unix_connection(
+                    uds, ssl=ssl_context, server_hostname=dns_info_copy.get("server_hostname")
+                )
+            else:
+                dns_info_copy["port"] = default_port(urlparsed)
+                self.reader, self.writer = await open_connection(**dns_info_copy, ssl=ssl_context)
 
             self.temp_key = key
             await self._connection_made()

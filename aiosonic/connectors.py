@@ -47,6 +47,9 @@ class TCPConnector:
         http2_config (Optional[Http2Config]):
             HTTP/2 protocol tuning (flow-control window, max concurrent streams),
             shared by every pool this connector manages. Defaults to Http2Config().
+        uds (Optional[str]):
+            Path of a Unix domain socket to connect to instead of the host and port of each url, which are
+            still used for the ``Host`` header. Not available on Windows and not combinable with proxies.
     """
 
     def __init__(
@@ -60,9 +63,11 @@ class TCPConnector:
         use_dns_cache=True,
         http2: bool = False,
         http2_config: Optional[Http2Config] = None,
+        uds: Optional[str] = None,
     ):
         from aiosonic.connection import Connection  # avoid circular dependency
 
+        self.uds = uds
         self.connection_cls = connection_cls or Connection
         self.pool_cls = pool_cls or (Http2MultiplexPool if http2 else SmartPool)
         self.timeouts = timeouts or Timeouts()
@@ -118,7 +123,10 @@ class TCPConnector:
         try:
             if (timeouts.sock_connect is None or timeouts.sock_connect > 0) and conn.reuse(urlparsed, verify):
                 return conn
-            dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
+            if self.uds:
+                dns_info = {"hostname": urlparsed.hostname, "uds": self.uds, "flags": 0}
+            else:
+                dns_info = await self.__resolve_dns(urlparsed.hostname, urlparsed.port)
             await wait_for(
                 conn.connect(urlparsed, dns_info, verify, ssl, http2),
                 timeout=timeouts.sock_connect,

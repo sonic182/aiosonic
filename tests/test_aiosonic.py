@@ -1,7 +1,10 @@
 import asyncio
 import base64
 import json
+import os
 import platform
+import sys
+import tempfile
 from datetime import timedelta
 from http.cookies import SimpleCookie
 from urllib.parse import urlparse
@@ -849,6 +852,33 @@ def test_response_links():
         "last": {"url": "https://api.example/p9", "rel": "last", "title": "end"},
         "https://api.example/doc": {"url": "https://api.example/doc"},
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.skipif(sys.platform == "win32", reason="unix sockets are not available on windows")
+async def test_unix_socket_connector():
+    """With ``uds`` the requests go through the unix socket, keeping the host of the url in the Host header."""
+    requests = []
+
+    async def serve(reader, writer):
+        while True:
+            head = await reader.readuntil(b"\r\n\r\n")
+            requests.append(head.decode())
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+            await writer.drain()
+
+    with tempfile.TemporaryDirectory() as directory:
+        path = os.path.join(directory, "s.sock")
+        server = await asyncio.start_unix_server(serve, path)
+        async with aiosonic.HTTPClient(TCPConnector(uds=path)) as client:
+            for _ in range(2):
+                res = await client.get("http://docker.invalid/ping")
+                assert (res.status_code, await res.text()) == (200, "ok")
+        server.close()
+
+    assert len(requests) == 2
+    assert requests[0].startswith("GET /ping HTTP/1.1\r\n") and "HOST: docker.invalid\r\n" in requests[0]
 
 
 def _open_connections(connector):

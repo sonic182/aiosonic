@@ -19,6 +19,11 @@ Proxies
 - ``trust_env=True`` takes the proxy of each request from the environment: ``HTTP_PROXY``, ``HTTPS_PROXY`` or ``ALL_PROXY``, chosen by the scheme of the url, with ``NO_PROXY`` excluding hosts (``example.com``, ``.example.com`` or ``host:port``). Credentials in the proxy url are used as Basic proxy authentication. A ``proxy`` given to the client wins over the environment, and it is ``False`` by default so that the environment never reroutes requests silently.
 - Only HTTP proxies are supported, with plain ``http://`` proxy urls.
 
+Unix domain sockets
+-------------------
+
+- ``HTTPClient(TCPConnector(uds="/var/run/docker.sock"))`` sends every request through that Unix domain socket instead of resolving the host of the url, which is only used for the ``Host`` header (``await client.get("http://localhost/containers/json")``). It is not available on Windows and can not be combined with proxies.
+
 API defaults
 ------------
 
