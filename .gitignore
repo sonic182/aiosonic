@@ -26,3 +26,4 @@ env/
 docs/
 .venv/
 tests/node_modules/
+.tool-versions
