@@ -41,7 +41,7 @@ from aiosonic.exceptions import (
 )
 from aiosonic.http2 import Http2Config
 from aiosonic.multipart import MultipartFile, MultipartForm
-from aiosonic.proxy import Proxy
+from aiosonic.proxy import Proxy, proxy_from_environment
 from aiosonic.resolver import get_loop
 from aiosonic.timeout import Timeouts
 
@@ -727,6 +727,9 @@ class HTTPClient:
             (``"api.example.com"``, or ``"api.example.com:8443"`` to match a port). Requests to a host
             that is not in the dict get no credentials. Per-request ``auth`` takes precedence.
         * **follow**: Default for the ``follow`` argument of requests.
+        * **trust_env**: Flag to use the proxies of the environment (``HTTP_PROXY``, ``HTTPS_PROXY``,
+            ``ALL_PROXY`` and ``NO_PROXY``) for the requests, chosen by the url of each request. A ``proxy``
+            given to the client takes precedence. Defaults to False.
         * **event_hooks**: Dict with the ``"request"`` and ``"response"`` keys, each one a list of
             sync or async callables. Request hooks are called as ``hook(method, url, headers)``
             before sending each request (also after redirects), and response hooks as
@@ -746,6 +749,7 @@ class HTTPClient:
         auths: Optional[Dict[str, AuthType]] = None,
         follow: bool = False,
         event_hooks: Optional[Dict[str, List[Callable]]] = None,
+        trust_env: bool = False,
     ):
         """Initialize client options."""
         event_hooks = event_hooks or {}
@@ -758,6 +762,7 @@ class HTTPClient:
         self.cookies_map: Dict[str, cookies.SimpleCookie] = {}
         self.verify_ssl = verify_ssl
         self.proxy = proxy
+        self.trust_env = trust_env
         self.max_redirects = max_redirects
         self.http2 = http2
         self.max_decompressed_size = max_decompressed_size
@@ -1081,6 +1086,7 @@ class HTTPClient:
             # performance: skip building the hook url when no request hooks are registered
             if self.event_hooks["request"]:
                 await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
+            proxy = self._proxy_for(urlparsed)
             headers_data = partial(
                 _prepare_request_headers,
                 url=urlparsed,
@@ -1089,7 +1095,7 @@ class HTTPClient:
                 params=params,
                 multipart=multipart,
                 boundary=boundary,
-                proxy=self.proxy,
+                proxy=proxy,
             )
             try:
                 response = await wait_for(
@@ -1102,7 +1108,7 @@ class HTTPClient:
                         ssl,
                         timeouts,
                         http2,
-                        self.proxy,
+                        proxy,
                         transfer_chunked=transfer_chunked,
                         max_decompressed_size=max_decompressed_size,
                         method=method,
@@ -1158,6 +1164,13 @@ class HTTPClient:
             yield response
         finally:
             await response.aclose()
+
+    def _proxy_for(self, urlparsed: ParseResult) -> Optional[Proxy]:
+        if self.proxy is not None:
+            return self.proxy
+        if self.trust_env:
+            return proxy_from_environment(urlparsed)
+        return None
 
     async def _run_hooks(self, name: str, *args):
         for hook in self.event_hooks[name]:

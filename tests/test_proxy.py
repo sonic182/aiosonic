@@ -1,6 +1,8 @@
 """Test proxy requests."""
 
+import socket
 import sys
+from base64 import b64encode
 from urllib.parse import urlparse
 
 import pytest
@@ -9,7 +11,7 @@ from aiosonic import HTTPClient
 from aiosonic.client import HttpResponse, _do_request, _proxy_connect, _update_transport
 from aiosonic.connectors import TCPConnector
 from aiosonic.pools import PoolConfig
-from aiosonic.proxy import Proxy
+from aiosonic.proxy import Proxy, proxy_from_environment
 from aiosonic.timeout import Timeouts
 
 
@@ -152,3 +154,58 @@ async def test_update_transport_uses_destination_hostname(mocker):
         server_side=False,
         server_hostname="second.example",
     )
+
+
+def _clear_proxy_env(monkeypatch):
+    for name in ("http_proxy", "https_proxy", "all_proxy", "no_proxy"):
+        monkeypatch.delenv(name, raising=False)
+        monkeypatch.delenv(name.upper(), raising=False)
+
+
+def test_proxy_from_environment(monkeypatch):
+    """The proxy of a url comes from the environment by scheme, with its credentials, unless NO_PROXY matches."""
+    _clear_proxy_env(monkeypatch)
+    assert proxy_from_environment(urlparse("http://a.example/")) is None
+
+    monkeypatch.setenv("http_proxy", "http://user:p%40ss@proxy.example:3128")
+    monkeypatch.setenv("https_proxy", "secure-proxy.example:3129")
+    proxy = proxy_from_environment(urlparse("http://a.example/"))
+    assert (proxy.host, proxy.auth) == ("http://proxy.example:3128", b64encode(b"user:p@ss"))
+    proxy = proxy_from_environment(urlparse("https://a.example/"))
+    assert (proxy.host, proxy.auth) == ("http://secure-proxy.example:3129", None)
+
+    monkeypatch.setenv("no_proxy", ".internal.example,localhost:8000")
+    assert proxy_from_environment(urlparse("http://api.internal.example/")) is None
+    assert proxy_from_environment(urlparse("http://localhost:8000/")) is None
+    assert proxy_from_environment(urlparse("http://localhost:9000/")) is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_trust_env_proxy(http_serv, proxy_serv, monkeypatch):
+    """Proxies of the environment are only used with trust_env, NO_PROXY skips them and a given proxy wins."""
+    _clear_proxy_env(monkeypatch)
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        dead_proxy = f"http://127.0.0.1:{sock.getsockname()[1]}"
+    monkeypatch.setenv("http_proxy", dead_proxy)
+
+    async with HTTPClient() as client:
+        assert await (await client.get(http_serv)).text() == "Hello, world"
+
+    async with HTTPClient(trust_env=True) as client:
+        with pytest.raises(OSError):
+            await client.get(http_serv)
+
+    monkeypatch.setenv("no_proxy", "127.0.0.1")
+    async with HTTPClient(trust_env=True) as client:
+        assert await (await client.get(http_serv)).text() == "Hello, world"
+
+    monkeypatch.delenv("no_proxy")
+    async with HTTPClient(trust_env=True, proxy=Proxy(*proxy_serv)) as client:
+        assert await (await client.get(http_serv)).text() == "Hello, world"
+
+    proxy_url, credentials = proxy_serv
+    monkeypatch.setenv("http_proxy", proxy_url.replace("http://", f"http://{credentials}@"))
+    async with HTTPClient(trust_env=True) as client:
+        assert await (await client.get(http_serv)).text() == "Hello, world"

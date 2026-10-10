@@ -88,8 +88,11 @@ Argument             Meaning
 ``http2``            Whether to use HTTP/2.
 ``event_hooks``      ``{"request": [...], "response": [...]}``, see `Event hooks`_.
 ``proxy``            Proxy url (``"http://user:password@proxy:8080"``), or an :class:`aiosonic.proxy.Proxy`.
+``trust_env``        Whether to use the proxies of the environment (``HTTP_PROXY``, ``HTTPS_PROXY``, ``ALL_PROXY``
+                     and ``NO_PROXY``) when no ``proxy`` is given. Unlike httpx, it is ``False`` by default.
 ``http_client``      An :class:`aiosonic.HTTPClient` to send the requests with, to share its connections. It
-                     can not be combined with ``event_hooks`` or ``proxy``, and ``aclose()`` does not close it.
+                     can not be combined with ``event_hooks``, ``proxy`` or ``trust_env``, and ``aclose()`` does
+                     not close it.
                      The pool timeout and cookie handling are then the ones of that client.
 ==================== ==========================================================================================
 

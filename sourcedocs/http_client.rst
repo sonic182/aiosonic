@@ -12,6 +12,13 @@ Authentication
 - ``auths`` maps hosts to credentials (``"api.example.com"``, or ``"api.example.com:8443"`` to match a port), so a host that is not in the map never gets them. Each value is a ``(user, password)`` tuple, ``BasicAuth``, ``BearerAuth`` or any ``Auth`` subclass. Digest and netrc authentication are not supported.
 - A request is authenticated with, in this order: its ``auth=`` argument, the ``user:password@`` part of its url, or the ``auths`` entry of its host. The auth is resolved once, for the host of the original request, so redirects to other hosts do not get it.
 
+Proxies
+-------
+
+- ``proxy=Proxy(...)`` sends every request through that proxy.
+- ``trust_env=True`` takes the proxy of each request from the environment: ``HTTP_PROXY``, ``HTTPS_PROXY`` or ``ALL_PROXY``, chosen by the scheme of the url, with ``NO_PROXY`` excluding hosts (``example.com``, ``.example.com`` or ``host:port``). Credentials in the proxy url are used as Basic proxy authentication. A ``proxy`` given to the client wins over the environment, and it is ``False`` by default so that the environment never reroutes requests silently.
+- Only HTTP proxies are supported, with plain ``http://`` proxy urls.
+
 API defaults
 ------------
 

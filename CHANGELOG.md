@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `HTTPClient(trust_env=True)` and `AsyncClient(trust_env=True)` use the proxies of the environment (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`) chosen by the url of each request; a proxy given to the client takes precedence. It is `False` by default.
+- `Proxy.from_url()` builds a proxy from a url with optional `user:password@` credentials, and `aiosonic.proxy.proxy_from_environment()` gives the proxy that the environment sets for a url.
+
 ### Changed
 - `async with HTTPClient()` closes the connections of the connector that the client created when the block ends; a connector given to the client is left open.
 - `HTTPClient.aclose()` and `TCPConnector.cleanup()` close the connections of responses that are still being read instead of waiting for them, and the client stays usable afterwards.
