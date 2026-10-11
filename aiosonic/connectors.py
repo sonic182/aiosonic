@@ -122,6 +122,7 @@ class TCPConnector:
         """Process connection after acquisition."""
         try:
             if (timeouts.sock_connect is None or timeouts.sock_connect > 0) and conn.reuse(urlparsed, verify):
+                conn.reused = True
                 return conn
             if self.uds:
                 dns_info = {"hostname": urlparsed.hostname, "uds": self.uds, "flags": 0}

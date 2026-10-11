@@ -6,6 +6,7 @@ from typing import Optional
 import pytest
 
 from aiosonic import HTTPClient, VERSION
+from aiosonic.exceptions import ConnectionDisconnected
 from aiosonic.proxy import Proxy
 
 
@@ -60,3 +61,89 @@ async def test_request_headers_and_query_on_wire(mode: str) -> None:
             assert fields[b"Proxy-Authorization"] == b"Basic dXNlcjpwYXNzd29yZA=="
         else:
             assert b"Proxy-Authorization" not in fields
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "case, retried",
+    [("get_reused", True), ("post_reused", False), ("put_iterator_body", False), ("fresh_connection", False)],
+)
+async def test_retry_on_dropped_connection(case: str, retried: bool) -> None:
+    """Send again only idempotent, replayable requests whose reused keep-alive connection dropped."""
+    connections = []
+
+    async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        connections.append(writer)
+        try:
+            if len(connections) == 1 and case != "fresh_connection":
+                await reader.readuntil(b"\r\n\r\n")
+                writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+                await writer.drain()
+                await reader.readuntil(b"\r\n\r\n")
+            elif len(connections) > 1:
+                await reader.readuntil(b"\r\n\r\n")
+                writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 7\r\n\r\nretried")
+                await writer.drain()
+            else:
+                await reader.readuntil(b"\r\n\r\n")
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    def chunks():
+        yield b"body"
+
+    server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    async with server:
+        url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/"
+        async with HTTPClient() as client:
+            if case != "fresh_connection":
+                assert await (await client.get(url)).text() == "ok"
+            requests = {
+                "get_reused": lambda: client.get(url),
+                "post_reused": lambda: client.post(url, data=b"x"),
+                "put_iterator_body": lambda: client.put(url, data=chunks()),
+                "fresh_connection": lambda: client.get(url),
+            }
+            if retried:
+                assert await (await requests[case]()).text() == "retried"
+            else:
+                with pytest.raises(ConnectionDisconnected) as exc_info:
+                    await requests[case]()
+                assert exc_info.value.reused_connection is (case != "fresh_connection")
+
+    assert len(connections) == (2 if retried else 1)
+
+
+@pytest.mark.asyncio
+async def test_retries_exhausted_on_stale_connections() -> None:
+    """Report the last drop when every retry gets another stale keep-alive connection."""
+    opened = asyncio.Event()
+    connections = []
+
+    async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        connections.append(writer)
+        if len(connections) == 3:
+            opened.set()
+        try:
+            await reader.readuntil(b"\r\n\r\n")
+            await opened.wait()
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+            await writer.drain()
+            await reader.readuntil(b"\r\n\r\n")
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    async with server:
+        url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/"
+        async with HTTPClient() as client:
+            responses = await asyncio.gather(*[client.get(url) for _ in range(3)])
+            assert [await response.text() for response in responses] == ["ok"] * 3
+            with pytest.raises(ConnectionDisconnected, match="retried 3 times") as exc_info:
+                await client.get(url)
+
+    assert exc_info.value.reused_connection is True
+    assert isinstance(exc_info.value.__cause__, ConnectionDisconnected)
+    assert len(connections) == 3

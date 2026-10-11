@@ -47,6 +47,7 @@ class Connection:
             data has been read.
         temp_key (Optional[str]): A temporary key used during the connection setup process.
         requests_count (int): The count of requests made over the connection.
+        reused (bool): Whether the last acquisition reused an open socket instead of opening a new one.
         h2conn (Optional[h2.connection.H2Connection]): An instance of the H2Connection
             class representing the HTTP/2 connection.
         h2handler (Optional[Http2Handler]): An instance of the Http2Handler class
@@ -71,6 +72,7 @@ class Connection:
         self.blocked = False
         self.temp_key: Optional[str] = None
         self.requests_count = 0
+        self.reused = False
         self.background_tasks = set()
         self._connect_lock = asyncio.Lock()
 
@@ -246,7 +248,8 @@ class Connection:
         dns_info_copy["server_hostname"] = dns_info_copy.pop("hostname")
         dns_info_copy["flags"] = dns_info_copy["flags"] | keepalive_flags()
 
-        if not self.reuse(urlparsed, verify):
+        self.reused = self.reuse(urlparsed, verify)
+        if not self.reused:
             self.close()
 
             if urlparsed.scheme in ("https", "wss"):

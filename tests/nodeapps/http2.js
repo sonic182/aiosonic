@@ -1,5 +1,5 @@
 
-const { createSecureServer } = require('http2');
+const { createSecureServer, constants } = require('http2');
 const { readFileSync, createReadStream } = require('fs');
 
 const cert = readFileSync('tests/files/certs/server.cert');
@@ -16,6 +16,10 @@ function onRequest(req, res) {
     case '/never-ends':
       res.writeHead(200, { 'content-type': 'text/plain' });
       res.write('partial body');
+    break;
+
+    case '/reset':
+      req.stream.close(constants.NGHTTP2_INTERNAL_ERROR);
     break;
 
     case '/posted':

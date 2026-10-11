@@ -747,6 +747,19 @@ async def test_h2_closing_client_fails_pending_stream_instead_of_hanging(http2_s
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(30)
+async def test_h2_stream_reset_leaves_client_usable(http2_serv):
+    """A reset stream is retried once on a new connection, and later requests still work."""
+    async with aiosonic.HTTPClient(http2=True) as client:
+        assert (await client.get(http2_serv, verify=False)).status_code == 200
+        with pytest.raises(ConnectionDisconnected) as exc_info:
+            await client.get(f"{http2_serv}/reset", verify=False)
+        assert exc_info.value.reused_connection is False
+        res = await asyncio.wait_for(client.get(http2_serv, verify=False), 5)
+        assert await res.text() == "Hello World"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
 async def test_h2_stream_aclose_releases_slot(http2_serv):
     """Leaving a stream block early frees the only HTTP/2 stream slot so the next request completes."""
     config = Http2Config(max_streams=1)

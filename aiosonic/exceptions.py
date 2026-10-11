@@ -52,7 +52,15 @@ class MaxRedirects(AiosonicError):
 
 # Reconnect
 class ConnectionDisconnected(AiosonicError):
-    pass
+    """Raised when the connection is closed before the response is received.
+
+    Attributes:
+        reused_connection (bool): Whether the request was sent over a reused keep-alive connection.
+    """
+
+    def __init__(self, *args, reused_connection: bool = False) -> None:
+        super().__init__(*args)
+        self.reused_connection = reused_connection
 
 
 # HTTP2
