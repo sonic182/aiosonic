@@ -27,3 +27,4 @@ docs/
 .venv/
 tests/node_modules/
 .tool-versions
+.claude/settings.local.json
