@@ -37,22 +37,37 @@ Fix any lint errors or test failures before considering the task done.
 - **Comments**: DO NOT ADD ***ANY*** COMMENTS in `aiosonic` package functions or classes
 - **Formatting**: Ruff formatter (119 char lines, 4 space indent, no trailing whitespace)
 
-## Module Map
+## Project Layout
 
-All paths are under `aiosonic/` unless noted.
-
-- `client.py`: `HTTPClient`, `HttpResponse`, `HttpHeaders`, request building and the redirect/proxy flow
-- `connectors.py`: `TCPConnector`, which owns the pools (a `:default` pool plus optional per-host ones from `pool_configs`) and DNS resolution (`resolver.py`)
-- `pools.py`: `SmartPool` (default), `CyclicQueuePool`, `WsPool`, `Http2MultiplexPool` (default with `http2=True`)
-- `connection.py`: `Connection`, a single socket; HTTP/2 goes through `Http2Handler` in `http2.py`
-- `base_client.py`: `BaseClient`, a wrapper over `HTTPClient` for building API clients
-- `httpx_client.py`: `AsyncClient`, an httpx-compatible client built on `BaseClient`
-- `web_socket_client.py`: `WebSocketClient`, `WebSocketConnection`, `Message`, `ProtocolHandler`
-- `sse_client.py`, `sse_config.py`: `SSEClient`, `SSEConnection`
-- `http_parser.py`, `multipart.py`, `compression.py`: header/body encoding, multipart forms, bounded decompression
-- `auth.py`, `proxy.py`, `timeout.py`: `BasicAuth`/`BearerAuth`, `Proxy`, `Timeouts`
-- `exceptions.py`: every custom exception, rooted at `AiosonicError`
-- `aiosonic_utils/structures.py`: `CaseInsensitiveDict`
+```text
+aiosonic/
+├── aiosonic/                  # library package
+│   ├── client.py              # HTTPClient, HttpResponse, HttpHeaders; request building, redirects, proxy
+│   ├── connectors.py          # TCPConnector: owns the pools (":default" + per-host from pool_configs), DNS
+│   ├── resolver.py            # ThreadedResolver, AsyncResolver (DefaultResolver picks one)
+│   ├── pools.py               # BasePool -> SmartPool (default), CyclicQueuePool, WsPool, Http2MultiplexPool
+│   ├── connection.py          # Connection: one socket, created and held by a pool
+│   ├── http2.py               # Http2Handler, Http2Config
+│   ├── base_client.py         # BaseClient: wrapper over HTTPClient for building API clients
+│   ├── httpx_client.py        # AsyncClient (subclass of BaseClient) with the httpx API
+│   ├── web_socket_client.py   # WebSocketClient, WebSocketConnection, Message, ProtocolHandler
+│   ├── sse_client.py          # SSEClient, SSEConnection (config in sse_config.py)
+│   ├── http_parser.py         # header validation, body encoding
+│   ├── multipart.py           # MultipartForm, MultipartFile
+│   ├── compression.py         # bounded decompression
+│   ├── auth.py                # BasicAuth, BearerAuth
+│   ├── proxy.py, timeout.py   # Proxy, Timeouts
+│   └── exceptions.py          # all custom exceptions, rooted at AiosonicError
+├── aiosonic_utils/
+│   └── structures.py          # CaseInsensitiveDict
+├── tests/
+│   ├── conftest.py            # fixtures, starts the Node helper servers
+│   ├── test_*.py
+│   ├── nodeapps/              # Node.js helper servers (see below)
+│   └── files/                 # certs/ and sample files
+├── scripts/                   # benchmarks and profiling
+└── sourcedocs/                # Sphinx sources
+```
 
 ## Test Setup
 
