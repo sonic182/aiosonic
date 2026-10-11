@@ -37,114 +37,22 @@ Fix any lint errors or test failures before considering the task done.
 - **Comments**: DO NOT ADD ***ANY*** COMMENTS in `aiosonic` package functions or classes
 - **Formatting**: Ruff formatter (119 char lines, 4 space indent, no trailing whitespace)
 
-## HTTP Client Architecture
+## Module Map
 
-```mermaid
-classDiagram
-    class HTTPClient {
-        +get()
-        +post()
-        +put()
-        +patch()
-        +delete()
-        +request()
-    }
+All paths are under `aiosonic/` unless noted.
 
-    class BaseClient {
-        +get()
-        +post()
-        +put()
-        +patch()
-        +delete()
-        +request()
-    }
-
-    class TCPConnector {
-        +pools
-        +resolver
-        +dns_cache
-        +acquire()
-    }
-
-    class Connection {
-        +connect()
-        +write()
-        +read()
-        +keep_alive()
-    }
-
-    class BasePool {
-        <<abstract>>
-        +acquire()
-        +release()
-        +cleanup()
-    }
-
-    class SmartPool {
-        +acquire()
-        +release()
-        +cleanup()
-        +free_conns()
-    }
-
-    class HttpResponse {
-        +status_code
-        +headers
-        +content()
-        +text()
-        +json()
-    }
-
-    class HttpHeaders {
-        +__getitem__()
-        +__setitem__()
-        +get()
-    }
-
-    class WebSocketClient {
-        +connect()
-        +close()
-    }
-
-    class WebSocketConnection {
-        +send()
-        +receive()
-        +ping()
-    }
-
-    class Message {
-        +type
-        +data
-        +raw_data
-        +opcode
-    }
-
-    class ProtocolHandler {
-        <<abstract>>
-        +name
-        +encode()
-        +decode()
-    }
-
-    class SSEClient {
-        +connect()
-    }
-
-    class SSEConnection {
-        +__aiter__()
-        +close()
-    }
-
-    HTTPClient ..> TCPConnector : uses
-    TCPConnector "1" --> "*" BasePool : manages
-    TCPConnector "1" --> "*" Connection : manages
-    BasePool <|-- SmartPool
-    HttpResponse --> HttpHeaders
-    WebSocketClient --> WebSocketConnection : creates
-    WebSocketConnection ..> Message : yields
-    ProtocolHandler <|.. WebSocketConnection
-    SSEClient --> SSEConnection : creates
-```
+- `client.py`: `HTTPClient`, `HttpResponse`, `HttpHeaders`, request building and the redirect/proxy flow
+- `connectors.py`: `TCPConnector`, which owns the pools (a `:default` pool plus optional per-host ones from `pool_configs`) and DNS resolution (`resolver.py`)
+- `pools.py`: `SmartPool` (default), `CyclicQueuePool`, `WsPool`, `Http2MultiplexPool` (default with `http2=True`)
+- `connection.py`: `Connection`, a single socket; HTTP/2 goes through `Http2Handler` in `http2.py`
+- `base_client.py`: `BaseClient`, a wrapper over `HTTPClient` for building API clients
+- `httpx_client.py`: `AsyncClient`, an httpx-compatible client built on `BaseClient`
+- `web_socket_client.py`: `WebSocketClient`, `WebSocketConnection`, `Message`, `ProtocolHandler`
+- `sse_client.py`, `sse_config.py`: `SSEClient`, `SSEConnection`
+- `http_parser.py`, `multipart.py`, `compression.py`: header/body encoding, multipart forms, bounded decompression
+- `auth.py`, `proxy.py`, `timeout.py`: `BasicAuth`/`BearerAuth`, `Proxy`, `Timeouts`
+- `exceptions.py`: every custom exception, rooted at `AiosonicError`
+- `aiosonic_utils/structures.py`: `CaseInsensitiveDict`
 
 ## Test Setup
 
@@ -152,7 +60,7 @@ classDiagram
 - **Test files**: Follow `test_*.py` naming convention
 - **Node.js servers**: Helper applications in `tests/nodeapps/` (HTTP/1, HTTP/2, WebSocket servers)
 - **Test assets**: Certificates in `tests/files/certs/`, sample files in `tests/files/`
-- **Pytest plugins**: Uses `pytest-asyncio`, `pytest-cov`, `pytest-timeout`, `pytest-sugar`
+- **Pytest plugins**: Uses `pytest-asyncio`, `pytest-cov`, `pytest-mock`, `pytest-timeout`, `pytest-sugar`
 
 ### Node.js Helper Servers
 
