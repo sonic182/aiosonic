@@ -652,6 +652,7 @@ async def _do_request(
 
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
+        reused = connection.reused
         try:
             return await _exchange(
                 connection,
@@ -668,7 +669,7 @@ async def _do_request(
             )
         except ConnectionDisconnected as exc:
             connection.close()
-            raise ConnectionDisconnected(*exc.args, reused_connection=connection.reused) from exc
+            raise ConnectionDisconnected(*exc.args, reused_connection=reused) from exc
 
 
 async def _exchange(
