@@ -75,7 +75,8 @@ def _normalize_body(body: Optional[ParsedBodyType]) -> Union[bytes, AsyncIterato
 
 
 def _resolve_body(request: dict) -> Union[bytes, AsyncIterator[bytes], Iterator[bytes]]:
-    return _normalize_body(request.get("request_body") or request.get("body"))
+    body = request.get("request_body")
+    return _normalize_body(body if body is not None else request.get("body"))
 
 
 def _build_response(res: dict, queue, sem_release, flow_cb) -> aiosonic.HttpResponse:

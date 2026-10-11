@@ -632,7 +632,8 @@ class _RequestSpec:
     Attributes:
         url (ParseResult): The url of the request.
         method (str): The http method.
-        headers (HttpHeaders): The headers given to the request, with the body and auth ones added.
+        headers (HttpHeaders): The headers given to the request, with the body and auth ones added. The same
+            object is shared by the whole redirect chain and updated in place by ``_handle_redirect``.
         params (Optional[ParamsType]): Query params appended to the url.
         multipart (bool): Whether the body is ``multipart/form-data`` built from a dict.
         boundary (Optional[str]): The multipart boundary, when ``multipart``.

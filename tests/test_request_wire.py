@@ -147,3 +147,35 @@ async def test_retries_exhausted_on_stale_connections() -> None:
     assert exc_info.value.reused_connection is True
     assert isinstance(exc_info.value.__cause__, ConnectionDisconnected)
     assert len(connections) == 3
+
+
+@pytest.mark.asyncio
+async def test_post_see_other_redirect_is_sent_as_get_without_body() -> None:
+    """Follow a 303 after a POST with a GET that drops the body and its headers."""
+    requests = []
+
+    async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            head = await reader.readuntil(b"\r\n\r\n")
+            requests.append(head + await reader.readexactly(4))
+            writer.write(b"HTTP/1.1 303 See Other\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n")
+            await writer.drain()
+            requests.append(await reader.readuntil(b"\r\n\r\n"))
+            writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ndone")
+            await writer.drain()
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    async with server:
+        url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/form"
+        async with HTTPClient() as client:
+            response = await client.post(url, data=b"data", follow=True)
+            assert await response.text() == "done"
+            assert [r.status_code for r in response.history] == [303]
+
+    first, second = requests
+    assert first.startswith(b"POST /form HTTP/1.1\r\n") and first.endswith(b"\r\n\r\ndata")
+    assert second.startswith(b"GET /next HTTP/1.1\r\n")
+    assert b"content-length" not in second.lower() and b"content-type" not in second.lower()

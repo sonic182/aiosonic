@@ -22,7 +22,7 @@ async def _request_stream(client: HTTPClient, config: RequestConfig, headers: Di
         params=config.params,
         data=config.data,
         json=config.json,
-        **config.request_kwargs,
+        **(config.request_kwargs or {}),
     )
 
 
