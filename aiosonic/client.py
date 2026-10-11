@@ -1144,6 +1144,7 @@ class HTTPClient:
         verify_ssl = verify and self.verify_ssl
         http2 = http2 or self.http2
         reconnect_times = 3
+        last_disconnect: Optional[ConnectionDisconnected] = None
         history: List[HttpResponse] = []
         while reconnect_times > 0:
             # performance: skip building the hook url when no request hooks are registered
@@ -1185,6 +1186,7 @@ class HTTPClient:
             except ConnectionDisconnected as exc:
                 if not _can_retry(exc, method, body):
                     raise
+                last_disconnect = exc
                 reconnect_times -= 1
                 continue
             except ConnectTimeout:
@@ -1218,7 +1220,7 @@ class HTTPClient:
                 body=body,
                 transfer_chunked=transfer_chunked,
             )
-        raise ConnectionDisconnected("retried 3 times unsuccessfully")
+        raise ConnectionDisconnected("retried 3 times unsuccessfully", reused_connection=True) from last_disconnect
 
     @asynccontextmanager
     async def stream(self, method: str, url: str, **kwargs) -> AsyncIterator[HttpResponse]:
