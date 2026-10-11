@@ -1,0 +1,9 @@
+{
+  "path": ["aiosonic", "aiosonic_utils", "tests"],
+  "format": ["python", "javascript"],
+  "ignore": ["**/node_modules/**", "tests/files/**"],
+  "gitignore": true,
+  "minTokens": 50,
+  "threshold": 4,
+  "reporters": ["console"]
+}
