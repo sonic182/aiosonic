@@ -37,113 +37,36 @@ Fix any lint errors or test failures before considering the task done.
 - **Comments**: DO NOT ADD ***ANY*** COMMENTS in `aiosonic` package functions or classes
 - **Formatting**: Ruff formatter (119 char lines, 4 space indent, no trailing whitespace)
 
-## HTTP Client Architecture
+## Project Layout
 
-```mermaid
-classDiagram
-    class HTTPClient {
-        +get()
-        +post()
-        +put()
-        +patch()
-        +delete()
-        +request()
-    }
-
-    class BaseClient {
-        +get()
-        +post()
-        +put()
-        +patch()
-        +delete()
-        +request()
-    }
-
-    class TCPConnector {
-        +pools
-        +resolver
-        +dns_cache
-        +acquire()
-    }
-
-    class Connection {
-        +connect()
-        +write()
-        +read()
-        +keep_alive()
-    }
-
-    class BasePool {
-        <<abstract>>
-        +acquire()
-        +release()
-        +cleanup()
-    }
-
-    class SmartPool {
-        +acquire()
-        +release()
-        +cleanup()
-        +free_conns()
-    }
-
-    class HttpResponse {
-        +status_code
-        +headers
-        +content()
-        +text()
-        +json()
-    }
-
-    class HttpHeaders {
-        +__getitem__()
-        +__setitem__()
-        +get()
-    }
-
-    class WebSocketClient {
-        +connect()
-        +close()
-    }
-
-    class WebSocketConnection {
-        +send()
-        +receive()
-        +ping()
-    }
-
-    class Message {
-        +type
-        +data
-        +raw_data
-        +opcode
-    }
-
-    class ProtocolHandler {
-        <<abstract>>
-        +name
-        +encode()
-        +decode()
-    }
-
-    class SSEClient {
-        +connect()
-    }
-
-    class SSEConnection {
-        +__aiter__()
-        +close()
-    }
-
-    HTTPClient ..> TCPConnector : uses
-    TCPConnector "1" --> "*" BasePool : manages
-    TCPConnector "1" --> "*" Connection : manages
-    BasePool <|-- SmartPool
-    HttpResponse --> HttpHeaders
-    WebSocketClient --> WebSocketConnection : creates
-    WebSocketConnection ..> Message : yields
-    ProtocolHandler <|.. WebSocketConnection
-    SSEClient --> SSEConnection : creates
+```text
+aiosonic/
+├── aiosonic/                  # library package
+│   ├── client.py              # HTTPClient, HttpResponse, HttpHeaders; request building, redirects, proxy
+│   ├── connectors.py          # TCPConnector: owns the pools (":default" + per-host from pool_configs), DNS
+│   ├── resolver.py            # ThreadedResolver, AsyncResolver (DefaultResolver picks one)
+│   ├── pools.py               # BasePool -> SmartPool (default), CyclicQueuePool, WsPool, Http2MultiplexPool
+│   ├── connection.py          # Connection: one socket, created and held by a pool
+│   ├── http2.py               # Http2Handler, Http2Config
+│   ├── base_client.py         # BaseClient: wrapper over HTTPClient for building API clients
+│   ├── httpx_client.py        # AsyncClient (subclass of BaseClient) with the httpx API
+│   ├── web_socket_client.py   # WebSocketClient, WebSocketConnection, Message, ProtocolHandler
+│   ├── sse_client.py          # SSEClient, SSEConnection (config in sse_config.py)
+│   ├── http_parser.py         # header validation, body encoding
+│   ├── multipart.py           # MultipartForm, MultipartFile
+│   ├── compression.py         # bounded decompression
+│   ├── auth.py                # BasicAuth, BearerAuth
+│   ├── proxy.py, timeout.py   # Proxy, Timeouts
+│   └── exceptions.py          # all custom exceptions, rooted at AiosonicError
+├── aiosonic_utils/
+│   └── structures.py          # CaseInsensitiveDict
+├── tests/
+│   ├── conftest.py            # fixtures, starts the Node helper servers
+│   ├── test_*.py
+│   ├── nodeapps/              # Node.js helper servers (see below)
+│   └── files/                 # certs/ and sample files
+├── scripts/                   # benchmarks and profiling
+└── sourcedocs/                # Sphinx sources
 ```
 
 ## Test Setup
@@ -152,7 +75,7 @@ classDiagram
 - **Test files**: Follow `test_*.py` naming convention
 - **Node.js servers**: Helper applications in `tests/nodeapps/` (HTTP/1, HTTP/2, WebSocket servers)
 - **Test assets**: Certificates in `tests/files/certs/`, sample files in `tests/files/`
-- **Pytest plugins**: Uses `pytest-asyncio`, `pytest-cov`, `pytest-timeout`, `pytest-sugar`
+- **Pytest plugins**: Uses `pytest-asyncio`, `pytest-cov`, `pytest-mock`, `pytest-timeout`, `pytest-sugar`
 
 ### Node.js Helper Servers
 
