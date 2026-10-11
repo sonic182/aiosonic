@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import pytest
 
 from aiosonic import HTTPClient
-from aiosonic.client import HttpResponse, _do_request, _proxy_connect, _update_transport
+from aiosonic.client import HttpHeaders, HttpResponse, _do_request, _proxy_connect, _RequestSpec, _update_transport
 from aiosonic.connectors import TCPConnector
 from aiosonic.pools import PoolConfig
 from aiosonic.proxy import Proxy, proxy_from_environment
@@ -62,16 +62,24 @@ async def test_https_proxy_request_passes_destination_to_connector(mocker):
     connector.acquire = mocker.AsyncMock(return_value=connection)
     mocker.patch("aiosonic.client._proxy_connect", new=mocker.AsyncMock())
 
-    await _do_request(
-        urlparse("https://second.example/resource"),
-        lambda **_kwargs: {},
-        connector,
-        None,
-        True,
-        None,
-        Timeouts(),
-        proxy=Proxy("http://proxy.example:8080"),
+    spec = _RequestSpec(
+        url=urlparse("https://second.example/resource"),
+        method="GET",
+        headers=HttpHeaders(),
+        params=None,
+        multipart=False,
+        boundary=None,
+        body=b"",
+        transfer_chunked=True,
+        verify=True,
+        ssl=None,
+        timeouts=Timeouts(),
+        http2=False,
+        max_decompressed_size=1024,
+        stream=False,
     )
+
+    await _do_request(spec, connector, Proxy("http://proxy.example:8080"))
 
     assert connector.acquire.await_args.kwargs["proxy_target"] == ("https", "second.example", 443)
 

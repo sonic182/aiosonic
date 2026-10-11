@@ -9,6 +9,7 @@ import sys
 from asyncio import wait_for
 from codecs import getincrementaldecoder, lookup
 from contextlib import aclosing, asynccontextmanager
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from email.utils import parsedate_to_datetime
 from functools import lru_cache, partial
@@ -624,6 +625,68 @@ async def _send_multipart(
     return _gen()
 
 
+@dataclass(frozen=True)
+class _RequestSpec:
+    """What to send for one request of a redirect chain.
+
+    Attributes:
+        url (ParseResult): The url of the request.
+        method (str): The http method.
+        headers (HttpHeaders): The headers given to the request, with the body and auth ones added.
+        params (Optional[ParamsType]): Query params appended to the url.
+        multipart (bool): Whether the body is ``multipart/form-data`` built from a dict.
+        boundary (Optional[str]): The multipart boundary, when ``multipart``.
+        body (ParsedBodyType): The body to send.
+        transfer_chunked (bool): Whether an iterator body is sent with chunked transfer encoding.
+        verify (bool): Whether to verify the ssl certificate.
+        ssl (Optional[SSLContext]): A custom ssl context.
+        timeouts (Optional[Timeouts]): Timeouts of the request, the connector ones when None.
+        http2 (bool): Whether to try HTTP/2.
+        max_decompressed_size (int): Maximum size of the decompressed body.
+        stream (bool): Whether to give the response before reading its body.
+    """
+
+    url: ParseResult
+    method: str
+    headers: HttpHeaders
+    params: Optional[ParamsType]
+    multipart: bool
+    boundary: Optional[str]
+    body: ParsedBodyType
+    transfer_chunked: bool
+    verify: bool
+    ssl: Optional[SSLContext]
+    timeouts: Optional[Timeouts]
+    http2: bool
+    max_decompressed_size: int
+    stream: bool
+
+
+async def _build_body(
+    method: str, data: Optional[DataType], multipart: bool, headers: HttpHeaders
+) -> Tuple[ParsedBodyType, Optional[str], bool]:
+    """Encode the data of a request, adding its content headers.
+
+    Returns:
+        Tuple[ParsedBodyType, Optional[str], bool]: The body, the multipart boundary if any, and whether an
+        iterator body is sent with chunked transfer encoding.
+    """
+    if method == "GET":
+        return b"", None, True
+    if isinstance(data, MultipartForm):
+        body, size = await data.get_body_size()
+        http_parser.add_headers(headers, data.get_headers(size))
+        return body, None, True
+    if multipart:
+        if not isinstance(data, dict):
+            raise ValueError("data should be dict")
+        boundary = f"boundary-{token_hex(16)}"
+        return await _send_multipart(data, boundary, headers), boundary, False
+    if data:
+        return http_parser.setup_body_request(data, headers), None, True
+    return b"", None, True
+
+
 def _connect_target(
     urlparsed: ParseResult, proxy: Optional[Proxy], ssl: Optional[SSLContext]
 ) -> Tuple[ParseResult, Optional[SSLContext], Optional[Tuple[str, str, int]]]:
@@ -636,67 +699,41 @@ def _connect_target(
     return http_parser.get_url_parsed(proxy.host), None, proxy_target
 
 
-async def _do_request(
-    urlparsed: ParseResult,
-    headers_data: Callable,
-    connector: TCPConnector,
-    body: Optional[ParsedBodyType],
-    verify: bool,
-    ssl: Optional[SSLContext],
-    timeouts: Optional[Timeouts],
-    http2: bool = False,
-    proxy: Optional[Proxy] = None,
-    transfer_chunked: bool = True,
-    max_decompressed_size: int = DEFAULT_MAX_DECOMPRESSED_SIZE,
-    method: str = "GET",
-    stream: bool = False,
-) -> HttpResponse:
+async def _do_request(spec: _RequestSpec, connector: TCPConnector, proxy: Optional[Proxy]) -> HttpResponse:
     """Acquire a connection and exchange the request over it.
 
     A dropped connection is closed, and the raised :class:`ConnectionDisconnected` tells whether it was reused.
     """
-    timeouts = timeouts or connector.timeouts
-    url_connect, connect_ssl, proxy_target = _connect_target(urlparsed, proxy, ssl)
-    args = url_connect, verify, connect_ssl, timeouts, http2
+    timeouts = spec.timeouts or connector.timeouts
+    url_connect, connect_ssl, proxy_target = _connect_target(spec.url, proxy, spec.ssl)
+    args = url_connect, spec.verify, connect_ssl, timeouts, spec.http2
     async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
         reused = connection.reused
         try:
-            return await _exchange(
-                connection,
-                urlparsed,
-                headers_data,
-                body,
-                ssl,
-                timeouts,
-                proxy,
-                transfer_chunked,
-                max_decompressed_size,
-                method,
-                stream,
-            )
+            return await _exchange(connection, spec, proxy, timeouts)
         except ConnectionDisconnected as exc:
             connection.close()
             raise ConnectionDisconnected(*exc.args, reused_connection=reused) from exc
 
 
 async def _exchange(
-    connection: Connection,
-    urlparsed: ParseResult,
-    headers_data: Callable,
-    body: Optional[ParsedBodyType],
-    ssl: Optional[SSLContext],
-    timeouts: Timeouts,
-    proxy: Optional[Proxy],
-    transfer_chunked: bool,
-    max_decompressed_size: int,
-    method: str,
-    stream: bool,
+    connection: Connection, spec: _RequestSpec, proxy: Optional[Proxy], timeouts: Timeouts
 ) -> HttpResponse:
     """Send a request over an acquired connection and read its response."""
+    urlparsed, method, body = spec.url, spec.method, spec.body
     if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
-        await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
+        await _proxy_connect(connection, proxy, urlparsed, spec.ssl or get_default_ssl_context())
 
-    to_send = headers_data(connection=connection)
+    to_send = _prepare_request_headers(
+        url=urlparsed,
+        connection=connection,
+        method=method,
+        headers=spec.headers,
+        params=spec.params,
+        multipart=spec.multipart,
+        boundary=spec.boundary,
+        proxy=proxy,
+    )
 
     if connection.h2conn:
         response = await connection.http2_request(to_send, body)
@@ -711,7 +748,7 @@ async def _exchange(
 
     if body:
         if isinstance(body, (AsyncIterator, Iterator)):
-            if transfer_chunked:
+            if spec.transfer_chunked:
                 await _send_chunks(connection, body)
             else:
                 async for chunk in body:
@@ -721,7 +758,7 @@ async def _exchange(
 
     response = HttpResponse()
     response._set_request_meta(urlparsed, method)
-    response.max_decompressed_size = max_decompressed_size
+    response.max_decompressed_size = spec.max_decompressed_size
 
     # get response code and version
     try:
@@ -749,7 +786,7 @@ async def _exchange(
     keepalive = "close" not in response.headers.get("connection", "")
     response.compressed = response.headers.get("content-encoding", "")
 
-    if size and stream and int(size) > 0:
+    if size and spec.stream and int(size) > 0:
         response._remaining = int(size)
         connection.block_until_read_chunks()
     elif size:
@@ -1117,9 +1154,6 @@ class HTTPClient:
 
         urlparsed = http_parser.get_url_parsed(url)
 
-        boundary = None
-        body: ParsedBodyType = b""
-
         if self.handle_cookies:
             self._add_cookies_to_request(str(urlparsed.hostname), headers)
 
@@ -1127,49 +1161,31 @@ class HTTPClient:
         if resolved_auth:
             resolved_auth.apply(headers, method, urlparsed.geturl())
 
-        transfer_chunked = True
-
-        if method == "GET":
-            pass  # handle GET request if necessary
-        elif isinstance(data, MultipartForm):
-            body, size = await data.get_body_size()
-            http_parser.add_headers(headers, data.get_headers(size))
-        elif multipart:
-            if not isinstance(data, dict):
-                raise ValueError("data should be dict")
-            boundary = f"boundary-{token_hex(16)}"
-            body = await _send_multipart(data, boundary, headers)
-            transfer_chunked = False
-        elif data:
-            body = http_parser.setup_body_request(data, headers)
+        body, boundary, transfer_chunked = await _build_body(method, data, multipart, headers)
 
         max_redirects = max_redirects if max_redirects is not None else self.max_redirects
         max_decompressed_size = (
             max_decompressed_size if max_decompressed_size is not None else self.max_decompressed_size
         )
-        # if class or request method has false, it will be false
-        verify_ssl = verify and self.verify_ssl
-        http2 = http2 or self.http2
+        spec = _RequestSpec(
+            url=urlparsed,
+            method=method,
+            headers=headers,
+            params=params,
+            multipart=multipart,
+            boundary=boundary,
+            body=body,
+            transfer_chunked=transfer_chunked,
+            verify=verify and self.verify_ssl,
+            ssl=ssl,
+            timeouts=timeouts,
+            http2=http2 or self.http2,
+            max_decompressed_size=max_decompressed_size,
+            stream=stream,
+        )
         history: List[HttpResponse] = []
         while True:
-            send_once = partial(
-                self._send_once,
-                urlparsed=urlparsed,
-                method=method,
-                headers=headers,
-                params=params,
-                multipart=multipart,
-                boundary=boundary,
-                body=body,
-                verify=verify_ssl,
-                ssl=ssl,
-                timeouts=timeouts,
-                http2=http2,
-                transfer_chunked=transfer_chunked,
-                max_decompressed_size=max_decompressed_size,
-                stream=stream,
-            )
-            response = await _with_retries(send_once, method, body)
+            response = await _with_retries(partial(self._send_once, spec), spec.method, spec.body)
             response.history = history
 
             try:
@@ -1179,7 +1195,7 @@ class HTTPClient:
                 raise
 
             if self.handle_cookies:
-                self._save_new_cookies(str(urlparsed.hostname), response)
+                self._save_new_cookies(str(spec.url.hostname), response)
 
             if not (follow and response.status_code in {301, 302, 303, 307, 308}):
                 return response
@@ -1187,67 +1203,28 @@ class HTTPClient:
             await response.aclose()
             history = [*history, response]
             (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
-                current_urlparsed=urlparsed,
+                current_urlparsed=spec.url,
                 headers=headers,
                 response=response,
                 max_redirects=max_redirects,
-                method=method,
-                body=body,
-                transfer_chunked=transfer_chunked,
+                method=spec.method,
+                body=spec.body,
+                transfer_chunked=spec.transfer_chunked,
             )
+            spec = replace(spec, url=urlparsed, method=method, body=body, transfer_chunked=transfer_chunked)
 
-    async def _send_once(
-        self,
-        urlparsed: ParseResult,
-        method: str,
-        headers: HttpHeaders,
-        params: Optional[ParamsType],
-        multipart: bool,
-        boundary: Optional[str],
-        body: ParsedBodyType,
-        verify: bool,
-        ssl: Optional[SSLContext],
-        timeouts: Optional[Timeouts],
-        http2: bool,
-        transfer_chunked: bool,
-        max_decompressed_size: int,
-        stream: bool,
-    ) -> HttpResponse:
+    async def _send_once(self, spec: _RequestSpec) -> HttpResponse:
         """Send one attempt of a request, without retries or redirects, and time it."""
         if self.event_hooks["request"]:
-            await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
+            await self._run_hooks("request", spec.method, url_without_userinfo(spec.url), spec.headers)
         proxy = self.proxy
         if proxy is None and self.trust_env and not getattr(self.connector, "uds", None):
-            proxy = proxy_from_environment(urlparsed)
+            proxy = proxy_from_environment(spec.url)
         started_at = perf_counter()
-        headers_data = partial(
-            _prepare_request_headers,
-            url=urlparsed,
-            method=method,
-            headers=headers,
-            params=params,
-            multipart=multipart,
-            boundary=boundary,
-            proxy=proxy,
-        )
         try:
             response = await wait_for(
-                _do_request(
-                    urlparsed,
-                    headers_data,
-                    self.connector,
-                    body,
-                    verify,
-                    ssl,
-                    timeouts,
-                    http2,
-                    proxy,
-                    transfer_chunked=transfer_chunked,
-                    max_decompressed_size=max_decompressed_size,
-                    method=method,
-                    stream=stream,
-                ),
-                timeout=(timeouts or self.connector.timeouts).request_timeout,
+                _do_request(spec, self.connector, proxy),
+                timeout=(spec.timeouts or self.connector.timeouts).request_timeout,
             )
         except ConnectTimeout:
             raise
