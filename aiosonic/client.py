@@ -21,7 +21,7 @@ from os.path import basename
 from secrets import token_hex
 from ssl import SSLContext
 from time import perf_counter, time
-from typing import AsyncIterator, Callable, Dict, Iterator, List, Optional, Tuple, Union
+from typing import AsyncIterator, Awaitable, Callable, Dict, Iterator, List, Optional, Tuple, Union
 from urllib.parse import ParseResult, urlencode, urljoin
 
 from charset_normalizer import detect
@@ -65,6 +65,7 @@ dlogger = get_debug_logger()
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 _EVENT_HOOKS = ("request", "response")
 _IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+_MAX_ATTEMPTS = 3
 
 
 # Classes
@@ -623,6 +624,18 @@ async def _send_multipart(
     return _gen()
 
 
+def _connect_target(
+    urlparsed: ParseResult, proxy: Optional[Proxy], ssl: Optional[SSLContext]
+) -> Tuple[ParseResult, Optional[SSLContext], Optional[Tuple[str, str, int]]]:
+    """Give the url to connect to, its ssl context and the target of the proxy tunnel, if any."""
+    if not proxy:
+        return urlparsed, ssl, None
+    proxy_target = None
+    if urlparsed.scheme == "https":
+        proxy_target = (urlparsed.scheme, urlparsed.hostname, urlparsed.port or 443)
+    return http_parser.get_url_parsed(proxy.host), None, proxy_target
+
+
 async def _do_request(
     urlparsed: ParseResult,
     headers_data: Callable,
@@ -638,18 +651,12 @@ async def _do_request(
     method: str = "GET",
     stream: bool = False,
 ) -> HttpResponse:
-    """Something."""
+    """Acquire a connection and exchange the request over it.
+
+    A dropped connection is closed, and the raised :class:`ConnectionDisconnected` tells whether it was reused.
+    """
     timeouts = timeouts or connector.timeouts
-    url_connect = urlparsed
-
-    if proxy:
-        url_connect = http_parser.get_url_parsed(proxy.host)
-
-    connect_ssl = ssl if not proxy else None
-    proxy_target = None
-    if proxy and urlparsed.scheme == "https":
-        proxy_target = (urlparsed.scheme, urlparsed.hostname, urlparsed.port or 443)
-
+    url_connect, connect_ssl, proxy_target = _connect_target(urlparsed, proxy, ssl)
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
         reused = connection.reused
@@ -1096,7 +1103,7 @@ class HTTPClient:
               or released with ``aclose``. Prefer :meth:`stream`.
 
         When a reused keep-alive connection drops before the response, the request is sent again over another
-        connection, up to 3 times, if its method is idempotent and its body is not an iterator. Otherwise
+        connection (3 attempts at most) if its method is idempotent and its body is not an iterator. Otherwise
         :class:`aiosonic.exceptions.ConnectionDisconnected` is raised.
         """
         follow = follow if follow is not None else self.follow
@@ -1143,58 +1150,26 @@ class HTTPClient:
         # if class or request method has false, it will be false
         verify_ssl = verify and self.verify_ssl
         http2 = http2 or self.http2
-        reconnect_times = 3
-        last_disconnect: Optional[ConnectionDisconnected] = None
         history: List[HttpResponse] = []
-        while reconnect_times > 0:
-            # performance: skip building the hook url when no request hooks are registered
-            if self.event_hooks["request"]:
-                await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
-            proxy = self.proxy
-            if proxy is None and self.trust_env and not getattr(self.connector, "uds", None):
-                proxy = proxy_from_environment(urlparsed)
-            started_at = perf_counter()
-            headers_data = partial(
-                _prepare_request_headers,
-                url=urlparsed,
+        while True:
+            send_once = partial(
+                self._send_once,
+                urlparsed=urlparsed,
                 method=method,
                 headers=headers,
                 params=params,
                 multipart=multipart,
                 boundary=boundary,
-                proxy=proxy,
+                body=body,
+                verify=verify_ssl,
+                ssl=ssl,
+                timeouts=timeouts,
+                http2=http2,
+                transfer_chunked=transfer_chunked,
+                max_decompressed_size=max_decompressed_size,
+                stream=stream,
             )
-            try:
-                response = await wait_for(
-                    _do_request(
-                        urlparsed,
-                        headers_data,
-                        self.connector,
-                        body,
-                        verify_ssl,
-                        ssl,
-                        timeouts,
-                        http2,
-                        proxy,
-                        transfer_chunked=transfer_chunked,
-                        max_decompressed_size=max_decompressed_size,
-                        method=method,
-                        stream=stream,
-                    ),
-                    timeout=(timeouts or self.connector.timeouts).request_timeout,
-                )
-            except ConnectionDisconnected as exc:
-                if not _can_retry(exc, method, body):
-                    raise
-                last_disconnect = exc
-                reconnect_times -= 1
-                continue
-            except ConnectTimeout:
-                raise
-            except TimeoutException:
-                raise RequestTimeout()
-
-            response._elapsed = perf_counter() - started_at
+            response = await _with_retries(send_once, method, body)
             response.history = history
 
             try:
@@ -1220,7 +1195,66 @@ class HTTPClient:
                 body=body,
                 transfer_chunked=transfer_chunked,
             )
-        raise ConnectionDisconnected("retried 3 times unsuccessfully", reused_connection=True) from last_disconnect
+
+    async def _send_once(
+        self,
+        urlparsed: ParseResult,
+        method: str,
+        headers: HttpHeaders,
+        params: Optional[ParamsType],
+        multipart: bool,
+        boundary: Optional[str],
+        body: ParsedBodyType,
+        verify: bool,
+        ssl: Optional[SSLContext],
+        timeouts: Optional[Timeouts],
+        http2: bool,
+        transfer_chunked: bool,
+        max_decompressed_size: int,
+        stream: bool,
+    ) -> HttpResponse:
+        """Send one attempt of a request, without retries or redirects, and time it."""
+        if self.event_hooks["request"]:
+            await self._run_hooks("request", method, url_without_userinfo(urlparsed), headers)
+        proxy = self.proxy
+        if proxy is None and self.trust_env and not getattr(self.connector, "uds", None):
+            proxy = proxy_from_environment(urlparsed)
+        started_at = perf_counter()
+        headers_data = partial(
+            _prepare_request_headers,
+            url=urlparsed,
+            method=method,
+            headers=headers,
+            params=params,
+            multipart=multipart,
+            boundary=boundary,
+            proxy=proxy,
+        )
+        try:
+            response = await wait_for(
+                _do_request(
+                    urlparsed,
+                    headers_data,
+                    self.connector,
+                    body,
+                    verify,
+                    ssl,
+                    timeouts,
+                    http2,
+                    proxy,
+                    transfer_chunked=transfer_chunked,
+                    max_decompressed_size=max_decompressed_size,
+                    method=method,
+                    stream=stream,
+                ),
+                timeout=(timeouts or self.connector.timeouts).request_timeout,
+            )
+        except ConnectTimeout:
+            raise
+        except TimeoutException:
+            raise RequestTimeout()
+        response._elapsed = perf_counter() - started_at
+        return response
 
     @asynccontextmanager
     async def stream(self, method: str, url: str, **kwargs) -> AsyncIterator[HttpResponse]:
@@ -1373,6 +1407,23 @@ class HTTPClient:
                 host_cookies.pop(name, None)
             else:
                 host_cookies[name] = morsel
+
+
+async def _with_retries(
+    send: Callable[[], Awaitable[HttpResponse]], method: str, body: Optional[ParsedBodyType]
+) -> HttpResponse:
+    """Call ``send`` until it gives a response, sending the request again only while :func:`_can_retry` allows it."""
+    last_disconnect = None
+    for _ in range(_MAX_ATTEMPTS):
+        try:
+            return await send()
+        except ConnectionDisconnected as exc:
+            if not _can_retry(exc, method, body):
+                raise
+            last_disconnect = exc
+    raise ConnectionDisconnected(
+        f"retried {_MAX_ATTEMPTS} times unsuccessfully", reused_connection=True
+    ) from last_disconnect
 
 
 def _is_replayable(body: Optional[ParsedBodyType]) -> bool:
