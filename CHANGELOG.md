@@ -8,9 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - A request whose connection drops before the response is sent again only when it went over a reused keep-alive connection, its method is idempotent (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`, `DELETE`) and its body is not an iterator; otherwise `ConnectionDisconnected` is raised right away. Before, any request was sent up to 3 times, so a `POST` the server had already processed could be sent again. `ConnectionDisconnected` has a `reused_connection` attribute.
+- The 3 attempts are counted for each request of a redirect chain, instead of being shared by the whole chain. When they run out, the `ConnectionDisconnected` has `reused_connection=True` and is chained from the last drop.
 
 ### Fixed
 - A connection that dropped is closed instead of going back to the pool still open, where the next request (or the retry of the same one) could get the same dead socket again.
+- After an HTTP/2 stream is reset, the next request on the client no longer fails with `RuntimeError: readuntil() called while another coroutine is already waiting for incoming data`.
 
 ## [1.2.0] 2026-10-10
 
