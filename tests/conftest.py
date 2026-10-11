@@ -29,6 +29,16 @@ def run_cmd(command: str):
         return subprocess.Popen(shlex.split(command), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def stop_proc(proc: subprocess.Popen, timeout: float = 5):
+    """Stop a helper server, killing it if it does not exit in time."""
+    proc.terminate()
+    try:
+        proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+
+
 @pytest.fixture
 def ssl_context():
     context = ssl.SSLContext(ssl.PROTOCOL_TLS)
@@ -45,8 +55,7 @@ def http2_serv():
 
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -57,8 +66,7 @@ def http_serv():
     url = f"http://127.0.0.1:{port}"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -71,8 +79,7 @@ def proxy_serv():
     url = f"http://127.0.0.1:{port}"
     check_port(port, "127.0.0.1")
     yield (url, auth)
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -83,8 +90,7 @@ def sse_serv():
     url = f"http://127.0.0.1:{port}/sse"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -95,8 +101,7 @@ def sse_serv_reconnect():
     url = f"http://127.0.0.1:{port}/sse-reconnect"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -107,8 +112,7 @@ def sse_serv_malformed():
     url = f"http://127.0.0.1:{port}/sse-malformed"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -119,8 +123,7 @@ def sse_serv_post():
     url = f"http://127.0.0.1:{port}/sse-post"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -131,8 +134,7 @@ def sse_serv_put():
     url = f"http://127.0.0.1:{port}/sse-put"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -143,8 +145,7 @@ def sse_serv_patch():
     url = f"http://127.0.0.1:{port}/sse-patch"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -155,8 +156,7 @@ def sse_serv_delete():
     url = f"http://127.0.0.1:{port}/sse-delete"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -167,8 +167,7 @@ def sse_serv_params():
     url = f"http://127.0.0.1:{port}/sse-params"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -179,8 +178,7 @@ def sse_serv_post_reconnect():
     url = f"http://127.0.0.1:{port}/sse-post-reconnect"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -191,8 +189,7 @@ def ws_serv():
     url = f"ws://127.0.0.1:{port}"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 @pytest.fixture(scope="session")
@@ -203,8 +200,7 @@ def ws_serv_ssl():
     url = f"wss://127.0.0.1:{port}"
     check_port(port)
     yield url
-    proc.terminate()
-    proc.wait(timeout=10)
+    stop_proc(proc)
 
 
 def __is_port_in_use(address, port):
