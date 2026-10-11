@@ -1186,7 +1186,10 @@ class HTTPClient:
         )
         history: List[HttpResponse] = []
         while True:
-            response = await _with_retries(partial(self._send_once, spec), spec.method, spec.body)
+            try:
+                response = await self._send_once(spec)
+            except ConnectionDisconnected as exc:
+                response = await _retry_after_disconnect(partial(self._send_once, spec), spec.method, spec.body, exc)
             response.history = history
 
             try:
@@ -1387,21 +1390,27 @@ class HTTPClient:
                 host_cookies[name] = morsel
 
 
-async def _with_retries(
-    send: Callable[[], Awaitable[HttpResponse]], method: str, body: Optional[ParsedBodyType]
+async def _retry_after_disconnect(
+    send: Callable[[], Awaitable[HttpResponse]],
+    method: str,
+    body: Optional[ParsedBodyType],
+    exc: ConnectionDisconnected,
 ) -> HttpResponse:
-    """Call ``send`` until it gives a response, sending the request again only while :func:`_can_retry` allows it."""
-    last_disconnect = None
-    for _ in range(_MAX_ATTEMPTS):
+    """Send a request again after its first attempt dropped, while :func:`_can_retry` allows it.
+
+    The first attempt runs outside, so a request that does not drop pays for no retry layer. At most
+    ``_MAX_ATTEMPTS`` attempts are made in all.
+    """
+    for _ in range(_MAX_ATTEMPTS - 1):
+        if not _can_retry(exc, method, body):
+            raise exc
         try:
             return await send()
-        except ConnectionDisconnected as exc:
-            if not _can_retry(exc, method, body):
-                raise
-            last_disconnect = exc
-    raise ConnectionDisconnected(
-        f"retried {_MAX_ATTEMPTS} times unsuccessfully", reused_connection=True
-    ) from last_disconnect
+        except ConnectionDisconnected as next_exc:
+            exc = next_exc
+    if not _can_retry(exc, method, body):
+        raise exc
+    raise ConnectionDisconnected(f"retried {_MAX_ATTEMPTS} times unsuccessfully", reused_connection=True) from exc
 
 
 def _is_replayable(body: Optional[ParsedBodyType]) -> bool:
