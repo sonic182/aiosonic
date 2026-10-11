@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- A request whose connection drops before the response is sent again only when it went over a reused keep-alive connection, its method is idempotent (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`, `DELETE`) and its body is not an iterator; otherwise `ConnectionDisconnected` is raised right away. Before, any request was sent up to 3 times, so a `POST` the server had already processed could be sent again. `ConnectionDisconnected` has a `reused_connection` attribute.
+
+### Fixed
+- A connection that dropped is closed instead of going back to the pool still open, where the next request (or the retry of the same one) could get the same dead socket again.
+
 ## [1.2.0] 2026-10-10
 
 ### Added

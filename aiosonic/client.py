@@ -64,6 +64,7 @@ dlogger = get_debug_logger()
 
 REPLACEABLE_HEADERS = {"host", "user-agent"}
 _EVENT_HOOKS = ("request", "response")
+_IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
 
 # Classes
@@ -651,79 +652,112 @@ async def _do_request(
 
     args = url_connect, verify, connect_ssl, timeouts, http2
     async with await connector.acquire(*args, proxy_target=proxy_target) as connection:
-        if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
-            await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
-
-        to_send = headers_data(connection=connection)
-
-        if connection.h2conn:
-            response = await connection.http2_request(to_send, body)
-            response._set_request_meta(urlparsed, method)
-            connection.keep_alive()
-            return response
-
-        if not connection.writer or not connection.reader:
-            raise ConnectionError("Not connection writer or reader")
-
-        connection.write(to_send)
-
-        if body:
-            if isinstance(body, (AsyncIterator, Iterator)):
-                if transfer_chunked:
-                    await _send_chunks(connection, body)
-                else:
-                    async for chunk in body:
-                        connection.write(chunk)
-            else:
-                connection.write(body)
-
-        response = HttpResponse()
-        response._set_request_meta(urlparsed, method)
-        response.max_decompressed_size = max_decompressed_size
-
-        # get response code and version
         try:
-            line = await wait_for(connection.readuntil(), timeouts.sock_read)
-            if not line:
-                raise HttpParsingError(f"response line parsing error: {line}")
-            response._set_response_initial(line)
-        except asyncio.IncompleteReadError:
-            connection.keep = False
-            raise ConnectionDisconnected()
-            # raise HttpParsingError(f"response line parsing error: {exc.partial}")
-        except HttpParsingError:
-            connection.keep = False
-            raise
-        except TimeoutException:
-            raise ReadTimeout()
+            return await _exchange(
+                connection,
+                urlparsed,
+                headers_data,
+                body,
+                ssl,
+                timeouts,
+                proxy,
+                transfer_chunked,
+                max_decompressed_size,
+                method,
+                stream,
+            )
+        except ConnectionDisconnected as exc:
+            connection.close()
+            raise ConnectionDisconnected(*exc.args, reused_connection=connection.reused) from exc
 
-        # reading headers
-        await response._set_response_headers(http_parser.parse_headers_iterator(connection))
 
-        status = response.status_code
-        no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
-        size = None if no_body else response.headers.get("content-length")
-        chunked = not no_body and response.headers.get("transfer-encoding", "") == "chunked"
-        keepalive = "close" not in response.headers.get("connection", "")
-        response.compressed = response.headers.get("content-encoding", "")
+async def _exchange(
+    connection: Connection,
+    urlparsed: ParseResult,
+    headers_data: Callable,
+    body: Optional[ParsedBodyType],
+    ssl: Optional[SSLContext],
+    timeouts: Timeouts,
+    proxy: Optional[Proxy],
+    transfer_chunked: bool,
+    max_decompressed_size: int,
+    method: str,
+    stream: bool,
+) -> HttpResponse:
+    """Send a request over an acquired connection and read its response."""
+    if proxy and urlparsed.scheme == "https" and not connection.proxy_connected:
+        await _proxy_connect(connection, proxy, urlparsed, ssl or get_default_ssl_context())
 
-        if size and stream and int(size) > 0:
-            response._remaining = int(size)
-            connection.block_until_read_chunks()
-        elif size:
-            response._set_body(await connection.readexactly(int(size)))
+    to_send = headers_data(connection=connection)
 
-        if chunked:
-            connection.block_until_read_chunks()
-            response.chunked = True
-
-        if keepalive:
-            connection.keep_alive()
-        else:
-            connection.keep = False
-        response._set_connection(connection)
-
+    if connection.h2conn:
+        response = await connection.http2_request(to_send, body)
+        response._set_request_meta(urlparsed, method)
+        connection.keep_alive()
         return response
+
+    if not connection.writer or not connection.reader:
+        raise ConnectionError("Not connection writer or reader")
+
+    connection.write(to_send)
+
+    if body:
+        if isinstance(body, (AsyncIterator, Iterator)):
+            if transfer_chunked:
+                await _send_chunks(connection, body)
+            else:
+                async for chunk in body:
+                    connection.write(chunk)
+        else:
+            connection.write(body)
+
+    response = HttpResponse()
+    response._set_request_meta(urlparsed, method)
+    response.max_decompressed_size = max_decompressed_size
+
+    # get response code and version
+    try:
+        line = await wait_for(connection.readuntil(), timeouts.sock_read)
+        if not line:
+            raise HttpParsingError(f"response line parsing error: {line}")
+        response._set_response_initial(line)
+    except asyncio.IncompleteReadError:
+        connection.keep = False
+        raise ConnectionDisconnected()
+        # raise HttpParsingError(f"response line parsing error: {exc.partial}")
+    except HttpParsingError:
+        connection.keep = False
+        raise
+    except TimeoutException:
+        raise ReadTimeout()
+
+    # reading headers
+    await response._set_response_headers(http_parser.parse_headers_iterator(connection))
+
+    status = response.status_code
+    no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
+    size = None if no_body else response.headers.get("content-length")
+    chunked = not no_body and response.headers.get("transfer-encoding", "") == "chunked"
+    keepalive = "close" not in response.headers.get("connection", "")
+    response.compressed = response.headers.get("content-encoding", "")
+
+    if size and stream and int(size) > 0:
+        response._remaining = int(size)
+        connection.block_until_read_chunks()
+    elif size:
+        response._set_body(await connection.readexactly(int(size)))
+
+    if chunked:
+        connection.block_until_read_chunks()
+        response.chunked = True
+
+    if keepalive:
+        connection.keep_alive()
+    else:
+        connection.keep = False
+    response._set_connection(connection)
+
+    return response
 
 
 class HTTPClient:
@@ -1059,6 +1093,10 @@ class HTTPClient:
             * **stream**: if true, the body is not read before returning, so it must be read
               from the response (``read_chunks``, ``iter_bytes``, ``iter_lines``, ``content``...)
               or released with ``aclose``. Prefer :meth:`stream`.
+
+        When a reused keep-alive connection drops before the response, the request is sent again over another
+        connection, up to 3 times, if its method is idempotent and its body is not an iterator. Otherwise
+        :class:`aiosonic.exceptions.ConnectionDisconnected` is raised.
         """
         follow = follow if follow is not None else self.follow
         headers = HttpHeaders(headers)
@@ -1143,7 +1181,9 @@ class HTTPClient:
                     ),
                     timeout=(timeouts or self.connector.timeouts).request_timeout,
                 )
-            except ConnectionDisconnected:
+            except ConnectionDisconnected as exc:
+                if not _can_retry(exc, method, body):
+                    raise
                 reconnect_times -= 1
                 continue
             except ConnectTimeout:
@@ -1330,6 +1370,20 @@ class HTTPClient:
                 host_cookies.pop(name, None)
             else:
                 host_cookies[name] = morsel
+
+
+def _is_replayable(body: Optional[ParsedBodyType]) -> bool:
+    """Tell whether a request body can be sent again, which is not the case of an iterator."""
+    return not isinstance(body, (AsyncIterator, Iterator))
+
+
+def _can_retry(exc: ConnectionDisconnected, method: str, body: Optional[ParsedBodyType]) -> bool:
+    """Tell whether a request whose connection dropped can be sent again safely.
+
+    Only a request sent over a reused keep-alive connection, which the server may have closed meanwhile, with an
+    idempotent method and a body that can be sent again, is retried (RFC 9112, section 9.3.1).
+    """
+    return exc.reused_connection and method.upper() in _IDEMPOTENT_METHODS and _is_replayable(body)
 
 
 def _cookie_expired(morsel: cookies.Morsel) -> bool:
