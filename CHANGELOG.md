@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] 2026-10-12
+
 ### Changed
 - A request whose connection drops before the response is sent again only when it went over a reused keep-alive connection, its method is idempotent (`GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT`, `DELETE`) and its body is not an iterator; otherwise `ConnectionDisconnected` is raised right away. Before, any request was sent up to 3 times, so a `POST` the server had already processed could be sent again. `ConnectionDisconnected` has a `reused_connection` attribute.
 - The 3 attempts are counted for each request of a redirect chain, instead of being shared by the whole chain. When they run out, the `ConnectionDisconnected` has `reused_connection=True` and is chained from the last drop.
@@ -538,7 +540,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.2.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.3.0..HEAD
+[1.3.0]: https://github.com/sonic182/aiosonic/compare/1.2.0..1.3.0
 [1.2.0]: https://github.com/sonic182/aiosonic/compare/1.1.1..1.2.0
 [1.1.1]: https://github.com/sonic182/aiosonic/compare/1.1.0..1.1.1
 [1.1.0]: https://github.com/sonic182/aiosonic/compare/1.0.8..1.1.0
