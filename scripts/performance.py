@@ -142,21 +142,31 @@ def timeit_requests(url, concurrency, repeat, warmup):
     return elapsed
 
 
-async def do_tests(url, repeat, warmup, concurrency):
+CLIENTS = ("aiohttp", "aiosonic", "aiosonic_httpx", "requests", "aiosonic_cyclic", "httpx")
+
+
+async def do_tests(url, repeat, warmup, concurrency, clients=CLIENTS):
     """Start benchmark."""
     logger.info("Running performance tests...")
+    runners = {
+        "aiohttp": lambda: performance_aiohttp(url, concurrency, repeat, warmup),
+        "aiosonic": lambda: performance_aiosonic(url, concurrency, None, None, repeat, warmup),
+        "aiosonic_httpx": lambda: performance_aiosonic_httpx(url, concurrency, repeat, warmup),
+        "aiosonic_cyclic": lambda: performance_aiosonic(url, concurrency, CyclicQueuePool, None, repeat, warmup),
+        "httpx": lambda: performance_httpx(url, concurrency, repeat, warmup),
+    }
     results = {}
-    results["aiohttp"] = await performance_aiohttp(url, concurrency, repeat, warmup)
-    results["aiosonic"] = await performance_aiosonic(url, concurrency, None, None, repeat, warmup)
-    results["aiosonic_httpx"] = await performance_aiosonic_httpx(url, concurrency, repeat, warmup)
-    results["requests"] = timeit_requests(url, concurrency, repeat, warmup)
-    results["aiosonic_cyclic"] = await performance_aiosonic(url, concurrency, CyclicQueuePool, None, repeat, warmup)
-
-    try:
-        results["httpx"] = await performance_httpx(url, concurrency, repeat, warmup)
-    except Exception as exc:
-        results["httpx_error"] = str(exc)
-        logger.error(f"httpx encountered an error: {exc}")
+    for name in clients:
+        if name == "requests":
+            results[name] = timeit_requests(url, concurrency, repeat, warmup)
+            continue
+        try:
+            results[name] = await runners[name]()
+        except Exception as exc:
+            if name != "httpx":
+                raise
+            results["httpx_error"] = str(exc)
+            logger.error(f"httpx encountered an error: {exc}")
 
     logger.info(
         json.dumps(
@@ -165,18 +175,21 @@ async def do_tests(url, repeat, warmup, concurrency):
         )
     )
 
-    logger.info(
-        "HTTPX-compatible aiosonic client takes %.2f%% more time than native aiosonic",
-        ((results["aiosonic_httpx"] / results["aiosonic"]) - 1) * 100,
-    )
-    if "httpx" in results and "httpx_error" not in results:
-        logger.info(f"aiosonic is {((results['httpx'] / results['aiosonic']) - 1) * 100:.2f}% faster than httpx")
-    logger.info(f"aiosonic is {((results['aiohttp'] / results['aiosonic']) - 1) * 100:.2f}% faster than aiohttp")
-    logger.info(f"aiosonic is {((results['requests'] / results['aiosonic']) - 1) * 100:.2f}% faster than requests")
-    logger.info(
-        "aiosonic is %.2f%% faster than aiosonic cyclic",
-        ((results["aiosonic_cyclic"] / results["aiosonic"]) - 1) * 100,
-    )
+    if "aiosonic" not in results:
+        return results
+    if "aiosonic_httpx" in results:
+        logger.info(
+            "HTTPX-compatible aiosonic client takes %.2f%% more time than native aiosonic",
+            ((results["aiosonic_httpx"] / results["aiosonic"]) - 1) * 100,
+        )
+    for name, label in (
+        ("httpx", "httpx"),
+        ("aiohttp", "aiohttp"),
+        ("requests", "requests"),
+        ("aiosonic_cyclic", "aiosonic cyclic"),
+    ):
+        if name in results:
+            logger.info(f"aiosonic is {((results[name] / results['aiosonic']) - 1) * 100:.2f}% faster than {label}")
 
     return results
 
@@ -232,6 +245,13 @@ def main():
         help="Number of test iterations (default: 3000)",
     )
     parser.add_argument("--concurrency", type=int, default=25, help="Concurrency level (default: 25)")
+    parser.add_argument(
+        "--clients",
+        nargs="+",
+        choices=CLIENTS,
+        default=list(CLIENTS),
+        help="Clients to benchmark, in order (default: all)",
+    )
     args = parser.parse_args()
 
     port = random.randint(1000, 9000)
@@ -244,9 +264,11 @@ def main():
                     repeat=args.iterations,
                     warmup=args.warmup,
                     concurrency=args.concurrency,
+                    clients=args.clients,
                 )
             )
-            fastest_client = sorted(results.items(), key=lambda x: x[1])[0][0]
+            timings = {k: v for k, v in results.items() if not k.endswith("_error")}
+            fastest_client = min(timings, key=timings.get)
             logger.info(f"Fastest client: {fastest_client}")
     except Exception as exc:
         logger.error(f"Error during performance test: {exc}", exc_info=True)

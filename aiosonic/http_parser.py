@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 import re
+import warnings
+from functools import lru_cache
 from typing import TYPE_CHECKING, AsyncIterator, Iterator
 from urllib.parse import ParseResult, urlencode, urlparse
-
-from onecache import CacheDecorator
 
 from aiosonic.connection import Connection
 from aiosonic.types import BodyType, DataType, ParsedBodyType
@@ -29,21 +29,32 @@ def validate_header(key: str, value: str) -> None:
 
 
 # Functions with cache
-@CacheDecorator(_LRU_CACHE_SIZE)
+@lru_cache(maxsize=_LRU_CACHE_SIZE)
 def get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
-    With CacheDecorator for the sake of speed.
+    With lru_cache for the sake of speed.
     """
     return urlparse(url)
 
 
-async def parse_headers_iterator(connection: Connection):
-    """Transform loop to iterator."""
+def parse_headers_iterator(connection: Connection) -> AsyncIterator[bytes]:
+    """Iterate over the raw header lines of a response read from the connection.
+
+    Deprecated: aiosonic no longer uses it, and it will be removed in the next major release.
+    """
+    warnings.warn(
+        "aiosonic.http_parser.parse_headers_iterator is deprecated and will be removed in the next major release",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _iter_header_lines(connection)
+
+
+async def _iter_header_lines(connection: Connection) -> AsyncIterator[bytes]:
     while True:
-        # StreamReader already buffers data reading so it is efficient.
         res_data = await connection.readline()
-        if b": " not in res_data and b":" not in res_data:
+        if b":" not in res_data:
             break
         yield res_data
 

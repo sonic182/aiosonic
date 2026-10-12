@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 from json import dumps as json_dumps
 from ssl import SSLContext
-from typing import AsyncIterator, Optional, Set, Union
+from typing import AsyncIterator, Dict, Optional, Set, Union
 
 from aiosonic.client import HeadersType, HTTPClient, HttpHeaders
 from aiosonic.exceptions import SSEConnectionError, SSEParsingError
@@ -13,6 +13,19 @@ from aiosonic.timeout import Timeouts
 from aiosonic.types import DataType, ParamsType, SSEEvent
 
 
+async def _request_stream(client: HTTPClient, config: RequestConfig, headers: Dict[str, str]):
+    """Send the request of an SSE connection with the given headers."""
+    return await client.request(
+        method=config.method,
+        url=config.url,
+        headers=headers,
+        params=config.params,
+        data=config.data,
+        json=config.json,
+        **(config.request_kwargs or {}),
+    )
+
+
 class SSEConnection:
     """Manages an active SSE connection."""
 
@@ -20,19 +33,8 @@ class SSEConnection:
         self._response = response
         self._connection = getattr(response, "_connection", None)
         self._client = client
-        # Store the config and derive commonly used fields
         self._config = config
-        self._method = config.method
-        self._url = config.url
-        # Always convert headers to dict for internal use (use a copy)
         self._headers = dict(config.headers) if config.headers else {}
-        self._params = config.params
-        self._data = config.data
-        self._json = config.json
-        self._request_kwargs = dict(config.request_kwargs) if config.request_kwargs else {}
-        self._reconnect = config.reconnect
-        self._retry_delay = config.retry_delay
-        self._keep_connection = config.keep_connection
         self._last_event_id: Optional[str] = None
         self._closed = False
         self._seen_ids: Set[str] = set()
@@ -66,22 +68,13 @@ class SSEConnection:
                                 continue
                         self._last_yielded_data = event.get("data")
                         yield event
-                if not self._reconnect:
+                if not self._config.reconnect:
                     self._closed = True
                     break
-                await asyncio.sleep(self._retry_delay / 1000)
+                await asyncio.sleep(self._config.retry_delay / 1000)
                 if self._last_event_id:
                     self._headers["Last-Event-ID"] = self._last_event_id
-                # Reconnect with the same request parameters
-                self._response = await self._client.request(
-                    method=self._method,
-                    url=self._url,
-                    headers=self._headers,
-                    params=self._params,
-                    data=self._data,
-                    json=self._json,
-                    **self._request_kwargs,
-                )
+                self._response = await _request_stream(self._client, self._config, self._headers)
                 if self._response.status_code != 200 or "text/event-stream" not in (
                     self._response.headers.get("content-type", "")
                 ):
@@ -90,9 +83,9 @@ class SSEConnection:
             except SSEParsingError:
                 raise
             except Exception as e:
-                if not self._reconnect:
+                if not self._config.reconnect:
                     raise SSEConnectionError(f"SSE connection error: {e}")
-                await asyncio.sleep(self._retry_delay / 1000)
+                await asyncio.sleep(self._config.retry_delay / 1000)
 
     def _parse_event(self, event_data: str) -> SSEEvent:
         """Parse a single SSE event.
@@ -135,7 +128,7 @@ class SSEConnection:
     async def close(self):
         """Close the connection."""
         self._closed = True
-        if self._connection and not self._keep_connection:
+        if self._connection and not self._config.keep_connection:
             self._connection.close()
 
     async def __aenter__(self):
@@ -155,17 +148,6 @@ class _ConnectAwaitable:
     ):
         self._client = client
         self._config = config
-        # make a shallow mutable copy for the awaitable (headers may be mutated per connection)
-        self._headers = dict(config.headers) if config.headers else {}
-        self._method = config.method
-        self._url = config.url
-        self._params = config.params
-        self._data = config.data
-        self._json = config.json
-        self._request_kwargs = dict(config.request_kwargs) if config.request_kwargs else {}
-        self._reconnect = config.reconnect
-        self._retry_delay = config.retry_delay
-        self._keep_connection = config.keep_connection
         self._conn_obj: Optional[SSEConnection] = None
 
     def __await__(self):
@@ -174,32 +156,21 @@ class _ConnectAwaitable:
     async def _do_connect(self) -> SSEConnection:
         while True:
             try:
-                response = await self._client.request(
-                    method=self._method,
-                    url=self._url,
-                    headers=self._headers,
-                    params=self._params,
-                    data=self._data,
-                    json=self._json,
-                    **self._request_kwargs,
-                )
+                response = await _request_stream(self._client, self._config, self._config.headers)
                 if response.status_code != 200:
                     raise SSEConnectionError(f"Failed to connect to SSE endpoint: {response.status_code}")
                 content_type = response.headers.get("content-type", "")
                 if "text/event-stream" not in content_type:
                     raise SSEConnectionError("Endpoint did not return 'text/event-stream'")
-                # pass a per-connection RequestConfig copy so each connection can mutate headers
-                per_conn_config = self._config.with_headers_copy()
-                per_conn_config.request_kwargs = dict(self._request_kwargs)
-                conn = SSEConnection(response, self._client, per_conn_config)
+                conn = SSEConnection(response, self._client, self._config.with_headers_copy())
                 self._conn_obj = conn
                 return conn
             except SSEConnectionError:
                 raise
             except Exception as e:
-                if not self._reconnect:
+                if not self._config.reconnect:
                     raise SSEConnectionError(f"SSE connection failed: {e}")
-                await asyncio.sleep(self._retry_delay / 1000)
+                await asyncio.sleep(self._config.retry_delay / 1000)
 
     async def __aenter__(self):
         self._conn_obj = await self._do_connect()

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Dict, Optional, Union
 
 
@@ -17,16 +17,4 @@ class RequestConfig:
     keep_connection: bool = False
 
     def with_headers_copy(self) -> RequestConfig:
-        new = RequestConfig(
-            method=self.method,
-            url=self.url,
-            headers=dict(self.headers) if self.headers else {},
-            params=self.params,
-            data=self.data,
-            json=self.json,
-            request_kwargs=dict(self.request_kwargs) if self.request_kwargs else {},
-            reconnect=self.reconnect,
-            retry_delay=self.retry_delay,
-            keep_connection=self.keep_connection,
-        )
-        return new
+        return replace(self, headers=dict(self.headers or {}), request_kwargs=dict(self.request_kwargs or {}))

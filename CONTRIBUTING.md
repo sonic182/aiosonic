@@ -61,8 +61,8 @@ Run every command through `poetry run`.
 | `aiosonic/sse_client.py`, `sse_config.py` | Server-Sent Events client |
 | `aiosonic/httpx_client.py` | httpx-compatible `AsyncClient` wrapper |
 | `aiosonic/multipart.py`, `compression.py`, `auth.py` | Multipart bodies, decompression and authentication |
-| `aiosonic/exceptions.py` | Custom exceptions |
-| `aiosonic_utils/` | Shared data structures |
+| `aiosonic/exceptions.py`, `structures.py` | Custom exceptions and shared data structures (`CaseInsensitiveDict`) |
+| `aiosonic_utils/` | Deprecated re-export of `aiosonic.structures`, removed in the next major release |
 | `tests/` | Pytest suite; `tests/nodeapps/` holds the Node helper servers |
 | `sourcedocs/` | Sphinx documentation (published on Read the Docs) |
 | `scripts/` | Benchmarks and profiling tools |

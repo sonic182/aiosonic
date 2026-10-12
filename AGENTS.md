@@ -57,9 +57,9 @@ aiosonic/
 │   ├── compression.py         # bounded decompression
 │   ├── auth.py                # BasicAuth, BearerAuth
 │   ├── proxy.py, timeout.py   # Proxy, Timeouts
+│   ├── structures.py          # CaseInsensitiveDict
 │   └── exceptions.py          # all custom exceptions, rooted at AiosonicError
-├── aiosonic_utils/
-│   └── structures.py          # CaseInsensitiveDict
+├── aiosonic_utils/            # deprecated shim re-exporting aiosonic.structures, removed in the next major
 ├── tests/
 │   ├── conftest.py            # fixtures, starts the Node helper servers
 │   ├── test_*.py
