@@ -632,6 +632,9 @@ async def _send_multipart(
 class _RequestSpec:
     """What to send for one request of a redirect chain.
 
+    Instances are not changed in place: a retry sends the same instance again, and each redirect makes a new
+    one with ``dataclasses.replace``.
+
     Attributes:
         url (ParseResult): The url of the request.
         method (str): The http method.
@@ -1211,7 +1214,7 @@ class HTTPClient:
             history = [*history, response]
             (urlparsed, method, body, transfer_chunked, max_redirects) = self._handle_redirect(
                 current_urlparsed=spec.url,
-                headers=headers,
+                headers=spec.headers,
                 response=response,
                 max_redirects=max_redirects,
                 method=spec.method,
