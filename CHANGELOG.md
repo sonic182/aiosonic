@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] 2026-10-12
+
 ### Security
 - With `handle_cookies=True`, cookies set with the `Secure` attribute are only sent over https. Before, they were also sent over plain http, including on the request that follows an https to http redirect, where the `Cookie` header was stripped but the stored cookies were added back. A response received over plain http can no longer set a `Secure` cookie, nor change or remove a stored one.
 - WebSocket messages bigger than `max_msg_size` are no longer read into memory: the connection is closed with code 1009, and receiving raises the new `WebSocketMessageTooBig` (a `ConnectionDisconnected`). Before, a server could make the client hold a message of any size and exhaust its memory. `WebSocketClient.connect(max_msg_size=...)` is 4 MiB by default, and `None` disables the limit. The limit applies to each frame; up to `queue_maxsize` received messages are kept until they are read.
@@ -553,7 +555,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.3.0..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.3.1..HEAD
+[1.3.1]: https://github.com/sonic182/aiosonic/compare/1.3.0..1.3.1
 [1.3.0]: https://github.com/sonic182/aiosonic/compare/1.2.0..1.3.0
 [1.2.0]: https://github.com/sonic182/aiosonic/compare/1.1.1..1.2.0
 [1.1.1]: https://github.com/sonic182/aiosonic/compare/1.1.0..1.1.1
