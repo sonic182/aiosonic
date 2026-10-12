@@ -28,9 +28,8 @@ class CaseInsensitiveDict(MutableMapping):
 
     def __init__(self, data=None, **kwargs):
         self._store = dict()
-        if data is None:
-            data = {}
-        self.update(data, **kwargs)
+        if data or kwargs:
+            self.update(data or {}, **kwargs)
 
     def __setitem__(self, key, value):
         # Use the lowercased key for lookups, but store the actual

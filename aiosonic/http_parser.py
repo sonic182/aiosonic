@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 import re
+from functools import lru_cache
 from typing import TYPE_CHECKING, AsyncIterator, Iterator
 from urllib.parse import ParseResult, urlencode, urlparse
-
-from onecache import CacheDecorator
 
 from aiosonic.connection import Connection
 from aiosonic.types import BodyType, DataType, ParsedBodyType
@@ -29,11 +28,11 @@ def validate_header(key: str, value: str) -> None:
 
 
 # Functions with cache
-@CacheDecorator(_LRU_CACHE_SIZE)
+@lru_cache(maxsize=_LRU_CACHE_SIZE)
 def get_url_parsed(url: str) -> ParseResult:
     """Get url parsed.
 
-    With CacheDecorator for the sake of speed.
+    With lru_cache for the sake of speed.
     """
     return urlparse(url)
 

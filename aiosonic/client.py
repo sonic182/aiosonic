@@ -134,7 +134,7 @@ class HttpResponse:
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
-        res = re.match(_HTTP_RESPONSE_STATUS_LINE, data.decode().rstrip("\r\n"))
+        res = _HTTP_RESPONSE_STATUS_LINE.match(data.decode().rstrip("\r\n"))
         if not res:
             raise HttpParsingError(f"unparseable status line: {data[:80]!r}")
         self.response_initial = res.groupdict()
@@ -144,8 +144,11 @@ class HttpResponse:
         self.headers[key] = val
         self.raw_headers.append((key, val))
 
-    async def _set_response_headers(self, iterator):
-        async for header_data in iterator:
+    async def _set_response_headers(self, connection: Connection):
+        while True:
+            header_data = await connection.readline()
+            if b":" not in header_data:
+                break
             header_tuple = HttpHeaders._clear_line(header_data)
             self._set_header(*header_tuple)
 
@@ -625,7 +628,7 @@ async def _send_multipart(
     return _gen()
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True)
 class _RequestSpec:
     """What to send for one request of a redirect chain.
 
@@ -778,7 +781,7 @@ async def _exchange(
         raise ReadTimeout()
 
     # reading headers
-    await response._set_response_headers(http_parser.parse_headers_iterator(connection))
+    await response._set_response_headers(connection)
 
     status = response.status_code
     no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
