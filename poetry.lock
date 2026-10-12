@@ -1457,14 +1457,76 @@ typing-extensions = {version = ">=4.1.0", markers = "python_version < \"3.11\""}
 
 [[package]]
 name = "onecache"
-version = "0.8.1"
+version = "0.10.0"
 description = "Python cache for sync and async code"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "onecache-0.8.1-py3-none-any.whl", hash = "sha256:0d0537ff473b571f39ebac8a8f11596390d8ef4370f957a376760dcc6f88a0fa"},
-    {file = "onecache-0.8.1.tar.gz", hash = "sha256:4df2d62ced1e6ed905e3965f8fb4bdb4c999ebb7fe044202c34b52a0034f3882"},
+    {file = "onecache-0.10.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:564ad6880d00eeacddc802edb3a2c9a9ea318fcf876368dc8a0f988770a8bfb4"},
+    {file = "onecache-0.10.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d144cb48e31f74250a053f1dc2bdcf4971ac642a04a47650fb8eb06d3dd042de"},
+    {file = "onecache-0.10.0-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:97fa34822c8baf9729dd5ff177f776e0e141009f87322fb48505dfdc5eca2276"},
+    {file = "onecache-0.10.0-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6a9ce1c3ed19cd4ab0e3f83d0fa22443ded9af3c1beab0b17940c7ec6196c6b9"},
+    {file = "onecache-0.10.0-cp310-cp310-musllinux_1_2_aarch64.whl", hash = "sha256:60c552b57862733ef90569f222cda52cc0746bd2759b02f1ec842f9663265eaa"},
+    {file = "onecache-0.10.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:1b94fad263ed4da3a069442a2970078c787b6e4c559b1c090ee761f25f6b3148"},
+    {file = "onecache-0.10.0-cp310-cp310-win32.whl", hash = "sha256:02a33d44bfc9f167500094a785d1613db9a1345918b34bb43a9b844298816411"},
+    {file = "onecache-0.10.0-cp310-cp310-win_amd64.whl", hash = "sha256:75150ee2b3d113a8b5d4c514dc8f022dc04544e6863ccde510aad289f8622f28"},
+    {file = "onecache-0.10.0-cp310-cp310-win_arm64.whl", hash = "sha256:52887cd1ba2f0b4b6303f632147f348afc91318d039dd02b22f53ad6c7030978"},
+    {file = "onecache-0.10.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:37b8c34c43d7732e2ecfb316efa880a7eda9d4448d3e41b246f4afbd59d90c0f"},
+    {file = "onecache-0.10.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:f95c015202f5da02d0cd43b643648e23ea746906b3fb4eaf064c544d8b7e2574"},
+    {file = "onecache-0.10.0-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:2896ddb8bc81b932210f803707d28c091a3c3592e384ae6fab695e7e47bda365"},
+    {file = "onecache-0.10.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:6ed0e00e2c6135afe9725a94902addbaf1e2b6d98a7214b91e4a85a4fde7073f"},
+    {file = "onecache-0.10.0-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:f6c6279e7fd951caa1b017a216da09f36bf2f815107224ba8752142b1c67bb8c"},
+    {file = "onecache-0.10.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:d06cabb61f24f34390b000d7f1485995a23fb19af74d10e1963cc92eeb9ab0ee"},
+    {file = "onecache-0.10.0-cp311-cp311-win32.whl", hash = "sha256:71a6430b81de1062e7329b3337317fd03fba23c968b2e5db5efc6683e0555180"},
+    {file = "onecache-0.10.0-cp311-cp311-win_amd64.whl", hash = "sha256:b2e3e0498c7274a0beb868a5b2322e71855b6687953d9e4e76a7aac8a328d63d"},
+    {file = "onecache-0.10.0-cp311-cp311-win_arm64.whl", hash = "sha256:62dbbe9e140af731824e188f03f76952786bcbe1a653afa3f6df62367227fb09"},
+    {file = "onecache-0.10.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:f94fd3bf0d3e2acdc65d3771da91adac88cb93034831f8720c50ff7555247a2a"},
+    {file = "onecache-0.10.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:9a25e2d012480e60573342790828d4ea7ab38adccc943071883ebbcaf562a2c8"},
+    {file = "onecache-0.10.0-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:73ccfe6c984de926127bf84a88fb51372c12246e3c2e9a5fc7a2cd8e293a6492"},
+    {file = "onecache-0.10.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8eced21b125a0b602baf11be33b50ea144e0d879de5dc9e635d771823c9f54db"},
+    {file = "onecache-0.10.0-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:32b1a608e1a436e5336dcd9fc844376b9d3f80e733d4a3e48c63096927d802a5"},
+    {file = "onecache-0.10.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:1c7460af0de708edcee0eb7f3650a3ce6ceffbf82f28258550d432a563f9f493"},
+    {file = "onecache-0.10.0-cp312-cp312-win32.whl", hash = "sha256:353988ee63b1c8d6a9709b38003874d9ac5ea6f9da937b67b73e4b97f34a01c6"},
+    {file = "onecache-0.10.0-cp312-cp312-win_amd64.whl", hash = "sha256:17c0bb401728bda0928c0d1b52c7421cb94a1e7219d1b55758ae70e3ecf9c1b8"},
+    {file = "onecache-0.10.0-cp312-cp312-win_arm64.whl", hash = "sha256:59cc4df4d338f7cf20e2a5a542f07dd0c2a6bff61c8f32da8863007d4a0cf4f6"},
+    {file = "onecache-0.10.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:a03341b2d10e15e0d5bcfb5276b1298828e4cc09377343852da1b834ae0a8ad2"},
+    {file = "onecache-0.10.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:394548f5d40964ee354850e4075def5f223d499bf0e3f63b31151bebe1f196dd"},
+    {file = "onecache-0.10.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:8f1446ec3d4ffba31ec681170afbbcf317d6cbb5d29d1329105cdfc68a922460"},
+    {file = "onecache-0.10.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:7e9b4691955373ae29bf62d74c597bc9d8d5f483432b6c9bd302ad03ded6eb46"},
+    {file = "onecache-0.10.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4acc0a835d62ff63e30ad6cb949280aca3e5ef6ed6a3b95f2ffa0b1478750a7d"},
+    {file = "onecache-0.10.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:1338b5ae1f8a4c40713804afadcba78317077eaea08dde499c16a34f48695afc"},
+    {file = "onecache-0.10.0-cp313-cp313-win32.whl", hash = "sha256:2df0bf8347ce156c12e52828c58a81fc29dd338756f8858e1b9d5d13bd52898c"},
+    {file = "onecache-0.10.0-cp313-cp313-win_amd64.whl", hash = "sha256:752c3d62c2c57378f9f0774d1acaa301b2248c1d104d2128b1c9850ae399d001"},
+    {file = "onecache-0.10.0-cp313-cp313-win_arm64.whl", hash = "sha256:94ae4f0e4982c05dab315e10d443d2fe73fe18d87d44e66f1db3daa0e767283f"},
+    {file = "onecache-0.10.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:1eb4d65479f579583bf69bcb503d93d318d216ed2bce656c05090ee3956510c8"},
+    {file = "onecache-0.10.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:52b6e54d9646aa595a574ac49b7789cb65868c7f02ab22c811529e9b9086e5e2"},
+    {file = "onecache-0.10.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:1a3fe5777e2f0c025bcae353855786e10151a85f8d40acd9145de1d5e14100a8"},
+    {file = "onecache-0.10.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b38b4d094007430cd4a0e2d8cdd927b4a27018a6e276714b2bd3e53d0144b98f"},
+    {file = "onecache-0.10.0-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:75cb4b6994678d3faaf7633e4ba694b58da214e412d50a0ff2a216b0b54dc100"},
+    {file = "onecache-0.10.0-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:ad677ccd70411125378274ed5a72e88c99a9a2b862bbe8e9dd21bc350391041a"},
+    {file = "onecache-0.10.0-cp314-cp314-win32.whl", hash = "sha256:6e84777d04ef75ccaf2003516d7af164445ba37155805c204805a4b4724f4b0d"},
+    {file = "onecache-0.10.0-cp314-cp314-win_amd64.whl", hash = "sha256:a3128517b640770cc495ab476a00063935c0710a1066d6e35be5b71838349ee2"},
+    {file = "onecache-0.10.0-cp314-cp314-win_arm64.whl", hash = "sha256:e61a1e751796e7ee7d96c4d61932569cdb8b7094fe2c67e4151c685256a48c8d"},
+    {file = "onecache-0.10.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6a84d78a0d2f13f034579f7f942aab6c2c5a10e3583661b9537664f274208ec4"},
+    {file = "onecache-0.10.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:880c51dbe6378c9b3e74ccdd52cec6219b8a68a09059ac851cb19956e3970418"},
+    {file = "onecache-0.10.0-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:96aef485e89448c040f5fbd730ea1b94dbb1fa9be26819f8111ccc243b0830a7"},
+    {file = "onecache-0.10.0-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:cea88c3a55524f21e1805e31475dcc1a92c9e8934cc26024c17d16215bdd67e5"},
+    {file = "onecache-0.10.0-cp38-cp38-musllinux_1_2_aarch64.whl", hash = "sha256:a04ebaad3b6118822aa17e179fed0d84807c86e024a20efc9b7ed46cb0c429d5"},
+    {file = "onecache-0.10.0-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:95a6b5290578df667b53eae578abad2785e30c444aef6ebc5cef64a164aecfa3"},
+    {file = "onecache-0.10.0-cp38-cp38-win32.whl", hash = "sha256:67eefbc21dd533f5276da87d9be7b9dbe739da583a4a262e6f27958a7bb82be6"},
+    {file = "onecache-0.10.0-cp38-cp38-win_amd64.whl", hash = "sha256:d187075b831c03a334bbca1862baa4267232ebf05ec9360db49ca5612d7c5b42"},
+    {file = "onecache-0.10.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:019db7fc252694b42ccf70360dabe739e87b19372184f24b5a423da42c74e502"},
+    {file = "onecache-0.10.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:33dc1e42343bb199d4d6d35400d3cbff3e4e740bea913dcc4adb487c2b28b147"},
+    {file = "onecache-0.10.0-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:201e1cdcf7655f037998b90cd6d947707aa9c8342d2f01ae88a682d23ca8d907"},
+    {file = "onecache-0.10.0-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:83e060b418a61763f253d42b699fcdc7658a11e27a6227c5e5dc69201540cf57"},
+    {file = "onecache-0.10.0-cp39-cp39-musllinux_1_2_aarch64.whl", hash = "sha256:a5c849beaa3f1259cb69fc84b97e289f0d1f0afe77a376f35853cbab0cdd0ce1"},
+    {file = "onecache-0.10.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:55fd66e9110872fe7fc57d5413ecdeaebffa683230c5a0fab8c0885b8e691c06"},
+    {file = "onecache-0.10.0-cp39-cp39-win32.whl", hash = "sha256:4a90e45e556b5934da8662101a72ec17d7e590926664ed3334cf4bad53fba37d"},
+    {file = "onecache-0.10.0-cp39-cp39-win_amd64.whl", hash = "sha256:f8340e278fd59fda164e791ac784d4e5eb21e62674a4137e7bb1c13c2f86a798"},
+    {file = "onecache-0.10.0-cp39-cp39-win_arm64.whl", hash = "sha256:eec61bb44e0d2425f648bd74a8e0b93c11cd0ff6e1f730baab5ba826b2fe8ff3"},
+    {file = "onecache-0.10.0-py3-none-any.whl", hash = "sha256:971b4071fa57855f99d4ee497aae7b2dc6f7cf4f9f4491c4167d39b89d81a67c"},
+    {file = "onecache-0.10.0.tar.gz", hash = "sha256:e31121754028b91431ff068d5fc669ff4496d1e6087e1da1dbd233f0db79a6b0"},
 ]
 
 [[package]]
@@ -2550,4 +2612,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0"
-content-hash = "4077ba5cb7c35fda6b1edaf7a1ed05b083b6c0f86d9eea200be1cfa44c63dbaa"
+content-hash = "41d6ee77bdc50447fad6925b3ba38600f188600ed6c43ae9d2f1172c5245ee9c"
