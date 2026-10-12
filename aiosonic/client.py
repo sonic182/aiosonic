@@ -134,7 +134,7 @@ class HttpResponse:
 
     def _set_response_initial(self, data: bytes):
         """Parse first bytes from http response."""
-        res = _HTTP_RESPONSE_STATUS_LINE.match(data.decode().rstrip("\r\n"))
+        res = _HTTP_RESPONSE_STATUS_LINE.match(data.decode().rstrip(CRLF))
         if not res:
             raise HttpParsingError(f"unparseable status line: {data[:80]!r}")
         self.response_initial = res.groupdict()
