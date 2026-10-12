@@ -267,7 +267,8 @@ def main():
                     clients=args.clients,
                 )
             )
-            fastest_client = sorted(results.items(), key=lambda x: x[1])[0][0]
+            timings = {k: v for k, v in results.items() if not k.endswith("_error")}
+            fastest_client = min(timings, key=timings.get)
             logger.info(f"Fastest client: {fastest_client}")
     except Exception as exc:
         logger.error(f"Error during performance test: {exc}", exc_info=True)

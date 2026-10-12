@@ -146,6 +146,7 @@ async def test_retries_exhausted_on_stale_connections() -> None:
 
     assert exc_info.value.reused_connection is True
     assert isinstance(exc_info.value.__cause__, ConnectionDisconnected)
+    assert exc_info.value.__context__ is None
     assert len(connections) == 3
 
 

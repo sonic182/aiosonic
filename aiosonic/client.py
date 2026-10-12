@@ -51,8 +51,8 @@ from aiosonic.timeout import Timeouts
 
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
-from aiosonic.utils import get_debug_logger, parse_link_header, url_without_userinfo
 from aiosonic.structures import CaseInsensitiveDict
+from aiosonic.utils import get_debug_logger, parse_link_header, url_without_userinfo
 from aiosonic.version import VERSION
 
 # VARIABLES
@@ -1192,10 +1192,15 @@ class HTTPClient:
         )
         history: List[HttpResponse] = []
         while True:
+            first_drop: Optional[ConnectionDisconnected] = None
             try:
                 response = await self._send_once(spec)
             except ConnectionDisconnected as exc:
-                response = await _retry_after_disconnect(partial(self._send_once, spec), spec.method, spec.body, exc)
+                first_drop = exc
+            if first_drop is not None:
+                response = await _retry_after_disconnect(
+                    partial(self._send_once, spec), spec.method, spec.body, first_drop
+                )
             response.history = history
 
             try:
