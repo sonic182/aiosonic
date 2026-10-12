@@ -820,7 +820,9 @@ class HTTPClient:
     Params:
         * **connector**: TCPConnector to be used if provided
         * **handle_cookies**: Flag to indicate if keep response cookies in
-            client and send them in next requests.
+            client and send them in next requests. Cookies with the ``Secure``
+            attribute are only sent over https, and a response over plain http
+            can not set, replace or remove them.
         * **verify_ssl**: Flag to indicate if verify ssl certificates.
         * **http2**: Flag to enable HTTP/2 for all requests made by this client.
             Per-request ``http2=True`` also works and takes precedence.

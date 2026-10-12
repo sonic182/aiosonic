@@ -14,10 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - A WebSocket connection that receives a frame bigger than 4 MiB is now closed with code 1009. Pass `max_msg_size=None` to `WebSocketClient.connect()` to keep the old unlimited behavior.
-- The `Secure` cookie rule above also applies to `AsyncClient`, which handles cookies by default. Unlike `http.cookiejar`, a cookie sent over plain http can not replace or remove a `Secure` cookie of the same name, even without the `Secure` attribute.
+- The `Secure` cookie rule above also applies to `AsyncClient`, which handles cookies by default. Unlike `http.cookiejar`, a cookie set by a response over plain http can not replace or remove a `Secure` cookie of the same name, even without the `Secure` attribute.
 
 ### Fixed
-- When a WebSocket connection closes (by the server, by `close()`, or because the stream ended), `receive_*()` calls that are waiting and later ones raise `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one), and `async for msg in conn` ends. Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException` or writing to the closed socket, and `close()` on it does not send another Close frame and keeps its `close_code` (1009 after a message over `max_msg_size`). If sending the Close frame fails, `close()` still closes the socket.
+- When a WebSocket connection closes (by the server, by `close()`, or because the stream ended), `receive_*()` calls that are waiting and later ones raise `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one), and `async for msg in conn` ends. Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException` or writing to the closed socket. `close()` sends at most one Close frame: after the server closed, it answers the server's Close and ignores a failure to send it; after `close()` or a message over `max_msg_size`, it sends nothing and keeps `close_code` (1009 in the latter case). `close()` closes the socket even if sending the Close frame fails.
 
 ## [1.3.0] 2026-10-12
 

@@ -328,13 +328,16 @@ class WebSocketConnection:
         self._too_big_reason = reason
         self.connected = False
         self.stop_keep_alive()
-        self._wake_receivers()
-        if self.close_code is None:
+        sent = False
+        if self.close_code is None and self.conn.writer is not None:
             self.close_code = _CLOSE_MESSAGE_TOO_BIG
+            frame = await self._build_frame(self.OPCODE_CLOSE, struct.pack(">H", _CLOSE_MESSAGE_TOO_BIG))
+            self.conn.write(frame)
+            sent = True
+        self._wake_receivers()
+        if sent:
             try:
-                await asyncio.wait_for(
-                    self._send_frame(self.OPCODE_CLOSE, struct.pack(">H", _CLOSE_MESSAGE_TOO_BIG)), timeout=1
-                )
+                await asyncio.wait_for(self.conn.writer.drain(), timeout=1)
             except Exception:
                 dlogger.debug("_close_message_too_big: could not send the close frame", exc_info=True)
         self.conn.close()
@@ -392,8 +395,9 @@ class WebSocketConnection:
     async def close(self, code: int = 1000, reason: str = "") -> None:
         """Close the connection.
 
-        A Close frame is sent only once and only while the connection is open, so closing a connection that is
-        already closed does nothing and keeps its ``close_code``.
+        At most one Close frame is sent. After the server closed the connection, the Close frame answers it and a
+        failure to send it is ignored. After ``close()`` or a message over ``max_msg_size``, no frame is sent and
+        ``close_code`` is kept. The socket is closed in every case.
 
         Args:
             code (int): The close code to send.
@@ -410,7 +414,13 @@ class WebSocketConnection:
         try:
             if self.close_code is None and self.conn.writer is not None:
                 self.close_code = code
-                await self._send_frame(self.OPCODE_CLOSE, payload)
+                was_connected = self.connected
+                try:
+                    await self._send_frame(self.OPCODE_CLOSE, payload)
+                except (OSError, ConnectionDisconnected):
+                    if was_connected:
+                        raise
+                    dlogger.debug("close: could not answer the server close", exc_info=True)
         finally:
             self.connected = False
             self.conn.close()

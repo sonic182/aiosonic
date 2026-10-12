@@ -28,8 +28,11 @@ def _raw_ws_server(frames: bytes, delay: float = 0):
         )
         await asyncio.sleep(delay)
         writer.write(frames)
-        await writer.drain()
-        await reader.read()
+        try:
+            await writer.drain()
+            await reader.read()
+        except ConnectionError:
+            pass
         writer.close()
 
     return handle
@@ -300,10 +303,8 @@ async def test_ws_unsolicited_pongs_and_big_control_frames_are_bounded():
     frames = b"\x8a\x00" * 50 + b"\x81\x05after" + b"\x8a\x7e" + struct.pack(">H", 126) + b"p" * 126
     server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
-    async with server:
-        ws = await WebSocketClient().connect(
-            f"ws://127.0.0.1:{port}/", start_keepalive=False, conn_opts={"queue_maxsize": 5}
-        )
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, conn_opts={"queue_maxsize": 5})
         assert await ws.receive_text(timeout=5) == "after"
         assert ws._pong_queue.qsize() <= 5
         with pytest.raises(WebSocketMessageTooBig, match="control frame"):
@@ -317,8 +318,8 @@ async def test_ws_pending_receivers_fail_when_the_server_closes():
     """Receivers already waiting when the server closes fail, iterating ends, and sending raises."""
     server = await asyncio.start_server(_raw_ws_server(b"\x88\x02\x03\xe8", delay=0.2), "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
-    async with server:
-        ws = await WebSocketClient().connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
         pending_text = asyncio.ensure_future(ws.receive_text())
         pending_pong = asyncio.ensure_future(ws.receive_pong())
         with pytest.raises(ConnectionDisconnected):
