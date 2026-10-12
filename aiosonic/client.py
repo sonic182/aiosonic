@@ -52,8 +52,8 @@ from aiosonic.timeout import Timeouts
 # TYPES
 from aiosonic.types import BodyType, DataType, ParamsType, ParsedBodyType
 from aiosonic.utils import get_debug_logger, parse_link_header, url_without_userinfo
+from aiosonic.structures import CaseInsensitiveDict
 from aiosonic.version import VERSION
-from aiosonic_utils.structures import CaseInsensitiveDict
 
 # VARIABLES
 _HTTP_RESPONSE_STATUS_LINE = re.compile(r"HTTP/(?P<version>\d(?:\.\d)?) (?P<code>\d+)(?: (?P<reason>.*))?")

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 - `aiosonic.http_parser.parse_headers_iterator` emits a `DeprecationWarning` and is scheduled for removal in the next major release. aiosonic no longer uses it.
+- The `aiosonic_utils` package emits a `DeprecationWarning` on import and is scheduled for removal in the next major release. `CaseInsensitiveDict` moved to `aiosonic.structures`; `aiosonic_utils.structures` re-exports it until then.
 
 ### Fixed
 - A connection that dropped is closed instead of going back to the pool still open, where the next request (or the retry of the same one) could get the same dead socket again.
