@@ -6,7 +6,7 @@ import sys
 import pytest
 
 from aiosonic import WebSocketClient
-from aiosonic.exceptions import ReadTimeout
+from aiosonic.exceptions import ReadTimeout, WebSocketMessageTooBig
 
 
 @pytest.mark.asyncio
@@ -243,3 +243,22 @@ async def test_ws_ssl_connect(ws_serv_ssl):
             await ws.send_text("Hello Secure WebSocket")
             msg = await ws.receive_text()
             assert msg == "Echo: Hello Secure WebSocket"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_ws_message_over_max_msg_size_closes_the_connection(ws_serv):
+    """A message bigger than max_msg_size is not read: the connection is closed with code 1009 and receivers fail."""
+    async with WebSocketClient() as client:
+        ws = await client.connect(ws_serv, max_msg_size=1024)
+        await ws.send_text("small")
+        assert await ws.receive_text(timeout=5) == "Echo: small"
+
+        pending = asyncio.ensure_future(ws.receive_text())
+        await ws.send_text("x" * 2048)
+        with pytest.raises(WebSocketMessageTooBig, match="max_msg_size"):
+            await asyncio.wait_for(pending, timeout=5)
+        with pytest.raises(WebSocketMessageTooBig):
+            await ws.receive_text()
+        assert ws.close_code == 1009
+        assert not ws.connected
