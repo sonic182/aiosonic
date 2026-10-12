@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Requires onecache 0.10 (before, 0.8). It has a compiled cache core with prebuilt wheels and a pure Python fallback (used on PyPy), and O(1) expiration checks for the DNS cache. aiosonic does not use the onecache APIs that changed in 0.9 and 0.10. Applications that also use onecache directly must move to 0.10, whose decorator builds cache keys from the arguments instead of their `str()`.
 
+### Fixed
+- `TCPConnector(use_dns_cache=False)` resolves DNS for every new connection. Before, opening a connection raised `AttributeError: 'TCPConnector' object has no attribute 'cache'` ([#642](https://github.com/sonic182/aiosonic/issues/642)).
+
 ## [1.3.1] 2026-10-12
 
 ### Security
