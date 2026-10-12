@@ -13,10 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `WebSocketClient.connect()` raises `ConnectionError` when the server closes the connection in the middle of the upgrade response. Before, it spun forever and froze the event loop.
 
 ### Changed
+- A WebSocket connection that receives a frame bigger than 4 MiB is now closed with code 1009. Pass `max_msg_size=None` to `WebSocketClient.connect()` to keep the old unlimited behavior.
 - The `Secure` cookie rule above also applies to `AsyncClient`, which handles cookies by default. Unlike `http.cookiejar`, a cookie sent over plain http can not replace or remove a `Secure` cookie of the same name, even without the `Secure` attribute.
 
 ### Fixed
-- Receiving from a WebSocket connection that is already closed raises `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one). Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException`, and `close()` on it does nothing and keeps its `close_code` (1009 after a message over `max_msg_size`).
+- When a WebSocket connection closes (by the server, by `close()`, or because the stream ended), `receive_*()` calls that are waiting and later ones raise `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one), and `async for msg in conn` ends. Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException` or writing to the closed socket, and `close()` on it does not send another Close frame and keeps its `close_code` (1009 after a message over `max_msg_size`). If sending the Close frame fails, `close()` still closes the socket.
 
 ## [1.3.0] 2026-10-12
 

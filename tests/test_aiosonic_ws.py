@@ -10,12 +10,13 @@ import sys
 import pytest
 
 from aiosonic import WebSocketClient
-from aiosonic.exceptions import ReadTimeout, WebSocketMessageTooBig
+from aiosonic.exceptions import ConnectionDisconnected, ReadTimeout, WebSocketMessageTooBig
 from aiosonic.web_socket_client import WEBSOCKET_GUID
 
 
-def _raw_ws_server(frames: bytes):
-    """Return a handler that accepts the upgrade, sends ``frames`` as they are, and waits for the client to leave."""
+def _raw_ws_server(frames: bytes, delay: float = 0):
+    """Return a handler that accepts the upgrade, sends ``frames`` as they are after ``delay`` seconds, and waits for
+    the client to leave."""
 
     async def handle(reader, writer):
         request = await reader.readuntil(b"\r\n\r\n")
@@ -23,8 +24,10 @@ def _raw_ws_server(frames: bytes):
         accept = base64.b64encode(hashlib.sha1(key + WEBSOCKET_GUID.encode()).digest())
         writer.write(
             b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
-            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n" + frames
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
         )
+        await asyncio.sleep(delay)
+        writer.write(frames)
         await writer.drain()
         await reader.read()
         writer.close()
@@ -306,6 +309,26 @@ async def test_ws_unsolicited_pongs_and_big_control_frames_are_bounded():
         with pytest.raises(WebSocketMessageTooBig, match="control frame"):
             await ws.receive_text(timeout=5)
         assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_pending_receivers_fail_when_the_server_closes():
+    """Receivers already waiting when the server closes fail, iterating ends, and sending raises."""
+    server = await asyncio.start_server(_raw_ws_server(b"\x88\x02\x03\xe8", delay=0.2), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server:
+        ws = await WebSocketClient().connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        pending_text = asyncio.ensure_future(ws.receive_text())
+        pending_pong = asyncio.ensure_future(ws.receive_pong())
+        with pytest.raises(ConnectionDisconnected):
+            await asyncio.wait_for(pending_text, timeout=5)
+        with pytest.raises(ConnectionDisconnected):
+            await asyncio.wait_for(pending_pong, timeout=5)
+        assert [msg async for msg in ws] == []
+        with pytest.raises(ConnectionDisconnected):
+            await ws.send_text("late")
+        await ws.close()
 
 
 @pytest.mark.asyncio
