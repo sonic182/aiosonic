@@ -89,8 +89,7 @@ class TCPConnector:
 
         self.resolver = resolver or DefaultResolver()
         self.use_dns_cache = use_dns_cache
-        if self.use_dns_cache:
-            self.cache = ExpirableCache(512, ttl_dns_cache)
+        self.cache: Optional[ExpirableCache] = ExpirableCache(512, ttl_dns_cache) if use_dns_cache else None
 
     async def acquire(
         self,
@@ -161,10 +160,11 @@ class TCPConnector:
 
     async def __resolve_dns(self, host: str, port: int):
         key = f"{host}-{port}"
-        dns_data = self.cache.get(key)
+        dns_data = self.cache.get(key) if self.cache is not None else None
         if not dns_data:
             dns_data = await self.resolver.resolve(host, port)
-            self.cache.set(key, dns_data)
+            if self.cache is not None:
+                self.cache.set(key, dns_data)
         assert isinstance(dns_data, list)
         return random.choice(dns_data)
 
