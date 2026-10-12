@@ -333,6 +333,22 @@ async def test_ws_pending_receivers_fail_when_the_server_closes():
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keep_alive_closes_when_pong_times_out():
+    """A missing pong closes the connection and wakes pending receivers."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        async with await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.05) as ws:
+            with pytest.raises(ConnectionDisconnected):
+                await asyncio.wait_for(ws.receive_text(), timeout=5)
+            with pytest.raises(ConnectionDisconnected):
+                await ws.receive_text()
+            assert ws.close_code == 1011
+            assert not ws.connected
+
+
+@pytest.mark.asyncio
 @pytest.mark.timeout(5)
 async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
     """A server that closes in the middle of the upgrade response makes connect raise instead of freezing the loop."""

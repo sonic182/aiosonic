@@ -468,8 +468,9 @@ class WebSocketConnection:
                 try:
                     await asyncio.wait_for(self.receive_pong(), timeout=interval)
                 except asyncio.TimeoutError:
-                    # Optionally log a warning.
-                    pass
+                    self._keep_alive_task = None
+                    await self.close(code=1011, reason="Pong timeout")
+                    return
                 await asyncio.sleep(interval)
         except (asyncio.CancelledError, ConnectionDisconnected):
             return

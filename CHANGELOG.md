@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- A WebSocket connection is closed with code 1011 when its keep-alive pong times out, so pending and later receives raise `ConnectionDisconnected` instead of waiting indefinitely.
+
 ## [1.3.1] 2026-10-12
 
 ### Security
