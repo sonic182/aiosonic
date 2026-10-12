@@ -59,6 +59,7 @@ CRLF = "\r\n"
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
 _CLOSE_MESSAGE_TOO_BIG = 1009
+_MAX_CONTROL_FRAME_SIZE = 125
 
 
 class MessageType(Enum):
@@ -132,9 +133,11 @@ class WebSocketConnection:
         queue_maxsize (int): Maximum size of the message queue (default: 100)
         drop_frames (bool): Whether to drop frames when queue is full (default: False)
         protocol_handler (ProtocolHandler): Optional handler for custom protocols
-        max_msg_size (Optional[int]): Maximum size in bytes of a received message, ``None`` for no limit
-            (default: 4 MiB). A bigger message is not read: the connection is closed with code 1009, and receiving
-            raises :class:`aiosonic.exceptions.WebSocketMessageTooBig`.
+        max_msg_size (Optional[int]): Maximum size in bytes of a received frame, ``None`` for no limit
+            (default: 4 MiB). A bigger frame is not read: the connection is closed with code 1009, and receiving
+            raises :class:`aiosonic.exceptions.WebSocketMessageTooBig`. Up to ``queue_maxsize`` received messages
+            are kept until they are read, so the memory used can reach about ``queue_maxsize * max_msg_size``
+            bytes. A control frame bigger than 125 bytes is handled the same way.
 
     Attributes:
         connected (bool): Whether the connection is currently active
@@ -184,7 +187,7 @@ class WebSocketConnection:
         # Unified message queue for normal (text/binary) messages.
         self._msg_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
         # Separate queue for ping/pong messages.
-        self._pong_queue: asyncio.Queue[Message] = asyncio.Queue()
+        self._pong_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
         self._drop_frames = drop_frames
         self.protocol_handler = protocol_handler
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
@@ -211,10 +214,12 @@ class WebSocketConnection:
             masked_payload[i] ^= masking_key[i % 4]
         return bytes(header) + bytes(masked_payload)
 
-    async def _send_frame(self, opcode: int, payload: bytes):
+    async def _send_frame(self, opcode: int, payload: bytes) -> None:
         dlogger.debug("_send_frame opcode=%s len=%s", opcode, len(payload))
         frame = await self._build_frame(opcode, payload)
         async with self._send_lock:
+            if self.conn.writer is None or (self.close_code is not None and opcode != self.OPCODE_CLOSE):
+                raise self._disconnected_error()
             self.conn.write(frame)
             await self.conn.writer.drain()
 
@@ -233,6 +238,10 @@ class WebSocketConnection:
 
         dlogger.debug("_read_frame opcode=%s mask=%s payload_length=%s", opcode, mask, payload_length)
 
+        if opcode & 0x8 and payload_length > _MAX_CONTROL_FRAME_SIZE:
+            raise WebSocketMessageTooBig(
+                f"control frame of {payload_length} bytes is bigger than {_MAX_CONTROL_FRAME_SIZE} bytes"
+            )
         if self.max_msg_size is not None and payload_length > self.max_msg_size:
             raise WebSocketMessageTooBig(
                 f"message of {payload_length} bytes is bigger than max_msg_size ({self.max_msg_size} bytes)"
@@ -286,7 +295,10 @@ class WebSocketConnection:
                         raw_data=payload,
                         opcode=self.OPCODE_PONG,
                     )
-                    await self._pong_queue.put(msg)
+                    try:
+                        self._pong_queue.put_nowait(msg)
+                    except asyncio.QueueFull:
+                        pass
                 elif opcode == self.OPCODE_CLOSE:
                     self.connected = False
                     break
@@ -295,21 +307,24 @@ class WebSocketConnection:
             dlogger.debug("_frame_dispatch_loop: exception, disconnecting", exc_info=True)
             self.connected = False
 
-    async def _close_message_too_big(self, reason: str):
+    async def _close_message_too_big(self, reason: str) -> None:
         dlogger.debug("_frame_dispatch_loop: %s, closing", reason)
         self._too_big_reason = reason
         self.connected = False
-        self.close_code = _CLOSE_MESSAGE_TOO_BIG
         self.stop_keep_alive()
-        try:
-            await self._send_frame(self.OPCODE_CLOSE, struct.pack(">H", _CLOSE_MESSAGE_TOO_BIG))
-        except Exception:
-            dlogger.debug("_close_message_too_big: could not send the close frame", exc_info=True)
-        self.conn.close()
         try:
             self._msg_queue.put_nowait(Message(MessageType.CLOSE, b"", b"", self.OPCODE_CLOSE))
         except asyncio.QueueFull:
             pass
+        if self.close_code is None:
+            self.close_code = _CLOSE_MESSAGE_TOO_BIG
+            try:
+                await asyncio.wait_for(
+                    self._send_frame(self.OPCODE_CLOSE, struct.pack(">H", _CLOSE_MESSAGE_TOO_BIG)), timeout=1
+                )
+            except Exception:
+                dlogger.debug("_close_message_too_big: could not send the close frame", exc_info=True)
+        self.conn.close()
 
     def _disconnected_error(self) -> ConnectionDisconnected:
         if self._too_big_reason:
@@ -356,14 +371,27 @@ class WebSocketConnection:
             raise ValueError("Expected a pong message")
         return msg.raw_data
 
-    async def close(self, code: int = 1000, reason: str = ""):
+    async def close(self, code: int = 1000, reason: str = "") -> None:
+        """Close the connection.
+
+        A Close frame is sent only once and only while the connection is open, so closing a connection that is
+        already closed does nothing and keeps its ``close_code``.
+
+        Args:
+            code (int): The close code to send.
+            reason (str): The close reason to send.
+
+        Raises:
+            ValueError: If the close payload is bigger than 125 bytes.
+        """
         dlogger.debug("close code=%s reason=%s", code, reason)
         self.stop_keep_alive()
         payload = struct.pack(">H", code) + reason.encode("utf-8")
-        if len(payload) > 125:
+        if len(payload) > _MAX_CONTROL_FRAME_SIZE:
             raise ValueError("Close payload must be 125 bytes or less")
-        await self._send_frame(self.OPCODE_CLOSE, payload)
-        self.close_code = code
+        if self.close_code is None and self.conn.writer is not None:
+            self.close_code = code
+            await self._send_frame(self.OPCODE_CLOSE, payload)
         self.connected = False
         self.conn.close()
         self._frame_dispatch_task.cancel()
@@ -459,15 +487,21 @@ class WebSocketClient:
             subprotocols (Optional[List[str]]): Subprotocols to offer in ``Sec-WebSocket-Protocol``.
             start_keepalive (bool): Whether to send pings periodically.
             keepalive_interval (float): Seconds between keep-alive pings.
-            conn_opts (Optional[dict]): Extra arguments for :class:`WebSocketConnection`.
-            max_msg_size (Optional[int]): Maximum size in bytes of a received message, ``None`` for no limit
-                (default: 4 MiB). A bigger message is not read: the connection is closed with code 1009, and
-                receiving raises :class:`aiosonic.exceptions.WebSocketMessageTooBig`.
+            conn_opts (Optional[dict]): Extra arguments for :class:`WebSocketConnection`. A ``max_msg_size`` key
+                here is ignored: use the ``max_msg_size`` argument.
+            max_msg_size (Optional[int]): Maximum size in bytes of a received frame, ``None`` for no limit
+                (default: 4 MiB). A bigger frame is not read: the connection is closed with code 1009, and
+                receiving raises :class:`aiosonic.exceptions.WebSocketMessageTooBig`. Up to ``queue_maxsize``
+                received messages are kept until they are read, so the memory used can reach about
+                ``queue_maxsize * max_msg_size`` bytes.
 
         Returns:
             WebSocketConnection: The open connection.
+
+        Raises:
+            ConnectionError: If the server refuses the upgrade or closes the connection during the handshake.
         """
-        conn_opts = {"max_msg_size": max_msg_size, **(conn_opts or {})}
+        conn_opts = {**(conn_opts or {}), "max_msg_size": max_msg_size}
         urlparsed = http_parser.get_url_parsed(url)
         secured = ssl or (urlparsed.scheme == "wss")
 
@@ -502,6 +536,21 @@ class WebSocketClient:
         conn.write(request.encode())
         await conn.writer.drain()
 
+        try:
+            ws_protocol = await self._read_handshake_response(conn, ws_key)
+        except BaseException:
+            conn.close()
+            raise
+
+        ws_conn = WebSocketConnection(conn, **conn_opts)
+        ws_conn.subprotocol = ws_protocol
+
+        if start_keepalive:
+            ws_conn.start_keep_alive(interval=keepalive_interval)
+
+        return ws_conn
+
+    async def _read_handshake_response(self, conn, ws_key: str) -> Optional[str]:
         status_line = await conn.readline()
         if not status_line.startswith(b"HTTP/1.1 101"):
             raise ConnectionError(f"WebSocket upgrade failed: {status_line.decode()}")
@@ -511,6 +560,8 @@ class WebSocketClient:
         ws_protocol: Optional[str] = None
         while True:
             line = await conn.readline()
+            if not line:
+                raise ConnectionError("WebSocket upgrade failed: connection closed during the handshake")
             if line == CRLF.encode():
                 break
             if line.startswith(b"Sec-WebSocket-Accept: "):
@@ -519,14 +570,7 @@ class WebSocketClient:
                     raise ConnectionError("Invalid WebSocket Accept key")
             elif line.startswith(b"Sec-WebSocket-Protocol:"):
                 ws_protocol = line.decode().split(":", 1)[1].strip()
-
-        ws_conn = WebSocketConnection(conn, **conn_opts)
-        ws_conn.subprotocol = ws_protocol
-
-        if start_keepalive:
-            ws_conn.start_keep_alive(interval=keepalive_interval)
-
-        return ws_conn
+        return ws_protocol
 
     async def __aenter__(self):
         return self

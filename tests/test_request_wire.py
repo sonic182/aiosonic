@@ -189,7 +189,7 @@ async def test_secure_cookies_stay_on_https(ssl_context) -> None:
     http_port = []
     set_cookies = {
         "/login": b"Set-Cookie: sid=secret; Secure\r\n",
-        "/direct": b"Set-Cookie: sid=forged; Secure\r\nSet-Cookie: theme=dark\r\n",
+        "/direct": b"Set-Cookie: sid=forged\r\nSet-Cookie: pref=x; Secure\r\nSet-Cookie: theme=dark\r\n",
     }
 
     async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:

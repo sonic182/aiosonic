@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - With `handle_cookies=True`, cookies set with the `Secure` attribute are only sent over https. Before, they were also sent over plain http, including on the request that follows an https to http redirect, where the `Cookie` header was stripped but the stored cookies were added back. A response received over plain http can no longer set a `Secure` cookie, nor change or remove a stored one.
-- WebSocket messages bigger than `max_msg_size` are no longer read into memory: the connection is closed with code 1009, and receiving raises the new `WebSocketMessageTooBig` (a `ConnectionDisconnected`). Before, a server could make the client hold a message of any size and exhaust its memory. `WebSocketClient.connect(max_msg_size=...)` is 4 MiB by default, and `None` disables the limit.
+- WebSocket messages bigger than `max_msg_size` are no longer read into memory: the connection is closed with code 1009, and receiving raises the new `WebSocketMessageTooBig` (a `ConnectionDisconnected`). Before, a server could make the client hold a message of any size and exhaust its memory. `WebSocketClient.connect(max_msg_size=...)` is 4 MiB by default, and `None` disables the limit. The limit applies to each frame; up to `queue_maxsize` received messages are kept until they are read.
+- A WebSocket server can no longer make the client buffer unsolicited pongs without limit: at most `queue_maxsize` are kept and the rest are dropped. A control frame (ping, pong or close) bigger than 125 bytes closes the connection with code 1009, like a message over `max_msg_size`.
+- `WebSocketClient.connect()` raises `ConnectionError` when the server closes the connection in the middle of the upgrade response. Before, it spun forever and froze the event loop.
+
+### Changed
+- The `Secure` cookie rule above also applies to `AsyncClient`, which handles cookies by default. Unlike `http.cookiejar`, a cookie sent over plain http can not replace or remove a `Secure` cookie of the same name, even without the `Secure` attribute.
 
 ### Fixed
-- Receiving from a WebSocket connection that is already closed raises `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one).
+- Receiving from a WebSocket connection that is already closed raises `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one). Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException`, and `close()` on it does nothing and keeps its `close_code` (1009 after a message over `max_msg_size`).
 
 ## [1.3.0] 2026-10-12
 

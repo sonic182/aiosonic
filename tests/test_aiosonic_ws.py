@@ -1,12 +1,35 @@
 import asyncio
+import base64
+import hashlib
 import json
+import re
 import ssl
+import struct
 import sys
 
 import pytest
 
 from aiosonic import WebSocketClient
 from aiosonic.exceptions import ReadTimeout, WebSocketMessageTooBig
+from aiosonic.web_socket_client import WEBSOCKET_GUID
+
+
+def _raw_ws_server(frames: bytes):
+    """Return a handler that accepts the upgrade, sends ``frames`` as they are, and waits for the client to leave."""
+
+    async def handle(reader, writer):
+        request = await reader.readuntil(b"\r\n\r\n")
+        key = re.search(rb"Sec-WebSocket-Key: (\S+)", request).group(1)
+        accept = base64.b64encode(hashlib.sha1(key + WEBSOCKET_GUID.encode()).digest())
+        writer.write(
+            b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n" + frames
+        )
+        await writer.drain()
+        await reader.read()
+        writer.close()
+
+    return handle
 
 
 @pytest.mark.asyncio
@@ -260,5 +283,44 @@ async def test_ws_message_over_max_msg_size_closes_the_connection(ws_serv):
             await asyncio.wait_for(pending, timeout=5)
         with pytest.raises(WebSocketMessageTooBig):
             await ws.receive_text()
+        with pytest.raises(WebSocketMessageTooBig):
+            await ws.send_text("late")
+        await ws.close()
         assert ws.close_code == 1009
         assert not ws.connected
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_unsolicited_pongs_and_big_control_frames_are_bounded():
+    """Unsolicited pongs take at most queue_maxsize slots, and a control frame over 125 bytes closes the connection."""
+    frames = b"\x8a\x00" * 50 + b"\x81\x05after" + b"\x8a\x7e" + struct.pack(">H", 126) + b"p" * 126
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server:
+        ws = await WebSocketClient().connect(
+            f"ws://127.0.0.1:{port}/", start_keepalive=False, conn_opts={"queue_maxsize": 5}
+        )
+        assert await ws.receive_text(timeout=5) == "after"
+        assert ws._pong_queue.qsize() <= 5
+        with pytest.raises(WebSocketMessageTooBig, match="control frame"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(5)
+async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
+    """A server that closes in the middle of the upgrade response makes connect raise instead of freezing the loop."""
+
+    async def answer_101_then_close(reader, writer):
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n")
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(answer_101_then_close, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server:
+        with pytest.raises(ConnectionError, match="closed during the handshake"):
+            await WebSocketClient().connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
