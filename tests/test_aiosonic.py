@@ -31,7 +31,7 @@ from aiosonic.exceptions import (
 )
 from aiosonic.http2 import Http2Handler
 from aiosonic.pools import CyclicQueuePool, PoolConfig
-from aiosonic.resolver import AsyncResolver
+from aiosonic.resolver import AsyncResolver, ThreadedResolver
 from aiosonic.timeout import Timeouts
 
 
@@ -71,6 +71,23 @@ async def test_simple_get_aiodns(http_serv, mocker):
             assert await res.text() == "Hello, world"
     finally:
         await resolver.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+async def test_get_without_dns_cache_resolves_every_new_connection(http_serv, mocker):
+    """Regression for #642: use_dns_cache=False resolves DNS for each new connection without caching."""
+    resolver = ThreadedResolver()
+    resolve = mocker.spy(resolver, "resolve")
+
+    connector = TCPConnector(resolver=resolver, use_dns_cache=False)
+    async with aiosonic.HTTPClient(connector) as client:
+        for _ in range(2):
+            res = await client.get(http_serv, headers={"Connection": "close"})
+            assert res.status_code == 200
+            assert await res.text() == "Hello, world"
+
+    assert resolve.call_count == 2
 
 
 class MyConnection(Connection):

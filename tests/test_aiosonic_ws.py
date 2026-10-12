@@ -349,6 +349,45 @@ async def test_ws_keep_alive_closes_when_pong_times_out():
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keep_alive_close_timeout_does_not_hang_on_send_lock():
+    """A blocked sender cannot prevent a keep-alive timeout from closing the socket."""
+    ping_sent = asyncio.Event()
+
+    async def handle(reader, writer):
+        request = await reader.readuntil(b"\r\n\r\n")
+        key = re.search(rb"Sec-WebSocket-Key: (\S+)", request).group(1)
+        accept = base64.b64encode(hashlib.sha1(key + WEBSOCKET_GUID.encode()).digest())
+        writer.write(
+            b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+        )
+        await writer.drain()
+        header = await reader.readexactly(2)
+        payload_length = header[1] & 0x7F
+        if payload_length == 126:
+            payload_length = struct.unpack(">H", await reader.readexactly(2))[0]
+        elif payload_length == 127:
+            payload_length = struct.unpack(">Q", await reader.readexactly(8))[0]
+        await reader.readexactly(4 + payload_length)
+        assert header[0] & 0x0F == 0x9
+        ping_sent.set()
+        await reader.read()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        async with await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.05) as ws:
+            await asyncio.wait_for(ping_sent.wait(), timeout=1)
+            async with ws._send_lock:
+                with pytest.raises(ConnectionDisconnected):
+                    await asyncio.wait_for(ws.receive_text(), timeout=1)
+            assert ws.close_code == 1011
+            assert not ws.connected
+
+
+@pytest.mark.asyncio
 @pytest.mark.timeout(5)
 async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
     """A server that closes in the middle of the upgrade response makes connect raise instead of freezing the loop."""

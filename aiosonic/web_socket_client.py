@@ -469,7 +469,10 @@ class WebSocketConnection:
                     await asyncio.wait_for(self.receive_pong(), timeout=interval)
                 except asyncio.TimeoutError:
                     self._keep_alive_task = None
-                    await self.close(code=1011, reason="Pong timeout")
+                    try:
+                        await asyncio.wait_for(self.close(code=1011, reason="Pong timeout"), timeout=interval)
+                    except (asyncio.TimeoutError, OSError):
+                        pass
                     return
                 await asyncio.sleep(interval)
         except (asyncio.CancelledError, ConnectionDisconnected):
@@ -519,7 +522,8 @@ class WebSocketClient:
             headers (Optional[Dict[str, str]]): Extra headers for the handshake request.
             subprotocols (Optional[List[str]]): Subprotocols to offer in ``Sec-WebSocket-Protocol``.
             start_keepalive (bool): Whether to send pings periodically.
-            keepalive_interval (float): Seconds between keep-alive pings.
+            keepalive_interval (float): Seconds between keep-alive pings. If no pong arrives within this interval, the
+            connection closes with code 1011. Set ``start_keepalive=False`` to disable this behavior.
             conn_opts (Optional[dict]): Extra arguments for :class:`WebSocketConnection`. A ``max_msg_size`` key
                 here is ignored: use the ``max_msg_size`` argument.
             max_msg_size (Optional[int]): Maximum size in bytes of a received frame, ``None`` for no limit
