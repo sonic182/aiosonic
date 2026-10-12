@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The 3 attempts are counted for each request of a redirect chain, instead of being shared by the whole chain. When they run out, the `ConnectionDisconnected` has `reused_connection=True` and is chained from the last drop.
 - Lower client CPU time per HTTP/1.1 request (about 25% in local benchmarks). `aiosonic.http_parser.get_url_parsed` is cached with `functools.lru_cache`, and responses no longer read their headers through `aiosonic.http_parser.parse_headers_iterator`.
 
+### Deprecated
+- `aiosonic.http_parser.parse_headers_iterator` emits a `DeprecationWarning` and is scheduled for removal in the next major release. aiosonic no longer uses it.
+
 ### Fixed
 - A connection that dropped is closed instead of going back to the pool still open, where the next request (or the retry of the same one) could get the same dead socket again.
 - After an HTTP/2 stream is reset, the next request on the client no longer fails with `RuntimeError: readuntil() called while another coroutine is already waiting for incoming data`.

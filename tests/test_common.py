@@ -13,7 +13,7 @@ from aiosonic.compression import (
     decompress_bounded,
 )
 from aiosonic.exceptions import DecompressionError, HttpParsingError, MissingWriterException
-from aiosonic.http_parser import add_header, add_headers
+from aiosonic.http_parser import add_header, add_headers, parse_headers_iterator
 
 
 def test_headers_retrival():
@@ -34,6 +34,16 @@ def test_headers_parsing():
     parsing = HttpResponse()
     parsing._set_header(*HttpHeaders._clear_line(b"Expires: \r\n"))
     assert parsing.raw_headers == [("Expires", "")]
+
+
+@pytest.mark.asyncio
+async def test_parse_headers_iterator_is_deprecated(mocker):
+    """Test that parse_headers_iterator warns when called and still yields the header lines."""
+    connection = mocker.Mock()
+    connection.readline = mocker.AsyncMock(side_effect=[b"Content-Length: 3\r\n", b"Host:example\r\n", b"\r\n"])
+    with pytest.warns(DeprecationWarning, match="parse_headers_iterator"):
+        iterator = parse_headers_iterator(connection)
+    assert [line async for line in iterator] == [b"Content-Length: 3\r\n", b"Host:example\r\n"]
 
 
 def test_add_header():
