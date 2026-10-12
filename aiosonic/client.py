@@ -820,7 +820,9 @@ class HTTPClient:
     Params:
         * **connector**: TCPConnector to be used if provided
         * **handle_cookies**: Flag to indicate if keep response cookies in
-            client and send them in next requests.
+            client and send them in next requests. Cookies with the ``Secure``
+            attribute are only sent over https, and a response over plain http
+            can not set, replace or remove them.
         * **verify_ssl**: Flag to indicate if verify ssl certificates.
         * **http2**: Flag to enable HTTP/2 for all requests made by this client.
             Per-request ``http2=True`` also works and takes precedence.
@@ -1162,7 +1164,7 @@ class HTTPClient:
         urlparsed = http_parser.get_url_parsed(url)
 
         if self.handle_cookies:
-            self._add_cookies_to_request(str(urlparsed.hostname), headers)
+            self._add_cookies_to_request(str(urlparsed.hostname), headers, https=urlparsed.scheme == "https")
 
         resolved_auth = resolve_auth(auth, urlparsed, self.auths)
         if resolved_auth:
@@ -1210,7 +1212,7 @@ class HTTPClient:
                 raise
 
             if self.handle_cookies:
-                self._save_new_cookies(str(spec.url.hostname), response)
+                self._save_new_cookies(str(spec.url.hostname), response, https=spec.url.scheme == "https")
 
             if not (follow and response.status_code in {301, 302, 303, 307, 308}):
                 return response
@@ -1347,7 +1349,9 @@ class HTTPClient:
             pass
 
         if self.handle_cookies:
-            self._add_cookies_to_request(str(new_urlparsed.hostname), headers, merge=True)
+            self._add_cookies_to_request(
+                str(new_urlparsed.hostname), headers, merge=True, https=new_urlparsed.scheme == "https"
+            )
 
         return new_urlparsed, method, body, transfer_chunked, max_redirects
 
@@ -1363,7 +1367,7 @@ class HTTPClient:
         except TimeoutException:
             return False
 
-    def _add_cookies_to_request(self, host: str, headers: HeadersType, merge: bool = False):
+    def _add_cookies_to_request(self, host: str, headers: HeadersType, merge: bool = False, https: bool = False):
         """Add the stored cookies of a host to the request as a single ``Cookie`` header.
 
         Args:
@@ -1371,6 +1375,7 @@ class HTTPClient:
             headers (HeadersType): The headers of the request, modified in place.
             merge (bool): Merge the stored cookies into a ``Cookie`` header already present, overriding the
                 cookies with the same name, instead of leaving it as is.
+            https (bool): Whether the request goes over https. ``Secure`` cookies are only sent when it does.
         """
         host_cookies = self.cookies_map.get(host)
         if not host_cookies:
@@ -1385,16 +1390,25 @@ class HTTPClient:
             name, _, value = pair.strip().partition("=")
             if name:
                 pairs[name] = value
-        pairs.update((name, morsel.coded_value) for name, morsel in host_cookies.items())
+        pairs.update(
+            (name, morsel.coded_value) for name, morsel in host_cookies.items() if https or not morsel["secure"]
+        )
+        if not pairs:
+            return
         cookie_value = "; ".join(f"{name}={value}" for name, value in pairs.items())
         http_parser.add_header(headers, "Cookie", cookie_value, replace=True)
 
-    def _save_new_cookies(self, host: str, response: HttpResponse):
-        """Merge the cookies set by a response into the stored cookies of a host, dropping the expired ones."""
+    def _save_new_cookies(self, host: str, response: HttpResponse, https: bool = False):
+        """Merge the cookies set by a response into the stored cookies of a host, dropping the expired ones.
+
+        A response received over plain http can not set a ``Secure`` cookie, nor change or remove a stored one.
+        """
         if not response.cookies:
             return
         host_cookies = self.cookies_map.setdefault(host, cookies.SimpleCookie())
         for name, morsel in response.cookies.items():
+            if not https and (morsel["secure"] or (name in host_cookies and host_cookies[name]["secure"])):
+                continue
             if _cookie_expired(morsel):
                 host_cookies.pop(name, None)
             else:

@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- With `handle_cookies=True`, cookies set with the `Secure` attribute are only sent over https. Before, they were also sent over plain http, including on the request that follows an https to http redirect, where the `Cookie` header was stripped but the stored cookies were added back. A response received over plain http can no longer set a `Secure` cookie, nor change or remove a stored one.
+- WebSocket messages bigger than `max_msg_size` are no longer read into memory: the connection is closed with code 1009, and receiving raises the new `WebSocketMessageTooBig` (a `ConnectionDisconnected`). Before, a server could make the client hold a message of any size and exhaust its memory. `WebSocketClient.connect(max_msg_size=...)` is 4 MiB by default, and `None` disables the limit. The limit applies to each frame; up to `queue_maxsize` received messages are kept until they are read.
+- A WebSocket server can no longer make the client buffer unsolicited pongs without limit: at most `queue_maxsize` are kept and the rest are dropped. A control frame (ping, pong or close) bigger than 125 bytes closes the connection with code 1009, like a message over `max_msg_size`.
+- `WebSocketClient.connect()` raises `ConnectionError` when the server closes the connection in the middle of the upgrade response. Before, it spun forever and froze the event loop.
+
+### Changed
+- A WebSocket connection that receives a frame bigger than 4 MiB is now closed with code 1009. Pass `max_msg_size=None` to `WebSocketClient.connect()` to keep the old unlimited behavior.
+- The `Secure` cookie rule above also applies to `AsyncClient`, which handles cookies by default. Unlike `http.cookiejar`, a cookie set by a response over plain http can not replace or remove a `Secure` cookie of the same name, even without the `Secure` attribute.
+
+### Fixed
+- When a WebSocket connection closes (by the server, by `close()`, or because the stream ended), `receive_*()` calls that are waiting and later ones raise `ConnectionDisconnected` right away, instead of waiting for the timeout (or forever without one), and `async for msg in conn` ends. Sending on it raises `ConnectionDisconnected` too, instead of `MissingWriterException` or writing to the closed socket. `close()` sends at most one Close frame: after the server closed, it answers the server's Close and ignores a failure to send it; after `close()` or a message over `max_msg_size`, it sends nothing and keeps `close_code` (1009 in the latter case). `close()` closes the socket even if sending the Close frame fails.
+
 ## [1.3.0] 2026-10-12
 
 ### Changed

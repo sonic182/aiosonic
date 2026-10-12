@@ -180,3 +180,51 @@ async def test_post_see_other_redirect_is_sent_as_get_without_body() -> None:
     assert first.startswith(b"POST /form HTTP/1.1\r\n") and first.endswith(b"\r\n\r\ndata")
     assert second.startswith(b"GET /next HTTP/1.1\r\n")
     assert b"content-length" not in second.lower() and b"content-type" not in second.lower()
+
+
+@pytest.mark.asyncio
+async def test_secure_cookies_stay_on_https(ssl_context) -> None:
+    """Send a Secure cookie only over https, also after an https to http redirect, and let http not replace it."""
+    seen = []
+    http_port = []
+    set_cookies = {
+        "/login": b"Set-Cookie: sid=secret; Secure\r\n",
+        "/direct": b"Set-Cookie: sid=forged\r\nSet-Cookie: pref=x; Secure\r\nSet-Cookie: theme=dark\r\n",
+    }
+
+    async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        scheme = "https" if writer.get_extra_info("ssl_object") else "http"
+        try:
+            while True:
+                lines = (await reader.readuntil(b"\r\n\r\n")).decode().split("\r\n")
+                path = lines[0].split()[1]
+                cookie = next((line.split(": ", 1)[1] for line in lines if line.lower().startswith("cookie:")), None)
+                seen.append((scheme, path, cookie))
+                if path == "/bounce":
+                    head = f"302 Found\r\nLocation: http://127.0.0.1:{http_port[0]}/landing\r\n".encode()
+                else:
+                    head = b"200 OK\r\n" + set_cookies.get(path, b"")
+                writer.write(b"HTTP/1.1 " + head + b"Content-Length: 0\r\n\r\n")
+                await writer.drain()
+        except (asyncio.IncompleteReadError, ConnectionError):
+            pass
+        finally:
+            writer.close()
+
+    https_server = await asyncio.start_server(receive, "127.0.0.1", 0, ssl=ssl_context)
+    http_server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    async with https_server, http_server:
+        http_port.append(http_server.sockets[0].getsockname()[1])
+        https_url = f"https://127.0.0.1:{https_server.sockets[0].getsockname()[1]}"
+        urls = [f"{https_url}/login", f"http://127.0.0.1:{http_port[0]}/direct", f"{https_url}/check"]
+        async with HTTPClient(handle_cookies=True, verify_ssl=False) as client:
+            for url in [*urls, f"{https_url}/bounce"]:
+                await (await client.get(url, follow=True)).content()
+
+    assert seen == [
+        ("https", "/login", None),
+        ("http", "/direct", None),
+        ("https", "/check", "sid=secret; theme=dark"),
+        ("https", "/bounce", "sid=secret; theme=dark"),
+        ("http", "/landing", "theme=dark"),
+    ]

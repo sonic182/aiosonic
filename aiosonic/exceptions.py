@@ -63,6 +63,14 @@ class ConnectionDisconnected(AiosonicError):
         self.reused_connection = reused_connection
 
 
+class WebSocketMessageTooBig(ConnectionDisconnected):
+    """Raised when a received WebSocket frame is bigger than ``max_msg_size``.
+
+    Also raised for a control frame bigger than 125 bytes. The frame is not read: the connection is closed with
+    code 1009.
+    """
+
+
 # HTTP2
 class MissingEvent(AiosonicError):
     pass
