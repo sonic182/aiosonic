@@ -388,6 +388,22 @@ async def test_ws_keep_alive_close_timeout_does_not_hang_on_send_lock():
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keep_alive_ping_timeout_does_not_hang_on_send_lock():
+    """A blocked ping cannot prevent a keep-alive timeout from closing the socket."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        async with await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False) as ws:
+            async with ws._send_lock:
+                ws.start_keep_alive(interval=0.05)
+                with pytest.raises(ConnectionDisconnected):
+                    await asyncio.wait_for(ws.receive_text(), timeout=3)
+            assert ws.close_code == 1011
+            assert not ws.connected
+
+
+@pytest.mark.asyncio
 @pytest.mark.timeout(5)
 async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
     """A server that closes in the middle of the upgrade response makes connect raise instead of freezing the loop."""

@@ -60,6 +60,7 @@ WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
 _CLOSE_MESSAGE_TOO_BIG = 1009
 _MAX_CONTROL_FRAME_SIZE = 125
+_KEEP_ALIVE_CLOSE_TIMEOUT = 1.0
 
 
 class MessageType(Enum):
@@ -464,13 +465,15 @@ class WebSocketConnection:
     async def _keep_alive_loop(self, interval: float):
         try:
             while self.connected:
-                await self.ping()
                 try:
+                    await asyncio.wait_for(self.ping(), timeout=interval)
                     await asyncio.wait_for(self.receive_pong(), timeout=interval)
                 except asyncio.TimeoutError:
                     self._keep_alive_task = None
                     try:
-                        await asyncio.wait_for(self.close(code=1011, reason="Pong timeout"), timeout=interval)
+                        await asyncio.wait_for(
+                            self.close(code=1011, reason="Pong timeout"), timeout=_KEEP_ALIVE_CLOSE_TIMEOUT
+                        )
                     except (asyncio.TimeoutError, OSError):
                         pass
                     return
@@ -523,7 +526,8 @@ class WebSocketClient:
             subprotocols (Optional[List[str]]): Subprotocols to offer in ``Sec-WebSocket-Protocol``.
             start_keepalive (bool): Whether to send pings periodically.
             keepalive_interval (float): Seconds between keep-alive pings. If no pong arrives within this interval, the
-            connection closes with code 1011. Set ``start_keepalive=False`` to disable this behavior.
+            connection closes with code 1011. If the receive queue is full long enough to prevent the pong from being
+            processed, the same timeout applies. Set ``start_keepalive=False`` to disable this behavior.
             conn_opts (Optional[dict]): Extra arguments for :class:`WebSocketConnection`. A ``max_msg_size`` key
                 here is ignored: use the ``max_msg_size`` argument.
             max_msg_size (Optional[int]): Maximum size in bytes of a received frame, ``None`` for no limit

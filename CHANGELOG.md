@@ -9,9 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - A WebSocket connection now closes with code 1011 when its keep-alive pong times out. Set `start_keepalive=False` to retain the previous behavior of leaving the connection open when a server does not answer keep-alive pings.
 
-### Fixed
-- A WebSocket connection is closed with code 1011 when its keep-alive pong times out, so pending and later receives raise `ConnectionDisconnected` instead of waiting indefinitely.
-
 ## [1.3.2] 2026-10-12
 
 ### Changed
