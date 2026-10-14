@@ -2427,28 +2427,28 @@ test = ["aiohttp (>=3.10.5)", "flake8 (>=6.1,<7.0)", "mypy (>=0.800)", "psutil",
 
 [[package]]
 name = "winloop"
-version = "0.7.1"
+version = "0.8.0"
 description = "Windows version of uvloop"
 optional = false
-python-versions = ">=3.8.0"
+python-versions = ">=3.9.0"
 groups = ["test"]
 markers = "sys_platform == \"win32\""
 files = [
-    {file = "winloop-0.7.1-cp310-cp310-win_amd64.whl", hash = "sha256:c94f574049aa1b35e8c6babe805f9c5bc73e7d3752b6a7696f0403cec98108a4"},
-    {file = "winloop-0.7.1-cp310-cp310-win_arm64.whl", hash = "sha256:9089b64e6afd297716290671852bf6ec0b70bef2a336613765271fe85832a256"},
-    {file = "winloop-0.7.1-cp311-cp311-win_amd64.whl", hash = "sha256:19154f8be70bc9ce9455a9ca26d8ecd48cc6cf432b7ccbf57238c84db29ba53a"},
-    {file = "winloop-0.7.1-cp311-cp311-win_arm64.whl", hash = "sha256:ae1808cfbc608e92577cef81131674d93efed548090995760fd1cd721aa50dbb"},
-    {file = "winloop-0.7.1-cp312-cp312-win_amd64.whl", hash = "sha256:9bb416a2f0fee52dcdda3137358c56b48bfb63c443e11232d4c04353b56d39b0"},
-    {file = "winloop-0.7.1-cp312-cp312-win_arm64.whl", hash = "sha256:6f2f90622542382bf9304b5ec9d252102f444bc3b445e24515250d7c62d62702"},
-    {file = "winloop-0.7.1-cp313-cp313-win_amd64.whl", hash = "sha256:0aa944cb845ba5d6420fe53733feb3fb474600b298202ec2bd7cb03f46502331"},
-    {file = "winloop-0.7.1-cp313-cp313-win_arm64.whl", hash = "sha256:20464fde92ecbcda14a590d4d88275abf19eca99ed3ae787e0dee1e054be51d5"},
-    {file = "winloop-0.7.1-cp314-cp314-win_amd64.whl", hash = "sha256:86a78413b3ae9c6d6c5f9cc0a16a0ab7c48040df7952321f095b8b9b72ec653d"},
-    {file = "winloop-0.7.1-cp314-cp314-win_arm64.whl", hash = "sha256:db04854c148a1ead62cbf63394d320dbb4c14fe7d33738012deb3ad5ecf41eef"},
-    {file = "winloop-0.7.1-cp314-cp314t-win_amd64.whl", hash = "sha256:d1d3cf643c6f652aa3be42168df90d086508853fc40c58b3d1b3397577ffa667"},
-    {file = "winloop-0.7.1-cp314-cp314t-win_arm64.whl", hash = "sha256:2c6c1306da9b998e167930f9b0f7f8e3e6c9c75f6a666277a53ad9fa3afa694c"},
-    {file = "winloop-0.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:a34fd0d7b081fe975d70af6cf7ed2c448066d4fc460c5a3686e20382cd6efc0f"},
-    {file = "winloop-0.7.1-cp39-cp39-win_arm64.whl", hash = "sha256:64fad5fe179ae5a35f9316f96b358979d8deaca2171d81eca48d6f95d677745e"},
-    {file = "winloop-0.7.1.tar.gz", hash = "sha256:2ea92f36493477427ca3c7f4cb84a45f47f5feb3559dfe4b660d8e8068171a47"},
+    {file = "winloop-0.8.0-cp310-cp310-win_amd64.whl", hash = "sha256:b3945303e5c1bde246f4910be7db756d7bea18fc610cd64d761bb67d94261724"},
+    {file = "winloop-0.8.0-cp310-cp310-win_arm64.whl", hash = "sha256:4125b76ac55b9a7026d0cc35a2e873a34ed4e981a2d221b714d786a313ecb618"},
+    {file = "winloop-0.8.0-cp311-cp311-win_amd64.whl", hash = "sha256:31208cf3a8cff0cb77998ed90cda03cf264e96e083d1c1a0ebdf3a58a1e9fce3"},
+    {file = "winloop-0.8.0-cp311-cp311-win_arm64.whl", hash = "sha256:0676af99c928fe693624fc13e402ee8b94fdb8ec41115cede2f8a04075f9366e"},
+    {file = "winloop-0.8.0-cp312-cp312-win_amd64.whl", hash = "sha256:10e0b32d206274435dc6f1f4542f6f6c47287e45c661c510ab782cecb52d65a3"},
+    {file = "winloop-0.8.0-cp312-cp312-win_arm64.whl", hash = "sha256:2b200e3d4d833b82693c6038ddbaed72dd12e5517008c08042615545c47b4595"},
+    {file = "winloop-0.8.0-cp313-cp313-win_amd64.whl", hash = "sha256:12ac56b01e266172afb4c5c4599c03f2ab7654d498570b7666c12cd9be2aa19c"},
+    {file = "winloop-0.8.0-cp313-cp313-win_arm64.whl", hash = "sha256:b978496a3114e238e9f5adf87d7e31d59e1119ce53f7073771caf2a88873bf1c"},
+    {file = "winloop-0.8.0-cp314-cp314-win_amd64.whl", hash = "sha256:ad10c1320bec79fb41a5626ecd5d6c0fc00f2676aadeababf327ac4b07e42471"},
+    {file = "winloop-0.8.0-cp314-cp314-win_arm64.whl", hash = "sha256:cd36320e519d4666a5b26af0b6bbda2384ca337f4d755353e2d0447d0893d795"},
+    {file = "winloop-0.8.0-cp314-cp314t-win_amd64.whl", hash = "sha256:9f902a4d5a43b8d46e15ddf2709180f790bdf1fc5515192bc799a087b0e72fac"},
+    {file = "winloop-0.8.0-cp314-cp314t-win_arm64.whl", hash = "sha256:52edcce751707cd0819a38a03e829a44e6a9ab3cac0b3e8cfd77cc1bfa9eff72"},
+    {file = "winloop-0.8.0-cp39-cp39-win_amd64.whl", hash = "sha256:3a04195b9849b53028c32c7782e2c06044f469bee9b1e6c4010de6258474a836"},
+    {file = "winloop-0.8.0-cp39-cp39-win_arm64.whl", hash = "sha256:cfddfa7f423a4ab0c8ea579cccccb14b2ed9528e540daac37b971c22786dcc02"},
+    {file = "winloop-0.8.0.tar.gz", hash = "sha256:5a34605a72df5416279e89193688de0efb9e541c99e65923abcf0d7ff788510a"},
 ]
 
 [package.extras]
@@ -2612,4 +2612,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10.0"
-content-hash = "41d6ee77bdc50447fad6925b3ba38600f188600ed6c43ae9d2f1172c5245ee9c"
+content-hash = "a073008a22366d6bc37b6c80683bb99ba9fd17e6763228ef447be9310b5fee80"
