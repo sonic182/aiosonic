@@ -11,6 +11,7 @@ from aiosonic.resolver import AsyncResolver, ThreadedResolver
 async def test_threaded_resolver_ipv6_with_only_loopback_interfaces(mocker):
     resolver = ThreadedResolver()
     getaddrinfo = resolver.loop.getaddrinfo
+    native_infos = await getaddrinfo("::1", 443, type=socket.SOCK_STREAM, family=socket.AF_INET6, flags=0)
 
     async def loopback_getaddrinfo(*args, **kwargs):
         if kwargs.get("flags", 0) & socket.AI_ADDRCONFIG:
@@ -26,7 +27,7 @@ async def test_threaded_resolver_ipv6_with_only_loopback_interfaces(mocker):
             "host": "::1",
             "port": 443,
             "family": socket.AF_INET6,
-            "proto": socket.IPPROTO_TCP,
+            "proto": native_infos[0][2],
             "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
         }
     ]
