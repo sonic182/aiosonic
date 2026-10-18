@@ -1,8 +1,64 @@
+import socket
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from aiosonic.resolver import AsyncResolver, ThreadedResolver
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not socket.has_ipv6, reason="IPv6 is unavailable")
+async def test_threaded_resolver_ipv6_with_only_loopback_interfaces(mocker):
+    resolver = ThreadedResolver()
+    getaddrinfo = resolver.loop.getaddrinfo
+    native_infos = await getaddrinfo("::1", 443, type=socket.SOCK_STREAM, family=socket.AF_INET6, flags=0)
+
+    async def loopback_getaddrinfo(*args, **kwargs):
+        if kwargs.get("flags", 0) & socket.AI_ADDRCONFIG:
+            raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+        return await getaddrinfo(*args, **kwargs)
+
+    mocker.patch.object(resolver.loop, "getaddrinfo", side_effect=loopback_getaddrinfo)
+    hosts = await resolver.resolve("::1", 443, family=socket.AF_INET6)
+
+    assert hosts == [
+        {
+            "hostname": "::1",
+            "host": "::1",
+            "port": 443,
+            "family": socket.AF_INET6,
+            "proto": native_infos[0][2],
+            "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+        }
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error_code", [socket.EAI_AGAIN, socket.EAI_FAIL])
+async def test_threaded_resolver_propagates_dns_errors_without_retry(mocker, error_code):
+    resolver = ThreadedResolver()
+    error = socket.gaierror(error_code, "lookup failed")
+    lookup = mocker.patch.object(resolver.loop, "getaddrinfo", side_effect=error)
+
+    with pytest.raises(socket.gaierror) as exc_info:
+        await resolver.resolve("example.invalid", 80)
+
+    assert exc_info.value is error
+    lookup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_threaded_resolver_propagates_fallback_failure(mocker):
+    resolver = ThreadedResolver()
+    first_error = socket.gaierror(socket.EAI_NONAME, "no configured addresses")
+    fallback_error = socket.gaierror(socket.EAI_NONAME, "unknown hostname")
+    lookup = mocker.patch.object(resolver.loop, "getaddrinfo", side_effect=[first_error, fallback_error])
+
+    with pytest.raises(socket.gaierror) as exc_info:
+        await resolver.resolve("missing.invalid", 80)
+
+    assert exc_info.value is fallback_error
+    assert lookup.await_count == 2
 
 
 @pytest.mark.asyncio

@@ -3,6 +3,7 @@ import base64
 import json
 import os
 import platform
+import socket
 import sys
 import tempfile
 from datetime import timedelta
@@ -47,6 +48,26 @@ async def test_simple_get(http_serv):
         assert res.status_code == 200
         assert await res.content() == b"Hello, world"
         assert await res.text() == "Hello, world"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(30)
+@pytest.mark.parametrize("hostname", ["127.0.0.1", "localhost"])
+async def test_get_with_only_loopback_interfaces(http_serv, mocker, hostname):
+    loop = asyncio.get_running_loop()
+    getaddrinfo = loop.getaddrinfo
+
+    async def loopback_getaddrinfo(*args, **kwargs):
+        if kwargs.get("flags", 0) & socket.AI_ADDRCONFIG:
+            raise socket.gaierror(socket.EAI_NONAME, "Name or service not known")
+        return await getaddrinfo(*args, **kwargs)
+
+    mocker.patch.object(loop, "getaddrinfo", side_effect=loopback_getaddrinfo)
+    connector = TCPConnector(resolver=ThreadedResolver())
+    async with aiosonic.HTTPClient(connector) as client:
+        response = await client.get(http_serv.replace("127.0.0.1", hostname))
+        assert response.status_code == 200
+        assert await response.text() == "Hello, world"
 
 
 @pytest.mark.asyncio

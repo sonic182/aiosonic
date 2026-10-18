@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Requests to loopback addresses and locally resolved hosts work when only the loopback interface is configured, including network-isolated containers and build sandboxes. `ThreadedResolver` retries resolution without `AI_ADDRCONFIG` when it returns `EAI_NONAME` ([#644](https://github.com/sonic182/aiosonic/issues/644)).
+
 ## [1.3.2] 2026-10-12
 
 ### Changed

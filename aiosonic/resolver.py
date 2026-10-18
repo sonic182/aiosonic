@@ -49,13 +49,24 @@ class ThreadedResolver(AbstractResolver):
         return self._loop
 
     async def resolve(self, hostname: str, port: int = 0, family: int = socket.AF_INET) -> List[Dict[str, Any]]:
-        infos = await self.loop.getaddrinfo(
-            hostname,
-            port,
-            type=socket.SOCK_STREAM,
-            family=family,
-            flags=socket.AI_ADDRCONFIG,
-        )
+        try:
+            infos = await self.loop.getaddrinfo(
+                hostname,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=socket.AI_ADDRCONFIG,
+            )
+        except socket.gaierror as exc:
+            if exc.errno != socket.EAI_NONAME:
+                raise
+            infos = await self.loop.getaddrinfo(
+                hostname,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=0,
+            )
 
         hosts = []
         for family, _, proto, _, address in infos:
