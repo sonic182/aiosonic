@@ -79,10 +79,8 @@ class HttpHeaders(CaseInsensitiveDict):
     def _clear_line(line: bytes):
         """Clear readed line."""
         decoded = line.rstrip().decode()
-        pair = decoded.split(": ", 1)
-        if len(pair) < 2:
-            return decoded.split(":")
-        return pair
+        name, _, value = decoded.partition(":")
+        return [name, value.strip(" \t")]
 
 
 #: Headers
@@ -143,6 +141,17 @@ class HttpResponse:
         """Set header to response."""
         self.headers[key] = val
         self.raw_headers.append((key, val))
+
+    def _header_tokens(self, name: str) -> List[str]:
+        """Get the lowercased comma-separated tokens of every occurrence of a header."""
+        name = name.lower()
+        return [
+            token.strip(" \t").lower()
+            for key, val in self.raw_headers
+            if key.lower() == name
+            for token in val.split(",")
+            if token.strip(" \t")
+        ]
 
     async def _set_response_headers(self, connection: Connection):
         while True:
@@ -788,9 +797,10 @@ async def _exchange(
 
     status = response.status_code
     no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
-    size = None if no_body else response.headers.get("content-length")
-    chunked = not no_body and response.headers.get("transfer-encoding", "") == "chunked"
-    keepalive = "close" not in response.headers.get("connection", "")
+    transfer_codings = response._header_tokens("transfer-encoding")
+    chunked = not no_body and bool(transfer_codings) and transfer_codings[-1] == "chunked"
+    size = None if no_body or chunked else response.headers.get("content-length")
+    keepalive = "close" not in response._header_tokens("connection")
     response.compressed = response.headers.get("content-encoding", "")
 
     if size and spec.stream and int(size) > 0:

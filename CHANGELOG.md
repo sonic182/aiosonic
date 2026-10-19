@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Requests to loopback addresses and locally resolved hosts work when only the loopback interface is configured, including network-isolated containers and build sandboxes. `ThreadedResolver` retries resolution without `AI_ADDRCONFIG` when it returns `EAI_NONAME` ([#644](https://github.com/sonic182/aiosonic/issues/644)).
+- Chunked HTTP/1.1 responses are read when the `Transfer-Encoding` value has extra whitespace or another case (`Transfer-Encoding:  chunked`, `Chunked`), or lists other codings before `chunked`. Before, the body was left unread on the pooled connection, the response came back empty, and the next request on that connection failed with `HttpParsingError: unparseable status line` ([#651](https://github.com/sonic182/aiosonic/issues/651)).
+- Response header values no longer keep the whitespace around them, and a header with no space after the colon keeps any colons inside its value.
+- A chunked response that also sends `Content-Length` is read as chunked, as RFC 9112 requires. Before, the client tried to read `Content-Length` bytes first and could hang or mis-frame the body.
+- A `Connection: close` response header is honoured when the header is repeated or lists other tokens, and the connection is closed instead of being returned to the pool for reuse.
 
 ## [1.3.2] 2026-10-12
 

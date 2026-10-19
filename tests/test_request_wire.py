@@ -228,3 +228,40 @@ async def test_secure_cookies_stay_on_https(ssl_context) -> None:
         ("https", "/bounce", "sid=secret; theme=dark"),
         ("http", "/landing", "theme=dark"),
     ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "framing, connections_used",
+    [
+        (b"Transfer-Encoding:  chunked\r\nConnection: close\r\nConnection: Transfer-Encoding\r\n", 2),
+        (b"Transfer-Encoding:\tChunked \r\n", 1),
+        (b"Content-Length: 99\r\nTransfer-Encoding: chunked\r\nConnection: Close\r\n", 2),
+    ],
+)
+async def test_chunked_response_with_header_whitespace(framing: bytes, connections_used: int) -> None:
+    """Read a chunked body despite extra whitespace or case, and honour Connection: close in any repeated header."""
+    connections = []
+
+    async def receive(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        connections.append(writer)
+        try:
+            while True:
+                await reader.readuntil(b"\r\n\r\n")
+                writer.write(b"HTTP/1.1 200 OK\r\n" + framing + b"\r\n3\r\nhel\r\n2\r\nlo\r\n0\r\n\r\n")
+                await writer.drain()
+        except (asyncio.IncompleteReadError, ConnectionError):
+            pass
+        finally:
+            writer.close()
+
+    server = await asyncio.start_server(receive, "127.0.0.1", 0)
+    async with server:
+        url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/"
+        async with HTTPClient() as client:
+            for _ in range(2):
+                response = await client.get(url)
+                assert response.chunked
+                assert await response.content() == b"hello"
+
+    assert len(connections) == connections_used

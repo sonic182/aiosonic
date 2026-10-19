@@ -36,6 +36,12 @@ def test_headers_parsing():
     assert parsing.raw_headers == [("Expires", "")]
 
 
+def test_headers_parsing_strips_optional_whitespace():
+    """Drop whitespace around the value and keep colons inside it, with or without a space after the name."""
+    assert list(HttpHeaders._clear_line(b"Transfer-Encoding: \t chunked \r\n")) == ["Transfer-Encoding", "chunked"]
+    assert list(HttpHeaders._clear_line(b"X-Url:http://a:1/b\r\n")) == ["X-Url", "http://a:1/b"]
+
+
 def test_add_header():
     """Test add header method."""
     headers = HttpHeaders()
