@@ -236,6 +236,7 @@ async def test_secure_cookies_stay_on_https(ssl_context) -> None:
     [
         (b"Transfer-Encoding:  chunked\r\nConnection: close\r\nConnection: Transfer-Encoding\r\n", 2),
         (b"Transfer-Encoding:\tChunked \r\n", 1),
+        (b"Content-Length: 99\r\nTransfer-Encoding: chunked\r\nConnection: Close\r\n", 2),
     ],
 )
 async def test_chunked_response_with_header_whitespace(framing: bytes, connections_used: int) -> None:

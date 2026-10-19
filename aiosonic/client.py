@@ -797,9 +797,9 @@ async def _exchange(
 
     status = response.status_code
     no_body = method.upper() == "HEAD" or status in {204, 304} or 100 <= status < 200
-    size = None if no_body else response.headers.get("content-length")
     transfer_codings = response._header_tokens("transfer-encoding")
     chunked = not no_body and bool(transfer_codings) and transfer_codings[-1] == "chunked"
+    size = None if no_body or chunked else response.headers.get("content-length")
     keepalive = "close" not in response._header_tokens("connection")
     response.compressed = response.headers.get("content-encoding", "")
 
