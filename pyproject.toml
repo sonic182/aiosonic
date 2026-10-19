@@ -46,7 +46,7 @@ aiodns = ">=3.2,<5.0"
 aiohttp = "^3.14.4"
 asgiref = "^3.8.1"
 click = "<8.6.0"
-httptools = {version=">=0.6,<0.9", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
+httptools = {version=">=0.6,<0.10", markers="sys_platform != 'win32' and sys_platform != 'cygwin' and platform_python_implementation != 'PyPy'"}
 httpx = ">=0.28.1,<0.29"
 proxy-py = "^2.4.4"
 pytest = "^9.0.0"
