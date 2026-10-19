@@ -300,6 +300,8 @@ class Connection:
         self.requests_count += 1
         # ensure unblock conn object after read
         self.blocked = False
+        if not self.keep:
+            self.close()
         self.last_released_time = time.monotonic()  # Track timestamp
         self.pool.release(self)
 
