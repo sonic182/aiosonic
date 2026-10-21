@@ -1,5 +1,6 @@
 ![github status](https://github.com/sonic182/aiosonic/actions/workflows/python.yml/badge.svg)
 [![PyPI version](https://badge.fury.io/py/aiosonic.svg)](https://badge.fury.io/py/aiosonic)
+[![PyPI Stats](https://img.shields.io/pypi/dm/aiosonic)](https://pypistats.org/packages/aiosonic)
 [![Documentation Status](https://readthedocs.org/projects/aiosonic/badge/?version=latest)](https://aiosonic.readthedocs.io/en/latest/?badge=latest)
 
 ![aiosonic banner](https://raw.githubusercontent.com/sonic182/aiosonic/master/assets/aiosonic-banner.png)
