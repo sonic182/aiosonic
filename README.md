@@ -327,6 +327,14 @@ To collect profiling data, add `--profile aiosonic --rounds 1 --output aiosonic.
 - **Server push not supported** — push promise frames are silently ignored (`PushPromiseReceived`, `PushedStreamReset`, `PushedStreamClosed`).
 - **No cleartext HTTP/2 (`h2c`)** — HTTP/2 requires TLS. This matches RFC 7540 §3.3 browser requirements and is intentional.
 
+## Used by
+
+- [datadog-api-client](https://github.com/DataDog/datadog-api-client-python): Datadog's official Python API client, which uses aiosonic for its asyncio support (`async` extra).
+- [flowdapt](https://github.com/emergentmethods/flowdapt): platform for deploying adaptive, reactive AI applications at large scale.
+- [hyperscale](https://github.com/hyper-light/hyperscale): performance testing at scale, which uses aiosonic for some of its reporters.
+
+See the full list of dependents on [ClickPy](https://clickpy.clickhouse.com/dashboard/aiosonic).
+
 ## Development
 
 Install development dependencies with Poetry:
