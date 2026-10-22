@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `WebSocketConnection` answers a ping from the server with a pong carrying the same payload, and echoes a Close frame from the server and keeps its code in `close_code` (1005 when it has none), as RFC 6455 requires. Before, servers that ping to check that the client is alive could drop the connection.
+- A message the server splits in several frames is joined until the final frame, and text is decoded only once the message is complete. Before, everything after the first frame was lost, and a split inside a multi-byte character raised `UnicodeDecodeError` and dropped the connection. `max_msg_size` applies to the whole message ([#632](https://github.com/sonic182/aiosonic/issues/632)).
+
 ## [1.3.3] 2026-10-19
 
 ### Fixed

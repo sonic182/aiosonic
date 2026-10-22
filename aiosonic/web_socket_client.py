@@ -58,6 +58,7 @@ dlogger = get_debug_logger()
 CRLF = "\r\n"
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
+_CLOSE_NO_STATUS = 1005
 _CLOSE_MESSAGE_TOO_BIG = 1009
 _MAX_CONTROL_FRAME_SIZE = 125
 
@@ -163,6 +164,7 @@ class WebSocketConnection:
                   # server disconnects
     """
 
+    OPCODE_CONTINUATION = 0x0
     OPCODE_TEXT = 0x1
     OPCODE_BINARY = 0x2
     OPCODE_CLOSE = 0x8
@@ -226,8 +228,9 @@ class WebSocketConnection:
             self.conn.write(frame)
             await self.conn.writer.drain()
 
-    async def _read_frame(self) -> Tuple[int, bytes]:
+    async def _read_frame(self) -> Tuple[bool, int, bytes]:
         header = await self.conn.readexactly(2)
+        fin = (header[0] & 0x80) != 0
         opcode = header[0] & 0x0F
         mask = (header[1] & 0x80) != 0
         payload_length = header[1] & 0x7F
@@ -259,7 +262,7 @@ class WebSocketConnection:
             payload = bytes(payload)
         else:
             payload = await self.conn.readexactly(payload_length)
-        return opcode, payload
+        return fin, opcode, payload
 
     async def _enqueue(self, queue: asyncio.Queue, message: Message):
         if self._drop_frames:
@@ -272,10 +275,13 @@ class WebSocketConnection:
             await queue.put(message)
 
     async def _frame_dispatch_loop(self):
+        fragments: List[bytes] = []
+        fragments_size = 0
+        fragments_opcode = None
         try:
             while self.connected:
                 try:
-                    opcode, payload = await self._read_frame()
+                    fin, opcode, payload = await self._read_frame()
                 except asyncio.IncompleteReadError:
                     dlogger.debug("_frame_dispatch_loop: IncompleteReadError, disconnecting")
                     self.connected = False
@@ -285,12 +291,8 @@ class WebSocketConnection:
                     break
 
                 dlogger.debug("_frame_dispatch_loop: received opcode=%s payload_len=%s", opcode, len(payload))
-                if opcode == self.OPCODE_TEXT:
-                    msg = Message.create_text(payload.decode("utf-8"))
-                    await self._enqueue(self._msg_queue, msg)
-                elif opcode == self.OPCODE_BINARY:
-                    msg = Message.create_binary(payload)
-                    await self._enqueue(self._msg_queue, msg)
+                if opcode == self.OPCODE_PING:
+                    await self._answer_ping(payload)
                 elif opcode == self.OPCODE_PONG:
                     msg = Message(
                         type=MessageType.PONG,
@@ -303,15 +305,52 @@ class WebSocketConnection:
                     except asyncio.QueueFull:
                         pass
                 elif opcode == self.OPCODE_CLOSE:
-                    self.connected = False
+                    await self._answer_close(payload)
                     break
-                # Optionally handle OPCODE_PING if desired.
+                elif opcode in (self.OPCODE_TEXT, self.OPCODE_BINARY, self.OPCODE_CONTINUATION):
+                    if opcode != self.OPCODE_CONTINUATION:
+                        fragments, fragments_size, fragments_opcode = [], 0, opcode
+                    elif fragments_opcode is None:
+                        continue
+                    fragments.append(payload)
+                    fragments_size += len(payload)
+                    if self.max_msg_size is not None and fragments_size > self.max_msg_size:
+                        await self._close_message_too_big(
+                            f"message of {fragments_size} bytes is bigger than max_msg_size "
+                            f"({self.max_msg_size} bytes)"
+                        )
+                        break
+                    if not fin:
+                        continue
+                    data = b"".join(fragments)
+                    if fragments_opcode == self.OPCODE_TEXT:
+                        msg = Message.create_text(data.decode("utf-8"))
+                    else:
+                        msg = Message.create_binary(data)
+                    fragments, fragments_size, fragments_opcode = [], 0, None
+                    await self._enqueue(self._msg_queue, msg)
         except Exception:
             dlogger.debug("_frame_dispatch_loop: exception, disconnecting", exc_info=True)
             self.connected = False
         finally:
             self.connected = False
             self._wake_receivers()
+
+    async def _answer_ping(self, payload: bytes) -> None:
+        try:
+            await self._send_frame(self.OPCODE_PONG, payload)
+        except (OSError, ConnectionDisconnected):
+            dlogger.debug("_answer_ping: could not send the pong", exc_info=True)
+
+    async def _answer_close(self, payload: bytes) -> None:
+        self.connected = False
+        if self.close_code is not None:
+            return
+        self.close_code = struct.unpack(">H", payload[:2])[0] if len(payload) >= 2 else _CLOSE_NO_STATUS
+        try:
+            await self._send_frame(self.OPCODE_CLOSE, payload)
+        except (OSError, ConnectionDisconnected):
+            dlogger.debug("_answer_close: could not send the close frame", exc_info=True)
 
     def _wake_receivers(self) -> None:
         if self._receivers_woken:
