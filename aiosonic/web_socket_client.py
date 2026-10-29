@@ -59,7 +59,16 @@ CRLF = "\r\n"
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
 _CLOSE_MESSAGE_TOO_BIG = 1009
+_CLOSE_INTERNAL_ERROR = 1011
+_KEEP_ALIVE_CLOSE_TIMEOUT = 1
 _MAX_CONTROL_FRAME_SIZE = 125
+
+
+def _check_keep_alive_times(interval: float, timeout: Optional[float]) -> None:
+    if interval <= 0:
+        raise ValueError("The keep-alive interval must be greater than 0")
+    if timeout is not None and timeout <= 0:
+        raise ValueError("The keep-alive timeout must be greater than 0")
 
 
 class MessageType(Enum):
@@ -182,6 +191,7 @@ class WebSocketConnection:
         self.close_code: Optional[int] = None
         self.max_msg_size = max_msg_size
         self._too_big_reason: Optional[str] = None
+        self._close_reason: Optional[str] = None
         self._receivers_woken = False
         self.subprotocol: Optional[str] = None
         self._send_lock = asyncio.Lock()
@@ -189,6 +199,9 @@ class WebSocketConnection:
         self._msg_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
         # Separate queue for ping/pong messages.
         self._pong_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
+        self._pong_received = asyncio.Event()
+        self._keep_alive_ping = os.urandom(8)
+        self._receive_stalled = False
         self._drop_frames = drop_frames
         self.protocol_handler = protocol_handler
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
@@ -269,6 +282,8 @@ class WebSocketConnection:
                 # Optionally log a dropped frame.
                 pass
         else:
+            if queue.full():
+                self._receive_stalled = True
             await queue.put(message)
 
     async def _frame_dispatch_loop(self):
@@ -292,6 +307,9 @@ class WebSocketConnection:
                     msg = Message.create_binary(payload)
                     await self._enqueue(self._msg_queue, msg)
                 elif opcode == self.OPCODE_PONG:
+                    self._pong_received.set()
+                    if payload == self._keep_alive_ping:
+                        continue
                     msg = Message(
                         type=MessageType.PONG,
                         data=payload,
@@ -317,6 +335,7 @@ class WebSocketConnection:
         if self._receivers_woken:
             return
         self._receivers_woken = True
+        self._pong_received.set()
         for queue in (self._msg_queue, self._pong_queue):
             try:
                 queue.put_nowait(Message(MessageType.CLOSE, b"", b"", self.OPCODE_CLOSE))
@@ -345,7 +364,7 @@ class WebSocketConnection:
     def _disconnected_error(self) -> ConnectionDisconnected:
         if self._too_big_reason:
             return WebSocketMessageTooBig(self._too_big_reason)
-        return ConnectionDisconnected("Connection is closed")
+        return ConnectionDisconnected(self._close_reason or "Connection is closed")
 
     async def send_text(self, message: str):
         await self._send_frame(self.OPCODE_TEXT, message.encode("utf-8"))
@@ -452,27 +471,69 @@ class WebSocketConnection:
             raise self._disconnected_error()
         return msg
 
-    def start_keep_alive(self, interval: float = 30.0):
-        if self._keep_alive_task is None:
-            self._keep_alive_task = asyncio.create_task(self._keep_alive_loop(interval))
+    def start_keep_alive(self, interval: float = 30.0, timeout: Optional[float] = 30.0) -> None:
+        """Send a ping every ``interval`` seconds, and close the connection when its pong is late.
 
-    def stop_keep_alive(self):
+        Args:
+            interval (float): Seconds between pings.
+            timeout (Optional[float]): Seconds to wait for a pong after sending each ping, ``None`` to send pings
+                without ever closing the connection. When no pong arrives in time, the connection is closed with
+                code 1011, ``receive_*()`` raises :class:`aiosonic.exceptions.ConnectionDisconnected`, and
+                ``async for`` over the connection ends (``close_code`` is then 1011). Any pong received after the
+                round starts counts. Pongs to keep-alive pings are not returned by :meth:`receive_pong`, other pongs
+                are. While ``queue_maxsize`` received messages wait unread (with ``drop_frames`` off), pongs can't
+                be read either, so the connection is not closed until they are read. It is closed when sending one
+                message, or receiving one frame, takes longer than ``timeout``.
+
+        Raises:
+            ValueError: If ``interval`` or ``timeout`` is not greater than 0.
+        """
+        _check_keep_alive_times(interval, timeout)
+        if self._keep_alive_task is None:
+            self._keep_alive_task = asyncio.create_task(self._keep_alive_loop(interval, timeout))
+
+    def stop_keep_alive(self) -> None:
         if self._keep_alive_task is not None:
             self._keep_alive_task.cancel()
             self._keep_alive_task = None
 
-    async def _keep_alive_loop(self, interval: float):
+    async def _keep_alive_loop(self, interval: float, timeout: Optional[float]) -> None:
         try:
             while self.connected:
-                await self.ping()
-                try:
-                    await asyncio.wait_for(self.receive_pong(), timeout=interval)
-                except asyncio.TimeoutError:
-                    # Optionally log a warning.
-                    pass
+                if timeout is None:
+                    await self.ping(self._keep_alive_ping)
+                else:
+                    try:
+                        await asyncio.wait_for(self._ping_and_wait_for_pong(), timeout=timeout)
+                    except asyncio.TimeoutError:
+                        if not self.connected:
+                            return
+                        if not self._receive_stalled:
+                            await self._close_after_pong_timeout(timeout)
+                            return
+                if not self.connected:
+                    return
                 await asyncio.sleep(interval)
-        except (asyncio.CancelledError, ConnectionDisconnected):
+        except (asyncio.CancelledError, ConnectionDisconnected, OSError):
             return
+
+    async def _ping_and_wait_for_pong(self) -> None:
+        self._pong_received.clear()
+        self._receive_stalled = not self._drop_frames and self._msg_queue.full()
+        await self.ping(self._keep_alive_ping)
+        await self._pong_received.wait()
+
+    async def _close_after_pong_timeout(self, timeout: float) -> None:
+        dlogger.debug("_keep_alive_loop: no pong within %s seconds, closing", timeout)
+        self._keep_alive_task = None
+        self._close_reason = f"no pong to the keep-alive ping within {timeout} seconds"
+        try:
+            await asyncio.wait_for(
+                self.close(code=_CLOSE_INTERNAL_ERROR, reason="keep-alive pong timeout"),
+                timeout=_KEEP_ALIVE_CLOSE_TIMEOUT,
+            )
+        except (asyncio.TimeoutError, OSError, ConnectionDisconnected):
+            dlogger.debug("_close_after_pong_timeout: could not send the close frame", exc_info=True)
 
     async def __aiter__(self):
         while self.connected or not self._msg_queue.empty():
@@ -508,6 +569,7 @@ class WebSocketClient:
         keepalive_interval: float = 30.0,
         conn_opts: Optional[dict] = None,
         max_msg_size: Optional[int] = DEFAULT_MAX_MSG_SIZE,
+        keepalive_timeout: Optional[float] = 30.0,
     ) -> WebSocketConnection:
         """Open a WebSocket connection with the HTTP upgrade handshake.
 
@@ -517,7 +579,9 @@ class WebSocketClient:
             ssl (Optional[SSLContext]): A custom ssl context.
             headers (Optional[Dict[str, str]]): Extra headers for the handshake request.
             subprotocols (Optional[List[str]]): Subprotocols to offer in ``Sec-WebSocket-Protocol``.
-            start_keepalive (bool): Whether to send pings periodically.
+            start_keepalive (bool): Whether to send pings periodically, and close the connection with code 1011
+                when a pong is late. Receiving then raises :class:`aiosonic.exceptions.ConnectionDisconnected`.
+                ``False`` sends no pings, and the connection stays open while the peer is silent.
             keepalive_interval (float): Seconds between keep-alive pings.
             conn_opts (Optional[dict]): Extra arguments for :class:`WebSocketConnection`. A ``max_msg_size`` key
                 here is ignored: use the ``max_msg_size`` argument.
@@ -526,13 +590,20 @@ class WebSocketClient:
                 receiving raises :class:`aiosonic.exceptions.WebSocketMessageTooBig`. Up to ``queue_maxsize``
                 received messages are kept until they are read, so the memory used can reach about
                 ``queue_maxsize * max_msg_size`` bytes.
+            keepalive_timeout (Optional[float]): Seconds to wait for the pong after each keep-alive ping
+                (default: 30), ``None`` to send pings without ever closing the connection. See
+                :meth:`WebSocketConnection.start_keep_alive`.
 
         Returns:
             WebSocketConnection: The open connection.
 
         Raises:
             ConnectionError: If the server refuses the upgrade or closes the connection during the handshake.
+            ValueError: If ``start_keepalive`` is set and ``keepalive_interval`` or ``keepalive_timeout`` is not
+                greater than 0.
         """
+        if start_keepalive:
+            _check_keep_alive_times(keepalive_interval, keepalive_timeout)
         conn_opts = {**(conn_opts or {}), "max_msg_size": max_msg_size}
         urlparsed = http_parser.get_url_parsed(url)
         secured = ssl or (urlparsed.scheme == "wss")
@@ -578,7 +649,7 @@ class WebSocketClient:
         ws_conn.subprotocol = ws_protocol
 
         if start_keepalive:
-            ws_conn.start_keep_alive(interval=keepalive_interval)
+            ws_conn.start_keep_alive(interval=keepalive_interval, timeout=keepalive_timeout)
 
         return ws_conn
 
