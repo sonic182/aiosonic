@@ -61,6 +61,7 @@ DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
 _CLOSE_MESSAGE_TOO_BIG = 1009
 _CLOSE_INTERNAL_ERROR = 1011
 _KEEP_ALIVE_CLOSE_TIMEOUT = 1
+_KEEP_ALIVE_PING = b"aiosonic keep-alive"
 _MAX_CONTROL_FRAME_SIZE = 125
 
 
@@ -304,6 +305,8 @@ class WebSocketConnection:
                     await self._enqueue(self._msg_queue, msg)
                 elif opcode == self.OPCODE_PONG:
                     self._pong_received.set()
+                    if payload == _KEEP_ALIVE_PING:
+                        continue
                     msg = Message(
                         type=MessageType.PONG,
                         data=payload,
@@ -474,10 +477,10 @@ class WebSocketConnection:
                 without ever closing the connection. When no pong arrives in time, the connection is closed with
                 code 1011, ``receive_*()`` raises :class:`aiosonic.exceptions.ConnectionDisconnected`, and
                 ``async for`` over the connection ends (``close_code`` is then 1011). Any pong received after the
-                round starts counts, and pongs are still left for :meth:`receive_pong`. While ``queue_maxsize``
-                received messages wait unread (with ``drop_frames`` off), pongs can't be read either, so the
-                connection is not closed until they are read. It is closed when sending one message, or receiving
-                one frame, takes longer than ``timeout``.
+                round starts counts. Pongs to keep-alive pings are not returned by :meth:`receive_pong`, other pongs
+                are. While ``queue_maxsize`` received messages wait unread (with ``drop_frames`` off), pongs can't
+                be read either, so the connection is not closed until they are read. It is closed when sending one
+                message, or receiving one frame, takes longer than ``timeout``.
 
         Raises:
             ValueError: If ``interval`` or ``timeout`` is not greater than 0.
@@ -495,15 +498,14 @@ class WebSocketConnection:
         try:
             while self.connected:
                 if timeout is None:
-                    await self.ping()
+                    await self.ping(_KEEP_ALIVE_PING)
                 else:
                     try:
                         await asyncio.wait_for(self._ping_and_wait_for_pong(), timeout=timeout)
                     except asyncio.TimeoutError:
-                        if not self._drop_frames and self._msg_queue.full():
-                            continue
-                        await self._close_after_pong_timeout(timeout)
-                        return
+                        if self._drop_frames or not self._msg_queue.full():
+                            await self._close_after_pong_timeout(timeout)
+                            return
                 if not self.connected:
                     return
                 await asyncio.sleep(interval)
@@ -512,7 +514,7 @@ class WebSocketConnection:
 
     async def _ping_and_wait_for_pong(self) -> None:
         self._pong_received.clear()
-        await self.ping()
+        await self.ping(_KEEP_ALIVE_PING)
         await self._pong_received.wait()
 
     async def _close_after_pong_timeout(self, timeout: float) -> None:

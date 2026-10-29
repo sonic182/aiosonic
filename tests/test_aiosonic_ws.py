@@ -389,7 +389,7 @@ async def test_ws_keepalive_keeps_a_responsive_connection_open(ws_serv):
         async with await client.connect(ws_serv, keepalive_interval=0.05, keepalive_timeout=0.5) as ws:
             for _ in range(10):
                 await ws.ping(b"user")
-                await ws.receive_pong(timeout=5)
+                assert await ws.receive_pong(timeout=5) == b"user"
                 await asyncio.sleep(0.05)
             assert ws.connected
             await ws.send_text("still here")
@@ -468,3 +468,16 @@ async def test_ws_keepalive_waits_while_the_receive_queue_is_full():
         with pytest.raises(ConnectionDisconnected, match="no pong"):
             await asyncio.wait_for(ws.receive_text(), timeout=5)
         assert ws.close_code == 1011
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_start_keep_alive_refuses_a_timeout_that_is_not_positive():
+    """``start_keep_alive()`` checks its times like ``connect()``."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ValueError, match="greater than 0"):
+            ws.start_keep_alive(timeout=0)
+        await ws.close()
