@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The WebSocket keep-alive closes the connection with code 1011 when the pong to its ping does not arrive in time. Before, a connection to a dead peer stayed `connected`, and a `receive_*()` call without a timeout waited forever. Pending and later receives now raise `ConnectionDisconnected` ([#633](https://github.com/sonic182/aiosonic/issues/633)).
+
+### Changed
+- Keep-alive is on by default (`start_keepalive=True`, every 30 s), so a server that doesn't answer pings, or answers later than `keepalive_timeout` (new argument of `WebSocketClient.connect()`, `keepalive_interval` by default), is now disconnected. Pass `start_keepalive=False` to keep the old behaviour.
+
 ## [1.3.3] 2026-10-19
 
 ### Fixed

@@ -348,3 +348,45 @@ async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
     async with server:
         with pytest.raises(ConnectionError, match="closed during the handshake"):
             await WebSocketClient().connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_closes_the_connection_when_the_pong_is_late():
+    """A server that never answers pings is detected: the connection closes with 1011 and receiving fails."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2)
+        with pytest.raises(ConnectionDisconnected, match="no pong"):
+            await asyncio.wait_for(ws.receive_text(), timeout=5)
+        assert ws.close_code == 1011
+        assert not ws.connected
+        with pytest.raises(ConnectionDisconnected):
+            await ws.send_text("late")
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_closes_the_connection_when_a_send_is_stuck():
+    """A send stuck while holding the send lock does not keep the dead connection open."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2)
+        async with ws._send_lock:
+            with pytest.raises(ConnectionDisconnected, match="no pong"):
+                await asyncio.wait_for(ws.receive_text(), timeout=5)
+        assert ws.close_code == 1011
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_keeps_a_responsive_connection_open(ws_serv):
+    """A server that answers pings keeps the connection open across several keep-alive rounds."""
+    async with WebSocketClient() as client:
+        async with await client.connect(ws_serv, keepalive_interval=0.1, keepalive_timeout=1) as ws:
+            await asyncio.sleep(0.5)
+            assert ws.connected
+            await ws.send_text("still here")
+            assert await ws.receive_text(timeout=5) == "Echo: still here"
