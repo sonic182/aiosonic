@@ -61,7 +61,6 @@ DEFAULT_MAX_MSG_SIZE = 4 * 1024 * 1024
 _CLOSE_MESSAGE_TOO_BIG = 1009
 _CLOSE_INTERNAL_ERROR = 1011
 _KEEP_ALIVE_CLOSE_TIMEOUT = 1
-_KEEP_ALIVE_PING = b"aiosonic keep-alive"
 _MAX_CONTROL_FRAME_SIZE = 125
 
 
@@ -201,6 +200,8 @@ class WebSocketConnection:
         # Separate queue for ping/pong messages.
         self._pong_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
         self._pong_received = asyncio.Event()
+        self._keep_alive_ping = os.urandom(8)
+        self._receive_stalled = False
         self._drop_frames = drop_frames
         self.protocol_handler = protocol_handler
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
@@ -281,6 +282,8 @@ class WebSocketConnection:
                 # Optionally log a dropped frame.
                 pass
         else:
+            if queue.full():
+                self._receive_stalled = True
             await queue.put(message)
 
     async def _frame_dispatch_loop(self):
@@ -305,7 +308,7 @@ class WebSocketConnection:
                     await self._enqueue(self._msg_queue, msg)
                 elif opcode == self.OPCODE_PONG:
                     self._pong_received.set()
-                    if payload == _KEEP_ALIVE_PING:
+                    if payload == self._keep_alive_ping:
                         continue
                     msg = Message(
                         type=MessageType.PONG,
@@ -468,7 +471,7 @@ class WebSocketConnection:
             raise self._disconnected_error()
         return msg
 
-    def start_keep_alive(self, interval: float = 30.0, timeout: Optional[float] = 30.0):
+    def start_keep_alive(self, interval: float = 30.0, timeout: Optional[float] = 30.0) -> None:
         """Send a ping every ``interval`` seconds, and close the connection when its pong is late.
 
         Args:
@@ -489,21 +492,23 @@ class WebSocketConnection:
         if self._keep_alive_task is None:
             self._keep_alive_task = asyncio.create_task(self._keep_alive_loop(interval, timeout))
 
-    def stop_keep_alive(self):
+    def stop_keep_alive(self) -> None:
         if self._keep_alive_task is not None:
             self._keep_alive_task.cancel()
             self._keep_alive_task = None
 
-    async def _keep_alive_loop(self, interval: float, timeout: Optional[float]):
+    async def _keep_alive_loop(self, interval: float, timeout: Optional[float]) -> None:
         try:
             while self.connected:
                 if timeout is None:
-                    await self.ping(_KEEP_ALIVE_PING)
+                    await self.ping(self._keep_alive_ping)
                 else:
                     try:
                         await asyncio.wait_for(self._ping_and_wait_for_pong(), timeout=timeout)
                     except asyncio.TimeoutError:
-                        if self._drop_frames or not self._msg_queue.full():
+                        if not self.connected:
+                            return
+                        if not self._receive_stalled:
                             await self._close_after_pong_timeout(timeout)
                             return
                 if not self.connected:
@@ -514,7 +519,8 @@ class WebSocketConnection:
 
     async def _ping_and_wait_for_pong(self) -> None:
         self._pong_received.clear()
-        await self.ping(_KEEP_ALIVE_PING)
+        self._receive_stalled = not self._drop_frames and self._msg_queue.full()
+        await self.ping(self._keep_alive_ping)
         await self._pong_received.wait()
 
     async def _close_after_pong_timeout(self, timeout: float) -> None:
