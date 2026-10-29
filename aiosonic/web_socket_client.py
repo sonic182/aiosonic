@@ -472,10 +472,12 @@ class WebSocketConnection:
             interval (float): Seconds between pings.
             timeout (Optional[float]): Seconds to wait for a pong after sending each ping, ``None`` to send pings
                 without ever closing the connection. When no pong arrives in time, the connection is closed with
-                code 1011, and receiving raises :class:`aiosonic.exceptions.ConnectionDisconnected`. Frames are
-                read in order, so the connection is also closed when ``queue_maxsize`` received messages wait
-                unread for that long (with ``drop_frames`` off), or when sending one message takes that long. Any
-                pong received after the ping counts, and pongs are still left for :meth:`receive_pong`.
+                code 1011, ``receive_*()`` raises :class:`aiosonic.exceptions.ConnectionDisconnected`, and
+                ``async for`` over the connection ends (``close_code`` is then 1011). Any pong received after the
+                round starts counts, and pongs are still left for :meth:`receive_pong`. While ``queue_maxsize``
+                received messages wait unread (with ``drop_frames`` off), pongs can't be read either, so the
+                connection is not closed until they are read. It is closed when sending one message, or receiving
+                one frame, takes longer than ``timeout``.
 
         Raises:
             ValueError: If ``interval`` or ``timeout`` is not greater than 0.
@@ -498,8 +500,12 @@ class WebSocketConnection:
                     try:
                         await asyncio.wait_for(self._ping_and_wait_for_pong(), timeout=timeout)
                     except asyncio.TimeoutError:
+                        if not self._drop_frames and self._msg_queue.full():
+                            continue
                         await self._close_after_pong_timeout(timeout)
                         return
+                if not self.connected:
+                    return
                 await asyncio.sleep(interval)
         except (asyncio.CancelledError, ConnectionDisconnected, OSError):
             return

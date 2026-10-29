@@ -413,8 +413,9 @@ async def test_ws_keepalive_timeout_is_independent_of_the_interval():
 @pytest.mark.parametrize("times", [{"keepalive_interval": 0}, {"keepalive_timeout": -1}])
 async def test_ws_keepalive_times_must_be_positive(times):
     """Keep-alive times that are not positive are refused before connecting."""
-    with pytest.raises(ValueError, match="greater than 0"):
-        await WebSocketClient().connect("ws://127.0.0.1:1/", **times)
+    async with WebSocketClient() as client:
+        with pytest.raises(ValueError, match="greater than 0"):
+            await client.connect("ws://127.0.0.1:1/", **times)
 
 
 @pytest.mark.asyncio
@@ -432,3 +433,38 @@ async def test_ws_keepalive_without_timeout_pings_and_never_closes(mocker):
         with pytest.raises(ReadTimeout):
             await ws.receive_text(timeout=0.1)
         await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_ignores_stale_pongs():
+    """A pong received before the keep-alive ping does not hide a server that stopped answering."""
+    server = await asyncio.start_server(_raw_ws_server(b"\x8a\x00"), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2, keepalive_timeout=0.2)
+        with pytest.raises(ConnectionDisconnected, match="no pong"):
+            await asyncio.wait_for(ws.receive_text(), timeout=5)
+        assert ws.close_code == 1011
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_waits_while_the_receive_queue_is_full():
+    """Unread messages that fill the queue block the pongs too, so the connection is only closed once they are read
+    and the pong is still missing."""
+    server = await asyncio.start_server(_raw_ws_server(b"\x81\x01a\x81\x01b\x81\x01c"), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(
+            f"ws://127.0.0.1:{port}/",
+            keepalive_interval=0.1,
+            keepalive_timeout=0.1,
+            conn_opts={"queue_maxsize": 1},
+        )
+        await asyncio.sleep(0.5)
+        assert ws.connected
+        assert [await ws.receive_text(timeout=1) for _ in range(3)] == ["a", "b", "c"]
+        with pytest.raises(ConnectionDisconnected, match="no pong"):
+            await asyncio.wait_for(ws.receive_text(), timeout=5)
+        assert ws.close_code == 1011
