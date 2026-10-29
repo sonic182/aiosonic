@@ -64,6 +64,13 @@ _KEEP_ALIVE_CLOSE_TIMEOUT = 1
 _MAX_CONTROL_FRAME_SIZE = 125
 
 
+def _check_keep_alive_times(interval: float, timeout: Optional[float]) -> None:
+    if interval <= 0:
+        raise ValueError("The keep-alive interval must be greater than 0")
+    if timeout is not None and timeout <= 0:
+        raise ValueError("The keep-alive timeout must be greater than 0")
+
+
 class MessageType(Enum):
     TEXT = "text"
     BINARY = "binary"
@@ -192,6 +199,7 @@ class WebSocketConnection:
         self._msg_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
         # Separate queue for ping/pong messages.
         self._pong_queue: asyncio.Queue[Message] = asyncio.Queue(maxsize=queue_maxsize)
+        self._pong_received = asyncio.Event()
         self._drop_frames = drop_frames
         self.protocol_handler = protocol_handler
         self._frame_dispatch_task = asyncio.create_task(self._frame_dispatch_loop())
@@ -295,6 +303,7 @@ class WebSocketConnection:
                     msg = Message.create_binary(payload)
                     await self._enqueue(self._msg_queue, msg)
                 elif opcode == self.OPCODE_PONG:
+                    self._pong_received.set()
                     msg = Message(
                         type=MessageType.PONG,
                         data=payload,
@@ -320,6 +329,7 @@ class WebSocketConnection:
         if self._receivers_woken:
             return
         self._receivers_woken = True
+        self._pong_received.set()
         for queue in (self._msg_queue, self._pong_queue):
             try:
                 queue.put_nowait(Message(MessageType.CLOSE, b"", b"", self.OPCODE_CLOSE))
@@ -460,10 +470,17 @@ class WebSocketConnection:
 
         Args:
             interval (float): Seconds between pings.
-            timeout (Optional[float]): Seconds to wait for the pong after sending each ping, ``interval`` when
+            timeout (Optional[float]): Seconds to wait for a pong after sending each ping, ``interval`` when
                 ``None``. When no pong arrives in time, the connection is closed with code 1011, and receiving
-                raises :class:`aiosonic.exceptions.ConnectionDisconnected`.
+                raises :class:`aiosonic.exceptions.ConnectionDisconnected`. Frames are read in order, so the
+                connection is also closed when ``queue_maxsize`` received messages wait unread for that long (with
+                ``drop_frames`` off), or when sending one message takes that long. Any pong received after the
+                ping counts, and pongs are still left for :meth:`receive_pong`.
+
+        Raises:
+            ValueError: If ``interval`` or ``timeout`` is not greater than 0.
         """
+        _check_keep_alive_times(interval, timeout)
         if self._keep_alive_task is None:
             self._keep_alive_task = asyncio.create_task(
                 self._keep_alive_loop(interval, interval if timeout is None else timeout)
@@ -478,7 +495,7 @@ class WebSocketConnection:
         try:
             while self.connected:
                 try:
-                    await asyncio.wait_for(self._ping_and_receive_pong(), timeout=timeout)
+                    await asyncio.wait_for(self._ping_and_wait_for_pong(), timeout=timeout)
                 except asyncio.TimeoutError:
                     await self._close_after_pong_timeout(timeout)
                     return
@@ -486,9 +503,10 @@ class WebSocketConnection:
         except (asyncio.CancelledError, ConnectionDisconnected, OSError):
             return
 
-    async def _ping_and_receive_pong(self) -> None:
+    async def _ping_and_wait_for_pong(self) -> None:
+        self._pong_received.clear()
         await self.ping()
-        await self.receive_pong()
+        await self._pong_received.wait()
 
     async def _close_after_pong_timeout(self, timeout: float) -> None:
         dlogger.debug("_keep_alive_loop: no pong within %s seconds, closing", timeout)
@@ -558,16 +576,18 @@ class WebSocketClient:
                 received messages are kept until they are read, so the memory used can reach about
                 ``queue_maxsize * max_msg_size`` bytes.
             keepalive_timeout (Optional[float]): Seconds to wait for the pong after each keep-alive ping,
-                ``keepalive_interval`` when ``None``. Pongs are read in the same order as messages, so the
-                connection is also closed when ``queue_maxsize`` received messages wait unread for that long (with
-                ``drop_frames`` off), or when sending one message takes that long.
+                ``keepalive_interval`` when ``None``. See :meth:`WebSocketConnection.start_keep_alive`.
 
         Returns:
             WebSocketConnection: The open connection.
 
         Raises:
             ConnectionError: If the server refuses the upgrade or closes the connection during the handshake.
+            ValueError: If ``start_keepalive`` is set and ``keepalive_interval`` or ``keepalive_timeout`` is not
+                greater than 0.
         """
+        if start_keepalive:
+            _check_keep_alive_times(keepalive_interval, keepalive_timeout)
         conn_opts = {**(conn_opts or {}), "max_msg_size": max_msg_size}
         urlparsed = http_parser.get_url_parsed(url)
         secured = ssl or (urlparsed.scheme == "wss")

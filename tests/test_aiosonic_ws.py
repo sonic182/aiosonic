@@ -383,10 +383,35 @@ async def test_ws_keepalive_closes_the_connection_when_a_send_is_stuck():
 @pytest.mark.asyncio
 @pytest.mark.timeout(10)
 async def test_ws_keepalive_keeps_a_responsive_connection_open(ws_serv):
-    """A server that answers pings keeps the connection open across several keep-alive rounds."""
+    """A server that answers pings stays connected over several keep-alive rounds, also while the user waits for
+    pongs of its own pings."""
     async with WebSocketClient() as client:
-        async with await client.connect(ws_serv, keepalive_interval=0.1, keepalive_timeout=1) as ws:
-            await asyncio.sleep(0.5)
+        async with await client.connect(ws_serv, keepalive_interval=0.05, keepalive_timeout=0.5) as ws:
+            for _ in range(10):
+                await ws.ping(b"user")
+                await ws.receive_pong(timeout=5)
+                await asyncio.sleep(0.05)
             assert ws.connected
             await ws.send_text("still here")
             assert await ws.receive_text(timeout=5) == "Echo: still here"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_timeout_is_independent_of_the_interval():
+    """``keepalive_timeout`` bounds the wait for the pong, whatever the interval between pings."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=30, keepalive_timeout=0.2)
+        with pytest.raises(ConnectionDisconnected, match="within 0.2 seconds"):
+            await asyncio.wait_for(ws.receive_text(), timeout=5)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize("times", [{"keepalive_interval": 0}, {"keepalive_timeout": -1}])
+async def test_ws_keepalive_times_must_be_positive(times):
+    """Keep-alive times that are not positive are refused before connecting."""
+    with pytest.raises(ValueError, match="greater than 0"):
+        await WebSocketClient().connect("ws://127.0.0.1:1/", **times)
