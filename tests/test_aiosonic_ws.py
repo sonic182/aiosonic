@@ -357,7 +357,7 @@ async def test_ws_keepalive_closes_the_connection_when_the_pong_is_late():
     server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     async with server, WebSocketClient() as client:
-        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2)
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2, keepalive_timeout=0.2)
         with pytest.raises(ConnectionDisconnected, match="no pong"):
             await asyncio.wait_for(ws.receive_text(), timeout=5)
         assert ws.close_code == 1011
@@ -373,7 +373,7 @@ async def test_ws_keepalive_closes_the_connection_when_a_send_is_stuck():
     server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     async with server, WebSocketClient() as client:
-        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2)
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.2, keepalive_timeout=0.2)
         async with ws._send_lock:
             with pytest.raises(ConnectionDisconnected, match="no pong"):
                 await asyncio.wait_for(ws.receive_text(), timeout=5)
@@ -415,3 +415,20 @@ async def test_ws_keepalive_times_must_be_positive(times):
     """Keep-alive times that are not positive are refused before connecting."""
     with pytest.raises(ValueError, match="greater than 0"):
         await WebSocketClient().connect("ws://127.0.0.1:1/", **times)
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_keepalive_without_timeout_pings_and_never_closes(mocker):
+    """With ``keepalive_timeout=None`` the keep-alive keeps sending pings to a silent server and stays connected."""
+    server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", keepalive_interval=0.05, keepalive_timeout=None)
+        ping = mocker.spy(ws, "ping")
+        await asyncio.sleep(0.5)
+        assert ping.call_count >= 3
+        assert ws.connected
+        with pytest.raises(ReadTimeout):
+            await ws.receive_text(timeout=0.1)
+        await ws.close()
