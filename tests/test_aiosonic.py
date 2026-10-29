@@ -394,10 +394,7 @@ async def test_get_chunked_response(http_serv):
         assert res._connection
         assert res.status_code == 200
 
-        chunks = [b"foo", b"bar"]
-
-        async for chunk in res.read_chunks():
-            assert chunk in chunks
+        assert [chunk async for chunk in res.read_chunks()] == [b"foo", b"bar"]
 
         with pytest.raises(ConnectionError):
             assert await res.text() == ""  # chunks already readed manually
