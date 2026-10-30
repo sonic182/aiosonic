@@ -147,9 +147,13 @@ const handlers = {
 
   'GET /chunked': (req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.write('foo');
-    res.write('bar');
-    res.end();
+    // Since Node 24.22 (nodejs/node#64987) writes made in the same tick are sent as one chunk,
+    // so 'bar' is written only once 'foo' has been flushed.
+    res.write('foo', (err) => {
+      if (err) return;
+      res.write('bar');
+      res.end();
+    });
   },
 
   'GET /get_redirect': (req, res) => {
