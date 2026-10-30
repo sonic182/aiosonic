@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] 2026-10-30
+
 ### Fixed
 - The WebSocket keep-alive closes the connection with code 1011 when the pong to its ping does not arrive in time. Before, a connection to a dead peer stayed `connected`, and a `receive_*()` call without a timeout waited forever. Pending and later receives now raise `ConnectionDisconnected` ([#633](https://github.com/sonic182/aiosonic/issues/633)).
 
@@ -579,7 +581,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - https
 
 
-[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.3.3..HEAD
+[Unreleased]: https://github.com/sonic182/aiosonic/compare/1.4.0..HEAD
+[1.4.0]: https://github.com/sonic182/aiosonic/compare/1.3.3..1.4.0
 [1.3.3]: https://github.com/sonic182/aiosonic/compare/1.3.2..1.3.3
 [1.3.2]: https://github.com/sonic182/aiosonic/compare/1.3.1..1.3.2
 [1.3.1]: https://github.com/sonic182/aiosonic/compare/1.3.0..1.3.1
