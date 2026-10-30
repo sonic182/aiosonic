@@ -392,10 +392,11 @@ async def test_ws_server_ping_is_answered_with_a_pong_of_the_same_payload():
 @pytest.mark.asyncio
 @pytest.mark.timeout(10)
 async def test_ws_server_close_is_echoed_and_its_code_is_kept():
-    """A Close frame from the server is sent back, close_code is the server's code, and close() adds no second one."""
+    """The status code of a Close frame from the server is sent back, close_code is the server's code, and close()
+    adds no second one."""
     received = []
-    close_payload = struct.pack(">H", 4000) + b"bye"
-    frames = b"\x88\x05" + close_payload
+    close_payload = struct.pack(">H", 4000)
+    frames = b"\x88\x05" + close_payload + b"bye"
     server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
     port = server.sockets[0].getsockname()[1]
     async with server, WebSocketClient() as client:
@@ -468,6 +469,105 @@ async def test_ws_fragments_over_max_msg_size_close_the_connection():
         with pytest.raises(WebSocketMessageTooBig, match="max_msg_size"):
             await ws.receive_text(timeout=5)
         assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_tiny_continuation_frames_over_max_msg_size_close_the_connection():
+    """Many 1-byte continuation frames count towards max_msg_size like one big frame."""
+    frames = b"\x01\x01a" + b"\x00\x01b" * 30 + b"\x80\x01c"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=20)
+        with pytest.raises(WebSocketMessageTooBig, match="max_msg_size"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_many_empty_continuation_frames_are_joined():
+    """Empty continuation frames add nothing to the message, however many there are."""
+    frames = b"\x01\x03abc" + b"\x00\x00" * 20000 + b"\x80\x03def" + b"\x81\x05after"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=20)
+        assert await ws.receive_text(timeout=5) == "abcdef"
+        assert await ws.receive_text(timeout=5) == "after"
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize(
+    "frames, match",
+    [
+        (b"\x01\x03abc" + b"\x81\x03new", "before the end of a fragmented message"),
+        (b"\x80\x03abc", "continuation frame without a message"),
+        (b"\x09\x00", "fragmented control frame"),
+    ],
+    ids=["data-frame-inside-a-fragmented-message", "continuation-without-a-message", "control-frame-without-fin"],
+)
+async def test_ws_fragmentation_protocol_errors_close_the_connection_with_1002(frames, match):
+    """Frames that break the fragmentation rules of RFC 6455 5.4 fail the connection with 1002."""
+    received = []
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected, match=match):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1002
+        assert await _wait_for_client_frames(received, 1) == [(0x8, struct.pack(">H", 1002))]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_invalid_utf8_text_closes_the_connection_with_1007():
+    """A text message that is not valid UTF-8 fails the connection with 1007."""
+    received = []
+    frames = b"\x81\x02\xc3\x28"
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected, match="not valid UTF-8"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1007
+        assert await _wait_for_client_frames(received, 1) == [(0x8, struct.pack(">H", 1007))]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_one_byte_server_close_is_answered_with_an_empty_close():
+    """A 1-byte Close payload is invalid, so it is not echoed: the answer is an empty Close frame."""
+    received = []
+    server = await asyncio.start_server(_raw_ws_server(b"\x88\x01\x03", received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1005
+        assert await _wait_for_client_frames(received, 1) == [(0x8, b"")]
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_context_manager_closes_the_socket_after_a_server_close():
+    """Leaving ``async with`` closes the socket also when the server's Close was already answered."""
+    server = await asyncio.start_server(_raw_ws_server(b"\x88\x02" + struct.pack(">H", 1000)), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        async with await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False) as ws:
+            with pytest.raises(ConnectionDisconnected):
+                await ws.receive_text(timeout=5)
+            assert not ws.connected
+            assert ws.conn.writer is not None
+        assert ws.conn.writer is None
 
 
 @pytest.mark.asyncio

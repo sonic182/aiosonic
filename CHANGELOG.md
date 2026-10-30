@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- `WebSocketConnection` answers a ping from the server with a pong carrying the same payload, and echoes a Close frame from the server and keeps its code in `close_code` (1005 when it has none), as RFC 6455 requires. Before, servers that ping to check that the client is alive could drop the connection.
+- `WebSocketConnection` answers a ping from the server with a pong carrying the same payload, and answers a Close frame from the server with the same status code and keeps it in `close_code` (1005 when it has none), as RFC 6455 requires. Before, servers that ping to check that the client is alive could drop the connection.
 - A message the server splits in several frames is joined until the final frame, and text is decoded only once the message is complete. Before, everything after the first frame was lost, and a split inside a multi-byte character raised `UnicodeDecodeError` and dropped the connection. `max_msg_size` applies to the whole message ([#632](https://github.com/sonic182/aiosonic/issues/632)).
+- Frames that break the fragmentation rules (a new message before the last one ended, a continuation with no message, a fragmented control frame) close the connection with code 1002, and a text message that is not valid UTF-8 closes it with 1007; receiving then raises `ConnectionDisconnected`. Before, the unfinished message was dropped without an error, and invalid UTF-8 left the socket open without a Close frame.
+- Leaving `async with` on a `WebSocketConnection` closes the socket also after the server closed the connection.
 - The WebSocket keep-alive closes the connection with code 1011 when the pong to its ping does not arrive in time. Before, a connection to a dead peer stayed `connected`, and a `receive_*()` call without a timeout waited forever. Pending and later receives now raise `ConnectionDisconnected` ([#633](https://github.com/sonic182/aiosonic/issues/633)).
 
 ### Changed
