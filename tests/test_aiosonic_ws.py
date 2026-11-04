@@ -14,9 +14,9 @@ from aiosonic.exceptions import ConnectionDisconnected, ReadTimeout, WebSocketMe
 from aiosonic.web_socket_client import WEBSOCKET_GUID
 
 
-def _raw_ws_server(frames: bytes, delay: float = 0):
+def _raw_ws_server(frames: bytes, delay: float = 0, received: list = None):
     """Return a handler that accepts the upgrade, sends ``frames`` as they are after ``delay`` seconds, and waits for
-    the client to leave."""
+    the client to leave. The bytes the client sends after the upgrade are appended to ``received``."""
 
     async def handle(reader, writer):
         request = await reader.readuntil(b"\r\n\r\n")
@@ -30,12 +30,36 @@ def _raw_ws_server(frames: bytes, delay: float = 0):
         writer.write(frames)
         try:
             await writer.drain()
-            await reader.read()
+            while chunk := await reader.read(4096):
+                if received is not None:
+                    received.append(chunk)
         except ConnectionError:
             pass
         writer.close()
 
     return handle
+
+
+def _client_frames(data: bytes):
+    """Decode the masked frames a client sent into a list of ``(opcode, payload)``."""
+    frames = []
+    while data:
+        opcode, length = data[0] & 0x0F, data[1] & 0x7F
+        key, payload = data[2:6], bytearray(data[6 : 6 + length])
+        for i in range(length):
+            payload[i] ^= key[i % 4]
+        frames.append((opcode, bytes(payload)))
+        data = data[6 + length :]
+    return frames
+
+
+async def _wait_for_client_frames(received: list, count: int):
+    for _ in range(100):
+        frames = _client_frames(b"".join(received))
+        if len(frames) >= count:
+            return frames
+        await asyncio.sleep(0.05)
+    return _client_frames(b"".join(received))
 
 
 @pytest.mark.asyncio
@@ -352,6 +376,43 @@ async def test_ws_connect_fails_when_the_server_closes_during_the_handshake():
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(10)
+async def test_ws_server_ping_is_answered_with_a_pong_of_the_same_payload():
+    """A ping from the server gets a pong with the same payload, and later messages still arrive."""
+    received = []
+    frames = b"\x89\x08srv-ping" + b"\x81\x05after"
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        assert await ws.receive_text(timeout=5) == "after"
+        assert await _wait_for_client_frames(received, 1) == [(0xA, b"srv-ping")]
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_server_close_is_echoed_and_its_code_is_kept():
+    """The status code of a Close frame from the server is sent back, close_code is the server's code, and close()
+    adds no second one."""
+    received = []
+    close_payload = struct.pack(">H", 4000)
+    frames = b"\x88\x05" + close_payload + b"bye"
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 4000
+        assert await _wait_for_client_frames(received, 1) == [(0x8, close_payload)]
+        await ws.close()
+        await asyncio.sleep(0.2)
+        assert _client_frames(b"".join(received)) == [(0x8, close_payload)]
+        assert ws.close_code == 4000
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
 async def test_ws_keepalive_closes_the_connection_when_the_pong_is_late():
     """A server that never answers pings is detected: the connection closes with 1011 and receiving fails."""
     server = await asyncio.start_server(_raw_ws_server(b""), "127.0.0.1", 0)
@@ -364,6 +425,221 @@ async def test_ws_keepalive_closes_the_connection_when_the_pong_is_late():
         assert not ws.connected
         with pytest.raises(ConnectionDisconnected):
             await ws.send_text("late")
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_fragmented_messages_are_joined_until_the_fin_frame():
+    """A message split in several frames arrives whole, also when a ping comes between the fragments."""
+    frames = b"\x01\x06hello " + b"\x89\x00" + b"\x80\x05world" + b"\x02\x00" + b"\x80\x03abc" + b"\x81\x05after"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        assert await ws.receive_text(timeout=5) == "hello world"
+        assert await ws.receive_bytes(timeout=5) == b"abc"
+        assert await ws.receive_text(timeout=5) == "after"
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_text_message_split_inside_a_multibyte_character_is_decoded_once_complete():
+    """Text is decoded only after the last fragment, so a split inside a character does not break the connection."""
+    encoded = "ñandú".encode("utf-8")
+    frames = b"\x01\x01" + encoded[:1] + b"\x80" + bytes([len(encoded) - 1]) + encoded[1:] + b"\x81\x05after"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        assert await ws.receive_text(timeout=5) == "ñandú"
+        assert await ws.receive_text(timeout=5) == "after"
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_fragments_over_max_msg_size_close_the_connection():
+    """The size limit applies to the whole message, not only to each fragment."""
+    frames = b"\x01\x08" + b"a" * 8 + b"\x00\x08" + b"b" * 8 + b"\x80\x08" + b"c" * 8
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=20)
+        with pytest.raises(WebSocketMessageTooBig, match="max_msg_size"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_tiny_continuation_frames_over_max_msg_size_close_the_connection():
+    """Many 1-byte continuation frames count towards max_msg_size like one big frame."""
+    frames = b"\x01\x01a" + b"\x00\x01b" * 30 + b"\x80\x01c"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=20)
+        with pytest.raises(WebSocketMessageTooBig, match="max_msg_size"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1009
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_many_empty_continuation_frames_are_joined():
+    """Empty continuation frames add nothing to the message, however many there are."""
+    frames = b"\x01\x03abc" + b"\x00\x00" * 20000 + b"\x80\x03def" + b"\x81\x05after"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=20)
+        assert await ws.receive_text(timeout=5) == "abcdef"
+        assert await ws.receive_text(timeout=5) == "after"
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize(
+    "frames, match",
+    [
+        (b"\x01\x03abc" + b"\x81\x03new", "before the end of a fragmented message"),
+        (b"\x80\x03abc", "continuation frame without a message"),
+        (b"\x09\x00", "fragmented control frame"),
+        (b"\x83\x00", "reserved opcode 0x3"),
+        (b"\x01\x03abc" + b"\x8b\x00", "reserved opcode 0xb"),
+    ],
+    ids=[
+        "data-frame-inside-a-fragmented-message",
+        "continuation-without-a-message",
+        "control-frame-without-fin",
+        "reserved-data-opcode",
+        "reserved-control-opcode-inside-a-fragmented-message",
+    ],
+)
+async def test_ws_fragmentation_protocol_errors_close_the_connection_with_1002(frames, match):
+    """Frames that break the fragmentation rules of RFC 6455 5.4 fail the connection with 1002."""
+    received = []
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected, match=match):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1002
+        assert await _wait_for_client_frames(received, 1) == [(0x8, struct.pack(">H", 1002))]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_invalid_utf8_text_closes_the_connection_with_1007():
+    """A text message that is not valid UTF-8 fails the connection with 1007."""
+    received = []
+    frames = b"\x81\x02\xc3\x28"
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected, match="not valid UTF-8"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1007
+        assert await _wait_for_client_frames(received, 1) == [(0x8, struct.pack(">H", 1007))]
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_one_byte_server_close_is_answered_with_an_empty_close():
+    """A 1-byte Close payload is invalid, so it is not echoed: the answer is an empty Close frame."""
+    received = []
+    server = await asyncio.start_server(_raw_ws_server(b"\x88\x01\x03", received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1005
+        assert await _wait_for_client_frames(received, 1) == [(0x8, b"")]
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_server_close_wakes_a_pending_receiver_while_a_send_is_stuck():
+    """A Close from the server fails a pending ``receive_text()`` without a timeout, even when the answer to the
+    Close can't be sent because a send holds the send lock."""
+    frames = b"\x88\x02" + struct.pack(">H", 1000)
+    server = await asyncio.start_server(_raw_ws_server(frames, delay=0.2), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        async with ws._send_lock:
+            with pytest.raises(ConnectionDisconnected):
+                await asyncio.wait_for(ws.receive_text(), timeout=5)
+        assert ws.close_code == 1000
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_server_close_reason_is_kept():
+    """The reason in the server's Close frame is the message of ``ConnectionDisconnected``."""
+    frames = b"\x88\x0c" + struct.pack(">H", 4000) + b"going away"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected, match="^going away$"):
+            await ws.receive_text(timeout=5)
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+@pytest.mark.parametrize("code", [999, 1005, 1006, 1015])
+async def test_ws_server_close_with_a_code_never_sent_is_answered_with_1002(code):
+    """A Close code a peer must never send is not echoed back: the answer is 1002."""
+    received = []
+    frames = b"\x88\x02" + struct.pack(">H", code)
+    server = await asyncio.start_server(_raw_ws_server(frames, received=received), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False)
+        with pytest.raises(ConnectionDisconnected):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == code
+        assert await _wait_for_client_frames(received, 1) == [(0x8, struct.pack(">H", 1002))]
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_continuation_over_the_remaining_max_msg_size_is_rejected_from_its_header():
+    """A continuation frame that would take the message over ``max_msg_size`` fails before its payload is read."""
+    frames = b"\x01\x08" + b"a" * 8 + b"\x80\x08"
+    server = await asyncio.start_server(_raw_ws_server(frames), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        ws = await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False, max_msg_size=10)
+        with pytest.raises(WebSocketMessageTooBig, match="message of 16 bytes"):
+            await ws.receive_text(timeout=5)
+        assert ws.close_code == 1009
+        await ws.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_ws_context_manager_closes_the_socket_after_a_server_close():
+    """Leaving ``async with`` closes the socket also when the server's Close was already answered."""
+    server = await asyncio.start_server(_raw_ws_server(b"\x88\x02" + struct.pack(">H", 1000)), "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    async with server, WebSocketClient() as client:
+        async with await client.connect(f"ws://127.0.0.1:{port}/", start_keepalive=False) as ws:
+            with pytest.raises(ConnectionDisconnected):
+                await ws.receive_text(timeout=5)
+            assert not ws.connected
+            assert ws.conn.writer is not None
+        assert ws.conn.writer is None
 
 
 @pytest.mark.asyncio
