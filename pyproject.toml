@@ -62,7 +62,7 @@ winloop = {version = ">=0.1.6,<0.8.0", platform = "win32"}
 ruff = ">=0.14,<0.17"
 
 [tool.poetry.group.docs.dependencies]
-sphinx = ">=7.4,<8.0"
+sphinx = ">=7.4,<9.0"
 shibuya = "^2026.1.9"
 sphinx-markdown-builder = "==0.6.11"
 
